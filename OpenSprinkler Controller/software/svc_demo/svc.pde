@@ -732,12 +732,12 @@ void schedule_clear_day(unsigned int d) {
 }
 
 // read a block of schedule values from eeprom
-void schedule_read_slots(uint16_t day, byte idx, byte *buf) {
+void schedule_read_slots(uint16_t day, int idx, byte *buf) {
   return ext_eeprom_read_buffer(day*SC_NUM_SLOTS_PER_DAY+idx, buf, EEPROM_BLOCK_SIZE); 
 }
 
 // read the schedule value of a given day and index
-byte schedule_read_slot(uint16_t day, byte idx) {
+byte schedule_read_slot(uint16_t day, int idx) {
   return ext_eeprom_read_byte(day*SC_NUM_SLOTS_PER_DAY+idx);
 }
 

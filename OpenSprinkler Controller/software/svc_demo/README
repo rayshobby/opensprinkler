@@ -1,3 +1,10 @@
+Version 1.2 Update:
+
+- Fixed issue with changing number of slots per hour
+
+
+===============================
+
 The code is tested in Arduino-0022. It's not guaranteed to work with other versions of Arduino. It's currently not in the form of an Arduino library due to the libary dependency issues. This will be addressed in the future.
 
 The following libraries are required:

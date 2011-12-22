@@ -6,7 +6,7 @@
 // Firmware version
 // !!! Note: firmware version should be changed whenever *type*
 //     or *number* of options or schedule formats are modified !!!
-#define FW_VERSION             11
+#define FW_VERSION             12
 
 // Hardware version
 #define HW_VERSION             "1.0"

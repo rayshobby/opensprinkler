@@ -79,12 +79,12 @@ prog_uchar htmlScheduleTable_js0[] PROGMEM =
 
 // Javascript for displaying clickable schedule table
 prog_uchar htmlScheduleTable_js1[] PROGMEM =
-    "var col=\"\",c=0;\n"
+    "col=\"\",c=0;\n"
     "w(\"<form name=fm action=cs method=get><input type=hidden name=t><input type=hidden name=p></form>\");\n"
     "w(\"<p><button type=button onclick=fc()>Submit</button>&nbsp;<button type=button onclick=er()>Clear all</button></p>\");\n"       
     "w(\"<table border=1 onmouseup=\\\"c=0\\\" onmousedown=\\\"if(typeof event.preventDefault!=\'undefined\'){event.preventDefault();}\\\">\");\n"
     "for(i=si;i<ei;i++){if(!((i-si)%12)){w(\"<tr><td><button type=button onclick=fc()>Submit</button></td>\");for(j=0;j<8;j++){w(\"<td>Sn\"+(j+1)+\"</td>\");}}\n"
-    "w(\"</tr>\");t=\"\";t=((i>>2)<10?\"0\":\"\")+(i>>2)+\":\"+((i%4)?\"\":\"0\")+(i%4)*15;\n"
+    "w(\"</tr>\");h=i/sph>>0;m=(i%sph)*(60/sph);t=\"\"+(h/10>>0)+(h%10)+\":\"+(m/10>>0)+(m%10);\n"
     "w(\"<tr><td\"+((i==ic)?\" style=\\\"background-color:yellow;\\\">\":\">\")+t+\"</td>\");\n"
     "for(j=0;j<8;j++){wr(i,j);}\n"
     "w(\"</tr>\");}\n"
@@ -109,13 +109,9 @@ prog_uchar htmlScheduleTable_js3[] PROGMEM =
     "for(i=0;i<8;i++){w(\"S\"+(i+1)+\": \"+((vv>>i)&1?\"O\":\"*\")+\"<br>\")}\n"
     "w(\"<p><strong>Multivalve check</strong>: \"+(mc?(\"cleared\").fontcolor(\"green\"):(\"error\").fontcolor(\"red\")));\n"
     "w(\"<p><strong>Global operation</strong>: \"+(go?(\"enabled\").fontcolor(\"green\"):(\"disabled\").fontcolor(\"red\")))\n;"
-    "w(\"<p><strong>Rain delay</strong>: \"+(rd?(\"on\").fontcolor(\"red\")+\" (till \"+Math.floor(rdh/10)+(rdh%10)+\":\"+Math.floor(rdm/10)+(rdm%10)+\" \"+Math.floor(rdo/10)+(rdo%10)+\"-\"+Math.floor(rdd/10)+(rdd%10)+\")\":(\"off\").fontcolor(\"black\")))\n;"
+    "w(\"<p><strong>Rain delay</strong>: \"+(rd?(\"on\").fontcolor(\"red\")+\" (till \"+(rdh/10>>0)+(rdh%10)+\":\"+(rdm/10>>0)+(rdm%10)+\" \"+(rdo/10>>0)+(rdo%10)+\"-\"+(rdd/10>>0)+(rdd%10)+\")\":(\"off\").fontcolor(\"black\")))\n;"
 ;
-
-prog_uchar htmlScheduleTable_js4[] PROGMEM =
-    ""
-;
-    
+  
 byte *htmlWebpage_js[] = {htmlScheduleTable_js0,
                           htmlScheduleTable_js1,
                           htmlScheduleTable_js2,
@@ -124,7 +120,7 @@ byte *htmlWebpage_js[] = {htmlScheduleTable_js0,
 // print javascript webpage
 void print_webpage_js(byte idx)
 {
-  bfill.emit_p(PSTR("$F$F"), htmlOkHeaderjs, htmlWebpage_js[idx]);
+  bfill.emit_p(PSTR("$Fsph=$D;\n$F"), htmlOkHeaderjs, SC_SLOTS_PER_HOUR, htmlWebpage_js[idx]);
 }
 
 // webpage for setting schedules
@@ -140,7 +136,7 @@ void print_webpage_set_schedule(char *str, byte pos) {
   }
   bfill.emit_p(PSTR("$F"), htmlOkHeader);
   
-  byte i, j, k;
+  int i, j, k;
   // print schedule menu bar
   bfill.emit_p(PSTR("<a href=/><-home</a>&nbsp;&nbsp;"));
   for(i=0; i<7; i++) {
@@ -159,6 +155,7 @@ void print_webpage_set_schedule(char *str, byte pos) {
                     (int)options[OPTION_DAY_END]*SC_SLOTS_PER_HOUR);
   bfill.emit_p(PSTR("<script>\n"));
   bfill.emit_p(PSTR("it(new Array("));
+  
   
   // load current schedule from eeprom
   byte buf[EEPROM_BLOCK_SIZE];
@@ -389,7 +386,7 @@ void print_webpage_unauthorized()
 unsigned long ntp_wait_response()
 {
   uint32_t time;
-  for (uint32_t i=0; i<100000; i++) {
+  for (uint32_t i=0; i<10000; i++) {
     ether.packetLoop(ether.packetReceive());
     if (ether.ntpProcessAnswer(&time, ntpclientportL))
     {
@@ -414,7 +411,7 @@ unsigned long getNtpTime()
     ans = ntp_wait_response();
     delay(250);
     tick ++;
-  } while( ans == 0 && tick < 15 );  
+  } while( ans == 0 && tick < 5 );  
   return ans;
 }
 

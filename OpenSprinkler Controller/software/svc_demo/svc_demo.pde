@@ -86,7 +86,7 @@ void web_mode_loop()
 
     bfill = ether.tcpOffset();
     analyze_get_url((char*)Ethernet::buffer+pos);
-//    Serial.println(bfill.position());  // print buffer size, must be less than ETHER_BUFFER_SIZE
+    //Serial.println(bfill.position());  // print buffer size, must be less than ETHER_BUFFER_SIZE
     ether.httpServerReply(bfill.position());   
   }
 
@@ -98,6 +98,7 @@ void web_mode_loop()
 
   web_mode_button_poll();    // check button press
 
+//  Serial.println("alive");
   // if 1 second has passed
   if (mytime != time_second_counter) {
     mytime = time_second_counter;
