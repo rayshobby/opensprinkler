@@ -1,6 +1,6 @@
 ===============================
 
-This is a simple button-based web control interface. Each station can be toggled individually. You can set a duration for each station. The program keeps track of the running time and stops a station when the duration is reached. 
+This is a simple button-based web control interface. Each station can be toggled individually. You can set a duration for each station. The program keeps track of the running time and stops a station when the duration is reached. The duration is assigned in terms of hours and minutes. Leaving them to 0 means the duration is indefinite (i.e. once on, the stations will remain open until you click on 'Turn Off').
 
 The code is tested in Arduino-0022. It's not guaranteed to work with other versions of Arduino. It's currently not in the form of an Arduino library due to the libary dependency issues. This will be addressed in the future.
 

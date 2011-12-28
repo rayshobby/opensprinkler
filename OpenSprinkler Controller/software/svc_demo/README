@@ -1,5 +1,6 @@
 Version 1.2 Update:
 
+- Fixed the missing 'static' qualifier for several variables.
 - Fixed issue with changing number of slots per hour
 
 

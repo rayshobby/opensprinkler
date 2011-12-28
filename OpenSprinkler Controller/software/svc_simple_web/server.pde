@@ -89,10 +89,10 @@ void print_webpage_p1()
 // print home page
 void print_webpage_home()
 {
-  bfill.emit_p(PSTR("$F$F$F"
+  bfill.emit_p(PSTR("$F$F"
     "<script src=p1.js></script>\n"
     "<h3>Device time: $D$D:$D$D $F $D$D-$D$D</h3>"),
-    htmlOkHeader, htmlMobileHeader,htmlRefreshHeader,
+    htmlOkHeader, htmlMobileHeader,
     hour()/10, hour()%10, minute()/10, minute()%10, days_str[weekday_today()],
     month()/10, month()%10, day()/10, day()%10
   );

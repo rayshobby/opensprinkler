@@ -77,10 +77,10 @@ byte web_mode_get_schedule_now() {
 // web mode main loop
 void web_mode_loop()
 {
-  unsigned long mytime = 0;
-  int16_t old_tm2_ov_cnt = -1;
+  static unsigned long mytime = 0;
+  static int16_t old_tm2_ov_cnt = -1;
 
-  word pos;
+  static word pos;
   pos = ether.packetLoop(ether.packetReceive());
   if (pos) {  // package received
 
