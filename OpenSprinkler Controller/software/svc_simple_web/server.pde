@@ -81,7 +81,8 @@ void print_webpage_p1()
     "b=document.getElementById(\"b\"+i);h=document.getElementById(\"h\"+i);m=document.getElementById(\"m\"+i);b.style.height=32;\n"
     "if((v>>i)&1){b.style.backgroundColor=\"#C02020\";b.value=\"Turn it Off\";h.value=rt[i]/3600>>0;m.value=(st[i]?1:0)+(rt[i]%3600)/60>>0;"
     "h.disabled=true;m.disabled=true;}\n"
-    "else{b.style.backgroundColor=\"#20C020\";b.value=\"Turn it On\";h.value=st[i]/3600>>0;m.value=(st[i]%3600)/60>>0;}\n"
+    "else{b.style.backgroundColor=\"#20C020\";b.value=\"Turn it On\";h.value=st[i]/3600>>0;m.value=(st[i]%3600)/60>>0;"
+		"h.disabled=false;m=disabled=false;}\n"
     "}}\n"
   ) );
 }
