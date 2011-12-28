@@ -1,0 +1,14 @@
+===============================
+
+This is a simple button-based web control interface. Each station can be toggled individually. You can set a duration for each station. The program keeps track of the running time and stops a station when the duration is reached. 
+
+The code is tested in Arduino-0022. It's not guaranteed to work with other versions of Arduino. It's currently not in the form of an Arduino library due to the libary dependency issues. This will be addressed in the future.
+
+The following libraries are required:
+ * LiquidCrystal, EEPROM, Wire (included in Arduino, no need to install)
+ * Time library (attached in this package)
+ * JeeLabs EtherCard library (attached in this package)
+
+The Time and EtherCard libraries are the same with the svc_demo program. Therefore they are not included here.
+
+To compile, open svc_simple_web.pde in Arduino IDE and click on 'compile'. If it reports missing files, you should check the libraries.
