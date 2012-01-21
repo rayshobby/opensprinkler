@@ -6,10 +6,13 @@
 // Firmware version
 // !!! Note: firmware version should be changed whenever *type*
 //     or *number* of options or schedule formats are modified !!!
-#define FW_VERSION             11
+#define FW_VERSION             13
 
 // Hardware version
 #define HW_VERSION             "1.0"
+
+// ====== Hardware Defines ======
+#define MAX_EXT_BOARDS         1	// maximum number of ext boards (8 additional stations per ext board)
 
 // ====== Internal EEPROM Defines ======
 #define ADDR_EEPROM_BASE       0x0000
@@ -18,28 +21,22 @@
 
 // index of each option
 #define OPTION_FW_VERSION      0
-#define OPTION_RUNNING_MODE    1
-#define OPTION_TIMEZONE        2
-#define OPTION_DHCP            3
-#define OPTION_STATIC_IP1      4
-#define OPTION_STATIC_IP2      5
-#define OPTION_STATIC_IP3      6
-#define OPTION_STATIC_IP4      7
-#define OPTION_GATEWAY_IP1     8
-#define OPTION_GATEWAY_IP2     9
-#define OPTION_GATEWAY_IP3     10
-#define OPTION_GATEWAY_IP4     11
-#define OPTION_NTP_SYNC        12
-#define OPTION_DAY_START       13
-#define OPTION_DAY_END         14
-#define OPTION_SHOW_MSG        15
-#define OPTION_MULTIVALVE      16 
-#define OPTION_MANUAL_STATIONS 17
-#define OPTION_MANUAL_HRS      18
-#define OPTION_MANUAL_MINS     19
-#define OPTION_RESET           20
-
-#define NUM_OPTIONS            21
+#define OPTION_TIMEZONE        1
+#define OPTION_DHCP            2
+#define OPTION_STATIC_IP1      3
+#define OPTION_STATIC_IP2      4
+#define OPTION_STATIC_IP3      5
+#define OPTION_STATIC_IP4      6
+#define OPTION_GATEWAY_IP1     7
+#define OPTION_GATEWAY_IP2     8
+#define OPTION_GATEWAY_IP3     9
+#define OPTION_GATEWAY_IP4     10
+#define OPTION_NTP_SYNC        11
+#define OPTION_SHOW_MSG        12
+#define OPTION_MULTIVALVE      13
+#define OPTION_EXT_BOARDS      14
+#define OPTION_RESET           15
+#define NUM_OPTIONS            16
 
 // Option flags
 #define OPFLAG_NONE         0x00
@@ -95,12 +92,12 @@
 #define DISPLAY_MSG_MS      2000  // message display delay time
 
 // ====== Ethernet Defines ======
-#define ETHER_BUFFER_SIZE    850
+#define ETHER_BUFFER_SIZE    900
 #define TMP_BUFFER_SIZE        20
 
 // ====== Global Variables ======
 extern LiquidCrystal lcd;
-extern byte valve_bitvalue;    // scheduled open/close value of each bit
+extern unsigned int valve_bitvalue;    // scheduled open/close value of each bit, maximum 32 stations supported
 
 extern byte options[];         // stores all options
 extern byte options_max[];     // max value of each option

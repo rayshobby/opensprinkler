@@ -77,12 +77,12 @@ void print_webpage_p1()
     "function sf(i){h=document.getElementById(\"h\"+i);m=document.getElementById(\"m\"+i);"
     "f.elements[0].value=i;f.elements[1].value=(v>>i)&1?0:1;f.elements[2].value=h.value;f.elements[3].value=m.value;f.submit()}\n"
     "function it(st,rt){\n"
-    "for(i=0;i<8;i++){\n"
+    "for(i=0;i<ns;i++){\n"
     "b=document.getElementById(\"b\"+i);h=document.getElementById(\"h\"+i);m=document.getElementById(\"m\"+i);b.style.height=32;\n"
     "if((v>>i)&1){b.style.backgroundColor=\"#C02020\";b.value=\"Turn it Off\";h.value=rt[i]/3600>>0;m.value=(st[i]?1:0)+(rt[i]%3600)/60>>0;"
     "h.disabled=true;m.disabled=true;}\n"
     "else{b.style.backgroundColor=\"#20C020\";b.value=\"Turn it On\";h.value=st[i]/3600>>0;m.value=(st[i]%3600)/60>>0;"
-		"h.disabled=false;m=disabled=false;}\n"
+    "h.disabled=false;m=disabled=false;}\n"
     "}}\n"
   ) );
 }
@@ -100,20 +100,20 @@ void print_webpage_home()
 
   bfill.emit_p(PSTR(
     "<script>\n"
-    "v=$D;\n"
+    "v=$D;ns=$D;\n"
     "w(\"<form name=f action=set method=get><input type=hidden name=b><input type=hidden name=v><input type=hidden name=h><input type=hidden name=m></form>\");\n"
-    "for(i=0;i<8;i++){w(\"<h3>Station \"+(i+1)+\": <input type=button id=b\"+i+\" onClick=sf(\"+i+\")> \"+((v>>i)&1?\"in\":\"duration\")+\" "
+    "for(i=0;i<ns;i++){w(\"<h3>Station \"+((i+1)/10>>0)+((i+1)%10)+\": <input type=button id=b\"+i+\" onClick=sf(\"+i+\")> \"+((v>>i)&1?\"in\":\"duration\")+\" "
     "<input type=text id=h\"+i+\" size=2 maxlength=2 />:"
     "<input type=text id=m\"+i+\" size=2 maxlength=2 /></h3>\")}\n"
-    ), valve_bitvalue
+    ), valve_bitvalue, ((int)options[OPTION_EXT_BOARDS]+1)*8
   );
   bfill.emit_p(PSTR("it(new Array("));
   byte i;
-  for(i=0; i<8; i++) {
+  for(i=0; i<(options[OPTION_EXT_BOARDS]+1)*8; i++) {
     bfill.emit_p(PSTR("$D,"), scheduled_seconds[i]);
   }
   bfill.emit_p(PSTR("0), new Array("));
-  for(i=0; i<8; i++) {
+  for(i=0; i<(options[OPTION_EXT_BOARDS]+1)*8; i++) {
     bfill.emit_p(PSTR("$D,"), remaining_seconds[i]);
     
   }  
@@ -139,7 +139,7 @@ void print_webpage_set_valve(char *p)
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "m"))
     m = atoi(tmp_buffer);
     
-  if (i<0||i>7||v<0||v>1||h<0||h>120||m<0||m>60) {
+  if (i<0||i>((int)options[OPTION_EXT_BOARDS]+1)*8||v<0||v>1||h<0||h>120||m<0||m>60) {
     bfill.emit_p(PSTR("$F"), htmlUnauthorized);
     return;
   }

@@ -12,19 +12,18 @@
 
 LiquidCrystal lcd(PIN_LCD_RS, PIN_LCD_EN, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
 
-byte valve_bitvalue = 0;    // scheduled open/close value of each bit
+unsigned int valve_bitvalue;    // scheduled open/close value of each bit, maximum 32 stations supported
 
 byte time_display_mode = 0;
 
-unsigned long remaining_seconds[8];
-unsigned long scheduled_seconds[8];
-unsigned long scheduled_stop_time[8];
+unsigned long remaining_seconds[(MAX_EXT_BOARDS+1)*8];
+unsigned long scheduled_seconds[(MAX_EXT_BOARDS+1)*8];
+unsigned long scheduled_stop_time[(MAX_EXT_BOARDS+1)*8];
 
 // Option defaults values
 byte options[NUM_OPTIONS] = {
   FW_VERSION,
-  1,  // 0: manual, 1: web
-  (-4+12), // default time zone: UTC-4
+  (-5+12), // default time zone: UTC-5
   1,  // 0: static ip, 1: dhcp
   192,// static ip
   168, 
@@ -35,55 +34,44 @@ byte options[NUM_OPTIONS] = {
   1,
   1,
   1,  // 0: disable NTP sync, 1: enable
-  6,  // start of a schedule day (in hours)
-  21, // end of a schedule day (in hours)
   1,  // 0: don't show, 1: show
   2,  // 0: disable multi valve protection; other: max# valves allowed to open at the same time
-  0,  // station selection (manual mode)
-  0,  // duration in hours (manual mode)
-  30, // duration in minuts(manual mode)
+  0,  // 0: no extension boards; other: number of extension boards
   0,  // reset all settings to default
 };
 
 
 // Maximum value of each option
 prog_uchar options_max[NUM_OPTIONS] PROGMEM = {
-  0, 1, 24, 1, 255, 255, 255, 255, 255, 255,
-  255, 255, 1, 12, 24, 1, 8, 0, 23, 59, 1 };
+  0, 24, 1, 255, 255, 255, 255, 255, 255, 255, 255,
+  1,  1, (MAX_EXT_BOARDS+1)*8, MAX_EXT_BOARDS, 1 };
 
 // Option title strings
 prog_char str_op0 [] PROGMEM = "FW";
-prog_char str_op1 [] PROGMEM = "Web mode: ";
-prog_char str_op2 [] PROGMEM = "Time zone:";
-prog_char str_op3 [] PROGMEM = "Enable DHCP: ";
-prog_char str_op4 [] PROGMEM = "Static.ip1: ";
-prog_char str_op5 [] PROGMEM = "Static.ip2: ";
-prog_char str_op6 [] PROGMEM = "Static.ip3: ";
-prog_char str_op7 [] PROGMEM = "Static.ip4: ";
-prog_char str_op8 [] PROGMEM = "Gateway.ip1:";
-prog_char str_op9 [] PROGMEM = "Gateway.ip2:";
-prog_char str_op10[] PROGMEM = "Gateway.ip3:";
-prog_char str_op11[] PROGMEM = "Gateway.ip4:";
-prog_char str_op12[] PROGMEM = "NTP sync: ";
-prog_char str_op13[] PROGMEM = "Start hour:";
-prog_char str_op14[] PROGMEM = "End hour  :";
-prog_char str_op15[] PROGMEM = "Startup msg: ";
-prog_char str_op16[] PROGMEM = "Multi valve: ";
-prog_char str_op17[] PROGMEM = "MS";
-prog_char str_op18[] PROGMEM = "MH";
-prog_char str_op19[] PROGMEM = "MM";
-prog_char str_op20[] PROGMEM = "Reset all? ";
+prog_char str_op1 [] PROGMEM = "Time zone:";
+prog_char str_op2 [] PROGMEM = "Enable DHCP: ";
+prog_char str_op3 [] PROGMEM = "Static.ip1: ";
+prog_char str_op4 [] PROGMEM = "Static.ip2: ";
+prog_char str_op5 [] PROGMEM = "Static.ip3: ";
+prog_char str_op6 [] PROGMEM = "Static.ip4: ";
+prog_char str_op7 [] PROGMEM = "Gateway.ip1:";
+prog_char str_op8 [] PROGMEM = "Gateway.ip2:";
+prog_char str_op9 [] PROGMEM = "Gateway.ip3:";
+prog_char str_op10[] PROGMEM = "Gateway.ip4:";
+prog_char str_op11[] PROGMEM = "NTP sync: ";
+prog_char str_op12[] PROGMEM = "Startup msg: ";
+prog_char str_op13[] PROGMEM = "Multi valve: ";
+prog_char str_op14[]  PROGMEM = "Ext. Boards: ";
+prog_char str_op15[] PROGMEM = "Reset all? ";
 
 // Array of option title strings
 char *options_str[NUM_OPTIONS]  = {
   str_op0, str_op1, str_op2, str_op3, str_op4, str_op5, str_op6, str_op7, str_op8, str_op9,
-  str_op10,str_op11,str_op12,str_op13,str_op14,str_op15,str_op16,str_op17,str_op18,str_op19,
-  str_op20 };
+  str_op10,str_op11,str_op12,str_op13,str_op14,str_op15 };
 
 // Flag of each option
 prog_uchar options_flag[NUM_OPTIONS] PROGMEM={
   OPFLAG_NONE,
-  OPFLAG_BOOL,
   OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,
   OPFLAG_EDITABLE | OPFLAG_BOOL,
   OPFLAG_EDITABLE,
@@ -95,23 +83,11 @@ prog_uchar options_flag[NUM_OPTIONS] PROGMEM={
   OPFLAG_EDITABLE,
   OPFLAG_EDITABLE, // gw.ip4
   OPFLAG_EDITABLE | OPFLAG_BOOL,
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,
   OPFLAG_EDITABLE | OPFLAG_BOOL,
   OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,
-  OPFLAG_NONE,
-  OPFLAG_NONE,
-  OPFLAG_NONE,
+  OPFLAG_EDITABLE,
   OPFLAG_EDITABLE | OPFLAG_BOOL
 };  
-
-/*
-boolean options_setup_editable[NUM_OPTIONS]={
- false, true, true, true, true, true, true, true, true, true,
- true,  true, true, true, true, true, true, false,true, true,
- true };
- */
-
 
 // Name abbrev of each weekday
 prog_char str_day0[] PROGMEM = "Mon";
@@ -153,8 +129,7 @@ void svc_setup() {
   pinMode(PIN_ETHER_RESET, OUTPUT);
 
   // turn off valves
-  valve_schedule(0);
-  valve_apply();
+  valve_reset();
 
   // initialize variables
   time_display_mode = 1;
@@ -162,7 +137,7 @@ void svc_setup() {
   // reset Ethernet module momentarily
   reset_ethernet();
 
-  for (byte i=0; i<8; i++) {
+  for (byte i=0; i<(MAX_EXT_BOARDS+1)*8; i++) {
     scheduled_seconds[i] = 0;
     remaining_seconds[i] = 0;
   }
@@ -194,9 +169,6 @@ void options_setup() {
     }
   }
 
-  // correct option errors
-  if (options[OPTION_DAY_END] <= options[OPTION_DAY_START])
-    options[OPTION_DAY_END] = options[OPTION_DAY_START]+4;  
 }
 
 
@@ -204,6 +176,7 @@ void options_setup() {
 void options_load() {
   for (byte i=0; i<NUM_OPTIONS; i++) {
     options[i] = EEPROM.read(ADDR_EEPROM_BASE + i);
+    Serial.println((int)options[i]);
   }
 }
 
@@ -228,50 +201,36 @@ byte option_get_max(int i)
 // Valve Control Functions
 // =======================
 
-// schedule all stations according to the given bit values
-void valve_schedule(byte value) {
-  valve_bitvalue = value;
-}
-
 // schedule one station
 void valve_schedule(byte index, byte value) {
   if (value) {
-    valve_bitvalue = valve_bitvalue | (1<<index);
+    valve_bitvalue = valve_bitvalue | ((unsigned int)1<<index);
   } 
   else {
-    valve_bitvalue = valve_bitvalue &~(1<<index);
+    valve_bitvalue = valve_bitvalue &~((unsigned int)1<<index);
   }
 }		
 
+// reset (shut down) all valves
+void valve_reset() {
+  valve_bitvalue = 0;
+  valve_apply();
+}
 // apply scheduled valve values
 // !!! This will activate the valves !!!
 void valve_apply() {
   digitalWrite(PIN_SR_LATCH, LOW);
   digitalWrite(PIN_SR_CLOCK, LOW);
-  shiftOut(PIN_SR_DATA, PIN_SR_CLOCK, MSBFIRST, valve_bitvalue);  
+  //shiftOut(PIN_SR_DATA, PIN_SR_CLOCK, MSBFIRST, valve_bitvalue);  
+
+  for (byte i = 0; i < (options[OPTION_EXT_BOARDS]+1) * 8; i++)  {
+    digitalWrite(PIN_SR_DATA, !!(valve_bitvalue & ((unsigned int)1 << ((options[OPTION_EXT_BOARDS]+1) * 8 - i))));
+    digitalWrite(PIN_SR_CLOCK, HIGH);
+    digitalWrite(PIN_SR_CLOCK, LOW);		
+  }
+
   digitalWrite(PIN_SR_LATCH, HIGH);
 }		
-
-void valve_apply_pulse(int index, int delaytime) {
-  valve_schedule(index, 1);
-  digitalWrite(PIN_SR_LATCH, LOW);
-  digitalWrite(PIN_SR_CLOCK, LOW);
-  shiftOut(PIN_SR_DATA, PIN_SR_CLOCK, MSBFIRST, valve_bitvalue);  
-  digitalWrite(PIN_SR_LATCH, HIGH);  
-  delay(delaytime);
-  valve_schedule(index, 0);
-  digitalWrite(PIN_SR_LATCH, LOW);
-  digitalWrite(PIN_SR_CLOCK, LOW);
-  shiftOut(PIN_SR_DATA, PIN_SR_CLOCK, MSBFIRST, 0);  
-  digitalWrite(PIN_SR_LATCH, HIGH);  
-
-}
-
-
-// get scheduled values
-byte valve_get_schedule() {
-  return valve_bitvalue;
-}
 
 // get schdule value for one station
 byte valve_get(byte index) {
@@ -371,7 +330,7 @@ byte lcd_print_valve(byte line, char c)
 {
   lcd.setCursor(0, line);
   lcd.print("S:");
-  byte value = valve_get_schedule();
+  byte value = valve_bitvalue & 0xFF;
   for (byte i=0; i<8; i++) {
     lcd.print((value&1) ? c : '_');
     value >>= 1;
@@ -393,12 +352,6 @@ void lcd_print_option(int i)
     tz = (int)options[i]-12;
     if (tz >= 0) lcd.print('+');
     lcd.print(tz);
-    lcd_print_pgm(PSTR(":00"));
-    break;
-    // no break here!!
-  case OPTION_DAY_START: // if these are the day start and day end options
-  case OPTION_DAY_END:
-    lcd.print((int)options[i]);
     lcd_print_pgm(PSTR(":00"));
     break;
   default:
