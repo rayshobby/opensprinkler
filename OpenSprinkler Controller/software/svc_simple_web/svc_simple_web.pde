@@ -72,7 +72,7 @@ void web_mode_loop()
 
     bfill = ether.tcpOffset();
     analyze_get_url((char*)Ethernet::buffer+pos);
-    Serial.println(bfill.position());
+    //Serial.println(bfill.position());
     ether.httpServerReply(bfill.position());   
   }
   
@@ -223,7 +223,7 @@ void web_mode_button_poll() {
 
 void setup() { 
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   // sprinkler valve controller setup
   svc_setup();

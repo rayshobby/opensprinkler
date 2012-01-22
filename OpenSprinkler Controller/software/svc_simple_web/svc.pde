@@ -176,7 +176,6 @@ void options_setup() {
 void options_load() {
   for (byte i=0; i<NUM_OPTIONS; i++) {
     options[i] = EEPROM.read(ADDR_EEPROM_BASE + i);
-    Serial.println((int)options[i]);
   }
 }
 
