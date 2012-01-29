@@ -219,13 +219,12 @@ void valve_reset() {
 // !!! This will activate the valves !!!
 void valve_apply() {
   digitalWrite(PIN_SR_LATCH, LOW);
-  digitalWrite(PIN_SR_CLOCK, LOW);
-  //shiftOut(PIN_SR_DATA, PIN_SR_CLOCK, MSBFIRST, valve_bitvalue);  
 
-  for (byte i = 0; i < (options[OPTION_EXT_BOARDS]+1) * 8; i++)  {
-    digitalWrite(PIN_SR_DATA, !!(valve_bitvalue & ((unsigned int)1 << ((options[OPTION_EXT_BOARDS]+1) * 8 - i))));
+  for (byte i = 0; i < (MAX_EXT_BOARDS+1) * 8; i++)  {
+    digitalWrite(PIN_SR_CLOCK, LOW);
+    unsigned int idx = ((MAX_EXT_BOARDS+1) * 8 - 1 - i);
+    digitalWrite(PIN_SR_DATA, (valve_bitvalue & ((unsigned int)1<<idx)) ? HIGH : LOW );
     digitalWrite(PIN_SR_CLOCK, HIGH);
-    digitalWrite(PIN_SR_CLOCK, LOW);		
   }
 
   digitalWrite(PIN_SR_LATCH, HIGH);

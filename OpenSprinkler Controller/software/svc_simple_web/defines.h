@@ -13,6 +13,9 @@
 
 // ====== Hardware Defines ======
 #define MAX_EXT_BOARDS         1	// maximum number of ext boards (8 additional stations per ext board)
+                                        // at the moment this *only* works for up to 1 extension board
+                                        // it's possible to support additional boards by simply cascading shift registers
+                                        // however, the software must be modified to support that many bits
 
 // ====== Internal EEPROM Defines ======
 #define ADDR_EEPROM_BASE       0x0000
@@ -97,7 +100,7 @@
 
 // ====== Global Variables ======
 extern LiquidCrystal lcd;
-extern unsigned int valve_bitvalue;    // scheduled open/close value of each bit, maximum 32 stations supported
+extern unsigned int valve_bitvalue;    // scheduled open/close value of each bit, maximum 16 stations supported
 
 extern byte options[];         // stores all options
 extern byte options_max[];     // max value of each option

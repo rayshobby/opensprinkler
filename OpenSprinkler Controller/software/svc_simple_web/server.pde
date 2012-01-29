@@ -139,7 +139,7 @@ void print_webpage_set_valve(char *p)
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "m"))
     m = atoi(tmp_buffer);
     
-  if (i<0||i>((int)options[OPTION_EXT_BOARDS]+1)*8||v<0||v>1||h<0||h>120||m<0||m>60) {
+  if (i<0||i>((MAX_EXT_BOARDS+1)*8)||v<0||v>1||h<0||h>120||m<0||m>60) {
     bfill.emit_p(PSTR("$F"), htmlUnauthorized);
     return;
   }
