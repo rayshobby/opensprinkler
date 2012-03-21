@@ -44,7 +44,6 @@ typedef struct  {
 typedef time_t(*getExternalTime)();
 //typedef void  (*setExternalTime)(const time_t); // not used in this version
 
-
 /*==============================================================================*/
 /* Useful Constants */
 #define SECS_PER_MIN  (60UL)
@@ -121,6 +120,7 @@ void    setSyncInterval(time_t interval); // set the number of seconds between r
 void breakTime(time_t time, tmElements_t &tm);  // break time_t into elements
 time_t makeTime(tmElements_t &tm);  // convert time elements into time_t
 
+extern int ntp_failure;
 
 #endif /* _Time_h */
 
