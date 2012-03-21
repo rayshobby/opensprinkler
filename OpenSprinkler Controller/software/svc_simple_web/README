@@ -1,3 +1,6 @@
+Update:
+- Mar 21: support for potentially any number of extension boards. the status of each ext. board is now also displayed on the lcd screen. use button B2 to switch the board for display.
+
 ===============================
 
 This is a simple button-based web control interface. Each station can be toggled individually. You can set a duration for each station. The program keeps track of the running time and stops a station when the duration is reached. The duration is assigned in terms of hours and minutes. Leaving them to 0 means the duration is indefinite (i.e. once on, the stations will remain open until you click on 'Turn Off').

@@ -1,7 +1,7 @@
 // Example code for Sprinkler Valve Controller (SVC)
 // SVC library functions
 // Licensed under GPL V2
-// Dec 2011 @Rayshobby
+// Mar 2012 @Rayshobby
 
 #include <Wire.h>
 #include <EEPROM.h>
@@ -12,18 +12,17 @@
 
 LiquidCrystal lcd(PIN_LCD_RS, PIN_LCD_EN, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
 
-unsigned int valve_bitvalue;    // scheduled open/close value of each bit, maximum 32 stations supported
+byte valve_bitvalues[MAX_EXT_BOARDS+1];    // scheduled open/close value of each bit, maximum 32 stations supported
 
 byte time_display_mode = 0;
+byte lcd_display_board = 0;
 
-unsigned long remaining_seconds[(MAX_EXT_BOARDS+1)*8];
-unsigned long scheduled_seconds[(MAX_EXT_BOARDS+1)*8];
-unsigned long scheduled_stop_time[(MAX_EXT_BOARDS+1)*8];
+unsigned int remaining_minutes[(MAX_EXT_BOARDS+1)*8];
 
 // Option defaults values
 byte options[NUM_OPTIONS] = {
   FW_VERSION,
-  (-5+12), // default time zone: UTC-5
+  (-4+12), // default time zone: UTC-4
   1,  // 0: static ip, 1: dhcp
   192,// static ip
   168, 
@@ -127,19 +126,20 @@ void svc_setup() {
   pinMode(PIN_SR_CLOCK, OUTPUT);
   pinMode(PIN_SR_DATA,  OUTPUT);
   pinMode(PIN_ETHER_RESET, OUTPUT);
-
+  
+  Wire.begin();
   // turn off valves
   valve_reset();
-
+  
   // initialize variables
   time_display_mode = 1;
 
   // reset Ethernet module momentarily
   reset_ethernet();
-
+  
   for (byte i=0; i<(MAX_EXT_BOARDS+1)*8; i++) {
-    scheduled_seconds[i] = 0;
-    remaining_seconds[i] = 0;
+    set_station_scheduled_seconds(i, 0);
+    remaining_minutes[i] = 0;
   }
   // start lcd
   lcd.begin(16, 2);
@@ -202,17 +202,22 @@ byte option_get_max(int i)
 
 // schedule one station
 void valve_schedule(byte index, byte value) {
+  byte b = (index>>3);
+  byte i = index % 8;
   if (value) {
-    valve_bitvalue = valve_bitvalue | ((unsigned int)1<<index);
+    valve_bitvalues[b] = valve_bitvalues[b] | ((unsigned int)1<<i);
   } 
   else {
-    valve_bitvalue = valve_bitvalue &~((unsigned int)1<<index);
+    valve_bitvalues[b] = valve_bitvalues[b] &~((unsigned int)1<<i);
   }
 }		
 
 // reset (shut down) all valves
 void valve_reset() {
-  valve_bitvalue = 0;
+  byte b;
+  for(b=0;b<=options[OPTION_EXT_BOARDS];b++) {
+    valve_bitvalues[b] = 0;
+  }
   valve_apply();
 }
 // apply scheduled valve values
@@ -220,20 +225,21 @@ void valve_reset() {
 void valve_apply() {
   digitalWrite(PIN_SR_LATCH, LOW);
 
-  for (byte i = 0; i < (MAX_EXT_BOARDS+1) * 8; i++)  {
-    digitalWrite(PIN_SR_CLOCK, LOW);
-    unsigned int idx = ((MAX_EXT_BOARDS+1) * 8 - 1 - i);
-    digitalWrite(PIN_SR_DATA, (valve_bitvalue & ((unsigned int)1<<idx)) ? HIGH : LOW );
-    digitalWrite(PIN_SR_CLOCK, HIGH);
-  }
+  byte b, i;
+  byte bitvalue;
 
+  // Shift out all valve bit values
+  // from the highest bit to the lowest
+  for(b=0;b<=MAX_EXT_BOARDS;b++) {
+    bitvalue = valve_bitvalues[MAX_EXT_BOARDS-b];
+    for(i=0;i<8;i++) {
+      digitalWrite(PIN_SR_CLOCK, LOW);
+      digitalWrite(PIN_SR_DATA, (bitvalue & ((unsigned int)1<<(7-i))) ? HIGH : LOW );
+      digitalWrite(PIN_SR_CLOCK, HIGH);          
+    }
+  }
   digitalWrite(PIN_SR_LATCH, HIGH);
 }		
-
-// get schdule value for one station
-byte valve_get(byte index) {
-  return (valve_bitvalue>>index)&1;
-}
 
 // =============
 // LCD Functions
@@ -316,26 +322,25 @@ void lcd_print_ip(const byte *ip, byte line)
   lcd_print_pgm(PSTR("    "));
 }
 
-void lcd_print_raindelay(byte rd, byte line)
-{
-  lcd.setCursor(0, line);
-  lcd.print((int)rd);
-  lcd_print_pgm(PSTR(" hours  "));
-}
-
 // print valve values onto lcd
 byte lcd_print_valve(byte line, char c)
 {
   lcd.setCursor(0, line);
-  lcd.print("S:");
-  byte value = valve_bitvalue & 0xFF;
-  for (byte i=0; i<8; i++) {
-    lcd.print((value&1) ? c : '_');
-    value >>= 1;
+  if (lcd_display_board == 0) {
+    lcd.print("MC:");  // display master controller
   }
-  lcd.print(' ');
+  else {
+    lcd.print("E");
+    lcd.print((int)lcd_display_board);
+    lcd.print(":");
+  }  
+  byte bitvalue = valve_bitvalues[lcd_display_board];
+  for (byte i=0; i<8; i++) {
+    lcd.print((bitvalue&1) ? c : '_');
+    bitvalue >>= 1;
+  }
   lcd_print_pgm(PSTR("(web)"));
-  return 2; // strlen("Stn:");
+  return 3;
 }
 
 // print an option value to lcd
@@ -585,5 +590,81 @@ byte weekday_today() {
   return ((byte)weekday()+5)%7;  
 }
 
+// each station schedule data takes 4 unsigned longs, which is exactly one EEPROM page size
 
+// get the scheduled seconds for station i
+unsigned long get_station_scheduled_seconds(byte i) {
+  unsigned long value;
+  ext_eeprom_read_buffer(i*sizeof(unsigned long)*4, (byte*)&value, sizeof(unsigned long));
+  return value;  
+}
+
+void set_station_scheduled_seconds(byte i, unsigned long value) {
+  ext_eeprom_write_page(i*sizeof(unsigned long)*4, (byte*)&value, sizeof(unsigned long));
+}
+
+// get the scheduled stop time for station i
+unsigned long get_station_scheduled_stop_time(byte i) {
+  unsigned long value;
+  ext_eeprom_read_buffer(i*sizeof(unsigned long)*4+4, (byte*)&value, sizeof(unsigned long));
+  return value;  
+}
+
+void set_station_scheduled_stop_time(byte i, unsigned long value) {
+  ext_eeprom_write_page(i*sizeof(unsigned long)*4+4, (byte*)&value, sizeof(unsigned long));
+}
+
+// ================
+// EEPROM Functions
+// ================
+
+// ++++++ modified from Arduino EEPROM library ++++++
+
+void ext_eeprom_write_byte(unsigned int eeaddress, byte data) {
+  int rdata = data;
+  Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
+  Wire.send((int)(eeaddress >> 8)); // MSB
+  Wire.send((int)(eeaddress & 0xFF)); // LSB
+  Wire.send(rdata);
+  Wire.endTransmission();
+  delay(5);
+}
+
+// WARNING: address is a page address, 6-bit end will wrap around
+// also, data can be maximum of about 30 bytes, because the Wire library has a buffer of 32 bytes
+void ext_eeprom_write_page(unsigned int eeaddresspage, byte* data, byte length) {
+  Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
+  Wire.send((int)(eeaddresspage >> 8)); // MSB
+  Wire.send((int)(eeaddresspage & 0xFF)); // LSB
+  byte c;
+  for ( c = 0; c < length; c++)
+    Wire.send(data[c]);
+  Wire.endTransmission();
+  delay(15);
+}
+
+byte ext_eeprom_read_byte(unsigned int eeaddress) {
+  byte rdata = 0xFF;
+  Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
+  Wire.send((int)(eeaddress >> 8)); // MSB
+  Wire.send((int)(eeaddress & 0xFF)); // LSB
+  Wire.endTransmission();
+  Wire.requestFrom(I2C_EEPROM_DEVICE_ADDR,1);
+  if (Wire.available()) rdata = Wire.receive();
+  delay(1);
+  return rdata;
+}
+
+// maybe let's not read more than 30 or 32 bytes at a time!
+void ext_eeprom_read_buffer(unsigned int eeaddress, byte *buffer, int length) {
+  Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
+  Wire.send((int)(eeaddress >> 8)); // MSB
+  Wire.send((int)(eeaddress & 0xFF)); // LSB
+  Wire.endTransmission();
+  Wire.requestFrom(I2C_EEPROM_DEVICE_ADDR,length);
+  int c = 0;
+  for ( c = 0; c < length; c++ )
+    if (Wire.available()) buffer[c] = Wire.receive();
+  delay(1);
+}
 

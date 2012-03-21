@@ -1,7 +1,7 @@
 // Example code for Sprinkler Valve Controller (SVC)
 // Server functions
 // Licensed under GPL V2
-// Dec 2011 @Rayshobby
+// Mar 2012 @Rayshobby
 
 #include <Wire.h>
 #include <EEPROM.h>
@@ -75,15 +75,15 @@ void print_webpage_p1()
   bfill.emit_p(PSTR(
     "function w(s){document.writeln(s)}\n"
     "function sf(i){h=document.getElementById(\"h\"+i);m=document.getElementById(\"m\"+i);"
-    "f.elements[0].value=i;f.elements[1].value=(v>>i)&1?0:1;f.elements[2].value=h.value;f.elements[3].value=m.value;f.submit()}\n"
+    "f.elements[0].value=i;f.elements[1].value=(v[i>>3]>>(i%8))&1?0:1;f.elements[2].value=h.value;f.elements[3].value=m.value;f.submit()}\n"
     "function it(st,rt){\n"
-    "for(i=0;i<ns;i++){\n"
-    "b=document.getElementById(\"b\"+i);h=document.getElementById(\"h\"+i);m=document.getElementById(\"m\"+i);b.style.height=32;\n"
-    "if((v>>i)&1){b.style.backgroundColor=\"#C02020\";b.value=\"Turn it Off\";h.value=rt[i]/3600>>0;m.value=(st[i]?1:0)+(rt[i]%3600)/60>>0;"
+    "for(d=0;d<nd;d++){for(s=0;s<8;s++){\n"
+    "i=d*8+s;b=document.getElementById(\"b\"+i);h=document.getElementById(\"h\"+i);m=document.getElementById(\"m\"+i);b.style.height=32;\n"
+    "if((v[d]>>s)&1){b.style.backgroundColor=\"#C02020\";b.value=\"Turn it Off\";h.value=rt[i]/60>>0;m.value=(st[i]?1:0)+(rt[i]%60)>>0;"
     "h.disabled=true;m.disabled=true;}\n"
     "else{b.style.backgroundColor=\"#20C020\";b.value=\"Turn it On\";h.value=st[i]/3600>>0;m.value=(st[i]%3600)/60>>0;"
     "h.disabled=false;m=disabled=false;}\n"
-    "}}\n"
+    "}}}\n"
   ) );
 }
 
@@ -100,21 +100,27 @@ void print_webpage_home()
 
   bfill.emit_p(PSTR(
     "<script>\n"
-    "v=$D;ns=$D;\n"
+    "v=new Array("));
+  byte i;
+  for(i=0;i<=options[OPTION_EXT_BOARDS];i++) {
+    bfill.emit_p(PSTR("$D,"), valve_bitvalues[i]);
+  } 
+  bfill.emit_p(PSTR(  
+    "0);nd=$D;\n"
     "w(\"<form name=f action=set method=get><input type=hidden name=b><input type=hidden name=v><input type=hidden name=h><input type=hidden name=m></form>\");\n"
-    "for(i=0;i<ns;i++){w(\"<h3>Station \"+((i+1)/10>>0)+((i+1)%10)+\": <input type=button id=b\"+i+\" onClick=sf(\"+i+\")> \"+((v>>i)&1?\"in\":\"duration\")+\" "
+    "for(i=0;i<nd*8;i++){w(\"<h3>Station \"+((i+1)/10>>0)+((i+1)%10)+\": <input type=button id=b\"+i+\" onClick=sf(\"+i+\")> \"+((v>>i)&1?\"in\":\"duration\")+\" "
     "<input type=text id=h\"+i+\" size=2 maxlength=2 />:"
     "<input type=text id=m\"+i+\" size=2 maxlength=2 /></h3>\")}\n"
-    ), valve_bitvalue, ((int)options[OPTION_EXT_BOARDS]+1)*8
+    ), (int)options[OPTION_EXT_BOARDS]+1
   );
   bfill.emit_p(PSTR("it(new Array("));
-  byte i;
+
   for(i=0; i<(options[OPTION_EXT_BOARDS]+1)*8; i++) {
-    bfill.emit_p(PSTR("$D,"), scheduled_seconds[i]);
+    bfill.emit_p(PSTR("$D,"), get_station_scheduled_seconds(i));
   }
   bfill.emit_p(PSTR("0), new Array("));
   for(i=0; i<(options[OPTION_EXT_BOARDS]+1)*8; i++) {
-    bfill.emit_p(PSTR("$D,"), remaining_seconds[i]);
+    bfill.emit_p(PSTR("$D,"), remaining_minutes[i]);
     
   }  
   bfill.emit_p(PSTR("0));\n</script>\n"));
@@ -147,9 +153,10 @@ void print_webpage_set_valve(char *p)
   // if this sets valve to open
   if (v==1) {
     // calculate timing
-    scheduled_seconds[i] = (unsigned long)h*3600+(unsigned long)m*60;
-    remaining_seconds[i] = scheduled_seconds[i];
-    scheduled_stop_time[i] = time_second_counter + scheduled_seconds[i];
+    unsigned long scheduled_seconds = (unsigned long)h*3600+(unsigned long)m*60;
+    set_station_scheduled_seconds(i, scheduled_seconds);
+    remaining_minutes[i] = scheduled_seconds / 60;
+    set_station_scheduled_stop_time(i, time_second_counter + scheduled_seconds);
   }
   valve_schedule(i, v);
   valve_apply();

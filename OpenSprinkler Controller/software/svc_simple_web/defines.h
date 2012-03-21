@@ -1,7 +1,7 @@
 // Example code for Sprinkler Valve Controller (SVC)
 // Defines and global variables
 // Licensed under GPL V2
-// Dec 2011 @Rayshobby
+// Mar 2012 @Rayshobby
 
 // Firmware version
 // !!! Note: firmware version should be changed whenever *type*
@@ -9,13 +9,12 @@
 #define FW_VERSION             13
 
 // Hardware version
-#define HW_VERSION             "1.0"
+#define HW_VERSION             "1.1"
 
 // ====== Hardware Defines ======
-#define MAX_EXT_BOARDS         1	// maximum number of ext boards (8 additional stations per ext board)
-                                        // at the moment this *only* works for up to 1 extension board
-                                        // it's possible to support additional boards by simply cascading shift registers
-                                        // however, the software must be modified to support that many bits
+#define MAX_EXT_BOARDS         3	// maximum number of ext boards (8 additional stations per ext board)
+                                        // this is mainly limited by the external eeprom size
+                                        // total storage required are (1+MAX_EXT_BOARDS) * 16 bytes
 
 // ====== Internal EEPROM Defines ======
 #define ADDR_EEPROM_BASE       0x0000
@@ -90,18 +89,14 @@
 #define BUTTON_WAIT_HOLD       2  // wait till long hold time
 
 // ====== Timing Defines ======
-//xxx#define LOOP_DELAY_MS         25  // short loop delay
-//xxx#define LOOP_IDLE_MS        5000  // long idle time
 #define DISPLAY_MSG_MS      2000  // message display delay time
 
 // ====== Ethernet Defines ======
-#define ETHER_BUFFER_SIZE    900
+#define ETHER_BUFFER_SIZE    950
 #define TMP_BUFFER_SIZE        20
 
 // ====== Global Variables ======
 extern LiquidCrystal lcd;
-extern unsigned int valve_bitvalue;    // scheduled open/close value of each bit, maximum 16 stations supported
-
 extern byte options[];         // stores all options
 extern byte options_max[];     // max value of each option
 extern char *options_str[];
@@ -112,7 +107,7 @@ extern byte time_display_mode;
 extern char tmp_buffer[];
 extern BufferFiller bfill;
 
-extern unsigned long remaining_seconds[];
-extern unsigned long scheduled_seconds[];
-extern unsigned long scheduled_stop_time[];
+extern byte valve_bitvalues[];    // scheduled open/close value of each bit, maximum 16 stations supported
+extern unsigned int remaining_minutes[];
 extern unsigned long time_second_counter;
+extern byte lcd_display_board;

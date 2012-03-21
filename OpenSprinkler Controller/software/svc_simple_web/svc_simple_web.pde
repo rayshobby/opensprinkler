@@ -1,7 +1,7 @@
 // Example code for Sprinkler Valve Controller (SVC)
 // This example shows a simply button based interface
 // Licensed under GPL V2
-// Dec 2011 @Rayshobby
+// Mar 2012 @Rayshobby
 
 #include <Wire.h>
 #include <EEPROM.h>
@@ -17,7 +17,7 @@ static char ui_anim_chars[3] = {
   
 // ====== Web defines ======
 static byte mymac[] = { 
-  0x74,0x69,0x69,0x2D,0x30,0x31 };  // ethernet mac address
+  0x00,0x69,0x69,0x2D,0x30,0x30 };  // ethernet mac address
 
 byte Ethernet::buffer[ETHER_BUFFER_SIZE];    // Ehternet packet buffer
 
@@ -90,32 +90,47 @@ void web_mode_loop()
   if (mytime != time_second_counter) {
     mytime = time_second_counter;
     
-    byte i;
-    for(i=0; i<(options[OPTION_EXT_BOARDS]+1)*8; i++) {
+    byte i, b;
+    unsigned long scheduled_seconds;
+    unsigned long scheduled_stop_time;
+    byte bitvalue;
+    byte sid;
+    // loop through each extension board, including the master
+    
+    for(b=0; b<=(options[OPTION_EXT_BOARDS]); b++) {
       
-      // if the valve is running and the scheduled time is not infinite
-      if (((valve_bitvalue>>i)&1) && scheduled_seconds[i] !=0 ) {
+      bitvalue = valve_bitvalues[b];  // get the bitvalue of the current board
+      // loop through each individual station
+      for(i=0;i<8;i++) {
+        sid = b*8+i;
+        
+        scheduled_seconds  = get_station_scheduled_seconds(sid);
+        scheduled_stop_time= get_station_scheduled_stop_time(sid);
+        
+        // if the valve is running and the scheduled duration is not infinite
+        if (((bitvalue>>i)&1) && scheduled_seconds !=0 ) {
       
-        // reliably test if the current time counter has gone past the scheduled stop time
-        if (time_second_counter >= scheduled_stop_time[i]) {
+          // reliably test if the current time counter has gone past the scheduled stop time
+          if (time_second_counter >= scheduled_stop_time) {
 
-          // time_second_counter has gone past the scheduled stop time
-          if ((time_second_counter - scheduled_stop_time[i]) <= (ULONG_MAX>>1)) {
-            valve_schedule(i, 0);
-            remaining_seconds[i] = 0;
-          } else {
-            remaining_seconds[i] = ULONG_MAX - time_second_counter + 1 + scheduled_stop_time[i];
+            // time_second_counter has gone past the scheduled stop time
+            if ((time_second_counter - scheduled_stop_time) <= (ULONG_MAX>>1)) {
+              valve_schedule(sid, 0);
+              remaining_minutes[sid] = 0;
+            } else {
+              remaining_minutes[sid] = (ULONG_MAX - time_second_counter + 1 + scheduled_stop_time) / 60;
+            }
           }
-        }
         
-        if (time_second_counter <= scheduled_stop_time[i]) {
-        
-          // time_second_counter has gone past the scheduled stop time
-          if((scheduled_stop_time[i] - time_second_counter) >= (ULONG_MAX>>1)) {
-            valve_schedule(i, 0);
-            remaining_seconds[i] = 0;
-          } else {
-            remaining_seconds[i] = scheduled_stop_time[i] - time_second_counter;
+          if (time_second_counter <= scheduled_stop_time) {
+          
+            // time_second_counter has gone past the scheduled stop time
+            if((scheduled_stop_time - time_second_counter) >= (ULONG_MAX>>1)) {
+              valve_schedule(sid, 0);
+              remaining_minutes[sid] = 0;
+            } else {
+              remaining_minutes[sid] = (scheduled_stop_time - time_second_counter) / 60;
+            }
           }
         }
       }      
@@ -126,6 +141,9 @@ void web_mode_loop()
     // handle LCD display
     lcd_print_time(0);    
     lcd_print_valve(1, ui_anim_chars[mytime%3]);
+    
+    if (ntp_failure > 5) 
+      svc_reboot(); 
     
   }
   } 
@@ -200,6 +218,11 @@ void web_mode_button_poll() {
 
     break;
 
+  case BUTTON_2:
+    // switch the board whose status is displayed on the lcd
+    lcd_display_board = (lcd_display_board + 1) % (options[OPTION_EXT_BOARDS]+1);
+    break;
+    
   case BUTTON_3:
     if (button & BUTTON_FLAG_HOLD) {
       if (options[OPTION_NTP_SYNC]) {
@@ -224,12 +247,9 @@ void web_mode_button_poll() {
 void setup() { 
 
   //Serial.begin(9600);
-
+  
   // sprinkler valve controller setup
   svc_setup();
-  
-  Wire.begin();
-  
   // load and set up options
   options_setup();
 
