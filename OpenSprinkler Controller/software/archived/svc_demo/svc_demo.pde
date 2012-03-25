@@ -17,9 +17,12 @@ static char ui_anim_chars[3] = {
 
 // ====== Web defines ======
 static byte mymac[] = { 
-  0x74,0x69,0x69,0x2D,0x30,0x31 };  // ethernet mac address
+  0x00,0x69,0x69,0x2D,0x30,0x30 };  // ethernet mac address
 
 byte Ethernet::buffer[ETHER_BUFFER_SIZE];    // Ehternet packet buffer
+
+
+int ntp_failure = 0;
 
 // ===============
 // Timer Functions
@@ -104,7 +107,10 @@ void web_mode_loop()
     mytime = time_second_counter;
 
     lcd_print_time(0);       // print time
-
+    
+    if (ntp_failure > 10)
+      svc_reboot();
+      
     // check raindelay status
     if (valve_raindelayed) {
        // divide by 256 before comparing,
