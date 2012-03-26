@@ -1,18 +1,25 @@
-Version 1.2 Update:
+====== Update ======
+* Mar 25, 2012:
+  - changed code to use the OpenSprinkler Arduino library
+  - support for arbitrary number of extension boards
 
-- Fixed the missing 'static' qualifier for several variables.
-- Fixed issue with changing number of slots per hour
+====== License ======
 
+Unless specified otherwise, all code is licensed under the Creative Commons Attribution-ShareAlike 3.0 license.
 
-===============================
+====== Description ======
+This is a web-based scheduling program for OpenSprinkler. Each station is individually scheduled using a html table interface. Check the images in the 'screenshot' folder for examples.
 
-The code is tested in Arduino-0022. It's not guaranteed to work with other versions of Arduino. It's currently not in the form of an Arduino library due to the libary dependency issues. This will be addressed in the future.
+There are three main webpages:
 
-The following libraries are required:
- * LiquidCrystal, EEPROM, Wire (included in Arduino, no need to install)
- * Time library (attached in this package)
- * JeeLabs EtherCard library (attached in this package)
+- The 'homepage' prints out the current status of each station, including the multi-station error, raindelay status, and controller enabled status.
 
-Unzip the package to your local folder. You need to copy the Time and EtherCard folders to your Arduino's library directory, say C:\Arduino-0022\libraries. Alternatively, if you don't want to copy the folders, you can create symbolic links. TIn Linux, you can use 'ln -s' to create symbolic links, and in Windows, use 'mklink' (do not use 'create a shortcut', that is not the same as a symbolic link)
+- The 'config' page allows you to change a selected set of options.
 
-To compile, open svc_demo.pde in Arduino IDE and click on 'compile'. If it reports missing files, you should check the libraries.
+- The 'schedule' page sets schedules using html tables. if there are more than one controller boards, each board can be scheduled separately. 15-minute slots are set by default, which can be changed by modifying the parameter in schedule.h.
+
+====== How to use the code ======
+The code is tested in Arduino-0022 and 0023. It's not guaranteed to work with other versions of Arduino. The code requires the 'OpenSprinkler' library, which you should copy (or put a symbolic link) in the Arduino's 'libraries' directory. To compile, open svc_full_schedule.pde in Arduino IDE and click on 'compile'. 
+
+Check images in the 'screenshot' folder for examples of the webpages.
+
