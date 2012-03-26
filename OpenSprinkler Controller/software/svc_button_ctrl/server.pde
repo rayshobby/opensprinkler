@@ -5,7 +5,7 @@
    Mar 2012 @ Rayshobby.net
 */
 
-#include "OpenSprinkler.h"
+#include <OpenSprinkler.h>
 
 // buffer filler
 BufferFiller bfill;

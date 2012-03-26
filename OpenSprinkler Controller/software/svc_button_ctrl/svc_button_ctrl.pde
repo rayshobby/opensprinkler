@@ -6,7 +6,7 @@
 */
 
 #include <limits.h>
-#include "OpenSprinkler.h"
+#include <OpenSprinkler.h>
 
 // ====== UI defines ======
 static char ui_anim_chars[3] = {
@@ -226,8 +226,7 @@ void web_mode_button_poll() {
     break;
 
   case BUTTON_2:
-    // switch the board whose status is displayed on the lcd
-    svc.lcd_display_board = (svc.lcd_display_board + 1) % (svc.options[OPTION_EXT_BOARDS]+1);
+    
     break;
     
   case BUTTON_3:
@@ -241,7 +240,9 @@ void web_mode_button_poll() {
       }
     } 
     else {
-      svc.ui_toggle_time_display();
+      //svc.ui_toggle_time_display();
+      // switch the board whose status is displayed on the lcd
+      svc.lcd_display_board = (svc.lcd_display_board + 1) % (svc.options[OPTION_EXT_BOARDS]+1);
     }
     break;
   }
@@ -250,7 +251,6 @@ void web_mode_button_poll() {
 // ======================
 // Arduino Main Functions
 // ======================
-
 void setup() { 
 
   //Serial.begin(9600);
