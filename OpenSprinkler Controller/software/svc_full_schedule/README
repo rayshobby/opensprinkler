@@ -2,6 +2,7 @@
 * Mar 25, 2012:
   - changed code to use the OpenSprinkler Arduino library
   - support for arbitrary number of extension boards
+  - external EEPROM stores data in NOT format (i.e. ~value instead of value), so that it's consistent with un-initialized EEPROM.
 
 ====== License ======
 

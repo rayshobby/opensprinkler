@@ -2,6 +2,7 @@
 * Mar 25, 2012:
   - changed code to use the OpenSprinkler Arduino library
   - support for an arbitrary number of extension boards
+  - moved book-keeping data (i.e. each station's stop time and scheduled time) to EEPROM to free up SRAM space.
   - added 'reset all' button to close all stations at once
 
 ====== License ======
