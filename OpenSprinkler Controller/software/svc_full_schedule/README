@@ -1,0 +1,18 @@
+Version 1.2 Update:
+
+- Fixed the missing 'static' qualifier for several variables.
+- Fixed issue with changing number of slots per hour
+
+
+===============================
+
+The code is tested in Arduino-0022. It's not guaranteed to work with other versions of Arduino. It's currently not in the form of an Arduino library due to the libary dependency issues. This will be addressed in the future.
+
+The following libraries are required:
+ * LiquidCrystal, EEPROM, Wire (included in Arduino, no need to install)
+ * Time library (attached in this package)
+ * JeeLabs EtherCard library (attached in this package)
+
+Unzip the package to your local folder. You need to copy the Time and EtherCard folders to your Arduino's library directory, say C:\Arduino-0022\libraries. Alternatively, if you don't want to copy the folders, you can create symbolic links. TIn Linux, you can use 'ln -s' to create symbolic links, and in Windows, use 'mklink' (do not use 'create a shortcut', that is not the same as a symbolic link)
+
+To compile, open svc_demo.pde in Arduino IDE and click on 'compile'. If it reports missing files, you should check the libraries.
