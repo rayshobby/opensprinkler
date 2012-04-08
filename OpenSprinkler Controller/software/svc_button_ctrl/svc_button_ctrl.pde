@@ -117,10 +117,10 @@ void web_mode_loop()
             if ((time_second_counter - scheduled_stop_time) <= (ULONG_MAX>>1)) {
               // turn station off
               svc.station_schedule(sid, 0);
-              svc.remaining_minutes[sid] = 0;
+              svc.remaining_time[sid] = 0;
             } else {
               // calculate remaining minutes
-              svc.remaining_minutes[sid] = (ULONG_MAX - time_second_counter + 1 + scheduled_stop_time) / 60;
+              svc.remaining_time[sid] = (ULONG_MAX - time_second_counter + 1 + scheduled_stop_time) / 60;
             }
           }
         
@@ -130,10 +130,10 @@ void web_mode_loop()
             if((scheduled_stop_time - time_second_counter) >= (ULONG_MAX>>1)) {
               // turn station off
               svc.station_schedule(sid, 0);
-              svc.remaining_minutes[sid] = 0;
+              svc.remaining_time[sid] = 0;
             } else {
               // calculate remaining minutes
-              svc.remaining_minutes[sid] = (scheduled_stop_time - time_second_counter) / 60;
+              svc.remaining_time[sid] = (scheduled_stop_time - time_second_counter) / 60;
             }
           }
         }

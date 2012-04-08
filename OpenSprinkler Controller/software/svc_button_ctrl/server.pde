@@ -118,7 +118,7 @@ void print_webpage_home()
   }
   bfill.emit_p(PSTR("0), new Array("));
   for(i=0; i<(svc.options[OPTION_EXT_BOARDS]+1)*8; i++) {
-    bfill.emit_p(PSTR("$D,"), svc.remaining_minutes[i]);
+    bfill.emit_p(PSTR("$D,"), svc.remaining_time[i]);
 
   }  
   bfill.emit_p(PSTR("0));\n</script>\n"));
@@ -159,7 +159,7 @@ void print_webpage_set_station(char *p)
     // calculate timing
     unsigned long scheduled_seconds = (unsigned long)h*3600+(unsigned long)m*60;
     svc.set_station_scheduled_seconds(i, scheduled_seconds);
-    svc.remaining_minutes[i] = scheduled_seconds / 60;
+    svc.remaining_time[i] = scheduled_seconds / 60;
     svc.set_station_scheduled_stop_time(i, time_second_counter + scheduled_seconds);
   }
   svc.station_schedule(i, v);
