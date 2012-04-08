@@ -8,7 +8,7 @@
 // ====== Schedule Defines ======
 // !!! If you change the number of slots per hour,
 //     please remember to perform a reset !!!
-#define SC_SLOTS_PER_HOUR    4   // number of schedule slots per hour
+#define SC_SLOTS_PER_HOUR    6   // number of schedule slots per hour
 																 // !!! this should be an even number
 																 // for memory alignment purpose
 #define SC_NUM_SLOTS_PER_DAY (24*SC_SLOTS_PER_HOUR) 

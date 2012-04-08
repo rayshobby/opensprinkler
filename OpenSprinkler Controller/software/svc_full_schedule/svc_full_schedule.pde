@@ -7,6 +7,7 @@
 */
 
 #include <OpenSprinkler.h>
+
 #include <avr/wdt.h>
 #include "schedule.h"
 
@@ -84,15 +85,17 @@ void web_mode_loop()
   static word pos;
   byte bidx;
   
-  pos = ether.packetLoop(ether.packetReceive());
-  if (pos) {  // package received
+  if (svc.options[OPTION_REQUIRE_NETWORK]) {
+	  pos = ether.packetLoop(ether.packetReceive());
+  	if (pos) {  // package received
 
-    bfill = ether.tcpOffset();
-    analyze_get_url((char*)Ethernet::buffer+pos);
+  	  bfill = ether.tcpOffset();
+  	  analyze_get_url((char*)Ethernet::buffer+pos);
     
-    //Serial.println(bfill.position());
+  	  //Serial.println(bfill.position());
     
-    ether.httpServerReply(bfill.position());   
+  	  ether.httpServerReply(bfill.position());   
+  	}
   }
 
   // tm2_ov_cnt changes every 8ms
@@ -110,7 +113,7 @@ void web_mode_loop()
     svc.lcd_print_time(0);       // print time
     
     // if ntp sync has failed more than 5 times, restart
-    if (ntp_failure > 10)
+    if (ntp_failure > 5)
       svc.reboot();
       
     // check raindelay status
@@ -155,21 +158,23 @@ void web_mode_button_poll() {
 
   switch (button & BUTTON_MASK) {
   case BUTTON_1:
-    // long hold of button 1, start operation
     if (button & BUTTON_FLAG_HOLD) {
+    	// long hold button 1, start operation
       web_mode_start_operation();
     } 
     else {
+    	// click button 1, display ip
       svc.lcd_print_ip(ether.myip, 0);
       delay(1000);
     }
     break;
 
   case BUTTON_2:
-    // long hold of button 2, stop operation
     if (button & BUTTON_FLAG_HOLD) {
+	    // long hold button 2, stop operation
       web_mode_stop_operation();
     } else {
+    	// click button 2, set rain delay
       int rd = svc.ui_set_raindelay();
       if (rd>0) {
         web_mode_start_raindelay(rd);        
@@ -181,6 +186,7 @@ void web_mode_button_poll() {
 
   case BUTTON_3:
     if (button & BUTTON_FLAG_HOLD) {
+    	
       if (svc.options[OPTION_NTP_SYNC]) {
         svc.lcd_print_line_clear_pgm(PSTR("NTP enabled."), 0);
         delay(1000);
@@ -191,7 +197,8 @@ void web_mode_button_poll() {
     } 
     else {
       //svc.ui_toggle_time_display();
-      // switch the board whose status is displayed on the lcd
+      
+      // click button 3: switch the board whose status is displayed on the lcd
       svc.lcd_display_board = (svc.lcd_display_board + 1) % (svc.options[OPTION_EXT_BOARDS]+1);
     }
     break;
@@ -210,39 +217,42 @@ void web_mode_setup()
   svc.lcd_print_lines_clear_pgm(PSTR("Connecting to"), PSTR(" the network..."));
 
   // Ethernet init
-  if (!ether.begin(sizeof Ethernet::buffer, mymac)) {
-    web_mode_init_failed();
-  }
+  if (svc.options[OPTION_REQUIRE_NETWORK]) {
+	  if (!ether.begin(sizeof Ethernet::buffer, mymac)) {
+  	  web_mode_init_failed();
+	  }
 
-  if (svc.options[OPTION_DHCP]) {
-    // attempt DHCP
-    if (!ether.dhcpSetup()) {
-      web_mode_init_failed();
-    }
-  }
-  else {
-    // static ip
-    byte staticip[] = {
-      svc.options[OPTION_STATIC_IP1],
-      svc.options[OPTION_STATIC_IP2],
-      svc.options[OPTION_STATIC_IP3],
-      svc.options[OPTION_STATIC_IP4]    };
 
-    byte gateway[] = {
-      svc.options[OPTION_GATEWAY_IP1],
-      svc.options[OPTION_GATEWAY_IP2],
-      svc.options[OPTION_GATEWAY_IP3],
-      svc.options[OPTION_GATEWAY_IP4]    };
+		if (svc.options[OPTION_DHCP]) {
+		  // attempt DHCP
+		  if (!ether.dhcpSetup()) {
+		    web_mode_init_failed();
+		  }
+		}
+		else {
+		  // static ip
+		  byte staticip[] = {
+		    svc.options[OPTION_STATIC_IP1],
+		    svc.options[OPTION_STATIC_IP2],
+		    svc.options[OPTION_STATIC_IP3],
+		    svc.options[OPTION_STATIC_IP4]    };
 
-    if (!ether.staticSetup(staticip, gateway)) {
-      web_mode_init_failed();
-    }
-  }
+		  byte gateway[] = {
+		    svc.options[OPTION_GATEWAY_IP1],
+		    svc.options[OPTION_GATEWAY_IP2],
+		    svc.options[OPTION_GATEWAY_IP3],
+		    svc.options[OPTION_GATEWAY_IP4]    };
+
+		  if (!ether.staticSetup(staticip, gateway)) {
+		    web_mode_init_failed();
+		  }
+		}
+	}
 
   setTime(12, 0, 0, 1, 1, 2011);  // set initial time
 
   // setup NTP sync if its option is enabled
-  if (svc.options[OPTION_NTP_SYNC] == 1) {
+  if (svc.options[OPTION_REQUIRE_NETWORK] == 1 && svc.options[OPTION_NTP_SYNC] == 1) {
     setSyncInterval(86400);
     setSyncProvider(getNtpTime);
   }
