@@ -1,11 +1,12 @@
 ====== Updates ======
+* Apr 8, 2012
+ - added support for master station: the master station will be turned on if there any other station is on. any station on the master controller (stations 1-8) can be assigned as a master station. the default value is 0, which means no master station is assigned. 
 
---- Mar 25, 2012 ---
--Merged all required libraries to the same folder.
--Crated 'OpenSprinkler' class.
--Improved button control during startup: press B1 during startup actives a self-test program; B2 activates reset; B3 activates the default option setup.
--Added a self-test program (press B1 during startup): each station will open for 5 seconds in turn.
--changed reset value of external EEPROM to 0xFF so that it's consistent with un-initialized EEPROM.
+* Mar 25, 2012 
+ -Merged all required libraries to the same folder.
+ -Crated 'OpenSprinkler' class.
+ -Modified button control during powering up: hold B1 during powerup actives a self-test program (each station is turned on for 5 seconds, including all extended stations); B2 activates reset; B3 activates the default option setup.
+ -changed reset value of external EEPROM to 0xFF so that it's consistent with un-initialized EEPROM.
 
 ====== How to use the code ======
 Copy this folder to the Arduino's libraries directory (or make a symbolic link there).
