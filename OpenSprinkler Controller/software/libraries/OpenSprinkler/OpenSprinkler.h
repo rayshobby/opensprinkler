@@ -27,7 +27,7 @@ public:
   static byte time_display_mode;	// time display mode
   static byte lcd_display_board;	// which ext board to display on the lcd
   static byte station_bitvalues[];  // scheduled open/close bit value of each station
-  static unsigned int remaining_minutes[];	// remaining minutes of an open station
+  static unsigned int remaining_time[];	// remaining time of an open station
   static byte ext_eeprom_busy;
   
   static void reboot();
@@ -44,6 +44,7 @@ public:
   	return station_bitvalues[bidx];
   }
   
+  static void master_schedule();												// schedule master station if it's enabled
 	static void board_schedule(byte bidx, byte value);		// schedule all stations on a single board
   static void station_reset();													// reset (close) all stations
 	static void station_schedule(byte index, byte value);	// call this function to schedule a station

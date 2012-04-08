@@ -18,7 +18,7 @@ byte OpenSprinkler::enabled = 1;
 byte OpenSprinkler::raindelayed = 0;
 byte OpenSprinkler::ext_eeprom_busy = 0;
 byte OpenSprinkler::station_bitvalues[MAX_EXT_BOARDS+1];
-unsigned int OpenSprinkler::remaining_minutes[(MAX_EXT_BOARDS+1)*8];
+unsigned int OpenSprinkler::remaining_time[(MAX_EXT_BOARDS+1)*8];
 
 // Option defaults values
 byte OpenSprinkler::options[NUM_OPTIONS] = {
@@ -38,6 +38,9 @@ byte OpenSprinkler::options[NUM_OPTIONS] = {
   21, // end of a schedule day (in hours)  
   2,  // 0: disable multi station protection; other: max# stations allowed to open simultaneously.
   0,  // 0: no extension boards; other: number of extension boards
+  1,	// 0: continue when network init fails; 1: reboot when network init fails
+	0,	// index of the master station. 0 means no master station
+	0,	// 0: do not integrate rain sensor; 1: integrate rain sensor
   0   // reset all settings to default
 };
 
@@ -60,6 +63,9 @@ prog_uchar OpenSprinkler::options_max[NUM_OPTIONS] PROGMEM = {
   24,		// de
   (MAX_EXT_BOARDS+1)*8,	// ms
   MAX_EXT_BOARDS,				// ext
+  1,		// rn
+  8,		// ma
+  1,		// rs
   1											// reset
 };
 
@@ -70,7 +76,7 @@ prog_char _str_dhcp[] PROGMEM = "Enable DHCP: ";
 prog_char _str_ip1 [] PROGMEM = "Static.ip1: ";
 prog_char _str_ip2 [] PROGMEM = "Static.ip2: ";
 prog_char _str_ip3 [] PROGMEM = "Static.ip3: ";
-prog_char _str_ip4 []  PROGMEM = "Static.ip4: ";
+prog_char _str_ip4 [] PROGMEM = "Static.ip4: ";
 prog_char _str_gw1 [] PROGMEM = "Gateway.ip1:";
 prog_char _str_gw2 [] PROGMEM = "Gateway.ip2:";
 prog_char _str_gw3 [] PROGMEM = "Gateway.ip3:";
@@ -79,7 +85,10 @@ prog_char _str_ntp [] PROGMEM = "NTP sync: ";
 prog_char _str_ds  [] PROGMEM = "Start hour:";
 prog_char _str_de  [] PROGMEM = "End hour  :";
 prog_char _str_ms  [] PROGMEM = "Multi station:";
-prog_char _str_ext []  PROGMEM = "Ext. Boards: ";
+prog_char _str_ext [] PROGMEM = "Ext. Boards: ";
+prog_char _str_rn  [] PROGMEM = "Require net: ";
+prog_char _str_ma  [] PROGMEM = "Master stn:";
+prog_char _str_rs  [] PROGMEM = "Use rainsensor:";
 prog_char _str_reset[] PROGMEM = "Reset all? ";
 
 char* OpenSprinkler::options_str[NUM_OPTIONS]  = {
@@ -99,6 +108,9 @@ char* OpenSprinkler::options_str[NUM_OPTIONS]  = {
   _str_de,
   _str_ms,
   _str_ext,
+  _str_rn,
+  _str_ma,
+  _str_rs,
   _str_reset
 };
 
@@ -115,12 +127,15 @@ prog_uchar OpenSprinkler::options_flag[NUM_OPTIONS] PROGMEM={
   OPFLAG_EDITABLE,
   OPFLAG_EDITABLE,
   OPFLAG_EDITABLE,
-  OPFLAG_EDITABLE | OPFLAG_BOOL,		// ntp
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,// ds
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,// de
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,// ms
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT,	// ext
-  OPFLAG_EDITABLE | OPFLAG_BOOL			// reset
+  OPFLAG_EDITABLE | OPFLAG_BOOL,		 // ntp
+  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // ds
+  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // de
+  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // ms
+  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // ext
+  OPFLAG_EDITABLE | OPFLAG_BOOL,		 // rn
+  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // ma
+  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // rs    
+  OPFLAG_EDITABLE | OPFLAG_BOOL      // reset
 };  
 
 // Name abbrev of each weekday
@@ -189,7 +204,7 @@ void OpenSprinkler::begin() {
   
   for (byte i=0; i<(MAX_EXT_BOARDS+1)*8; i++) {
     set_station_scheduled_seconds(i, 0);
-    remaining_minutes[i] = 0;
+    remaining_time[i] = 0;
   }
   // start lcd
   lcd.begin(16, 2);
@@ -292,9 +307,25 @@ byte OpenSprinkler::option_get_max(int i)
 // Station Control Functions
 // =======================
 
+// schedule the master station
+void OpenSprinkler::master_schedule() {
+	if (options[OPTION_MASTER_STATION]) {
+		// begin by turning the master station off
+		station_bitvalues[0] = station_bitvalues[0] & ~((byte)1<<(options[OPTION_MASTER_STATION]-1));
+		for (byte b=0;b<=options[OPTION_EXT_BOARDS];b++) {
+			if (station_bitvalues[b] != 0) {
+				// if any station is schedule to open, then schedule the master station
+				station_bitvalues[0] = station_bitvalues[0] | ((byte)1<<(options[OPTION_MASTER_STATION]-1));
+				break;
+			}
+		}
+	}
+}
+
 // schedule all stations on a single board
 void OpenSprinkler::board_schedule(byte bidx, byte value) {
 	station_bitvalues[bidx] = value;
+	master_schedule();
 }
 
 // schedule one station
@@ -302,11 +333,12 @@ void OpenSprinkler::station_schedule(byte index, byte value) {
   byte b = (index>>3);
   byte i = index % 8;
   if (value) {
-    station_bitvalues[b] = station_bitvalues[b] | ((unsigned int)1<<i);
+    station_bitvalues[b] = station_bitvalues[b] | ((byte)1<<i);
   } 
   else {
-    station_bitvalues[b] = station_bitvalues[b] &~((unsigned int)1<<i);
+    station_bitvalues[b] = station_bitvalues[b] &~((byte)1<<i);
   }
+ 	master_schedule();
 }		
 
 // reset (shut down) all stations
@@ -315,6 +347,7 @@ void OpenSprinkler::station_reset() {
   for(b=0;b<=options[OPTION_EXT_BOARDS];b++) {
     station_bitvalues[b] = 0;
   }
+  master_schedule();
   station_apply();
 }
 
@@ -324,6 +357,7 @@ void OpenSprinkler::station_schedule_clear() {
   for(b=0;b<=options[OPTION_EXT_BOARDS];b++) {
     station_bitvalues[b] = 0;
   }
+  master_schedule();
 }
 
 // apply scheduled station values
@@ -340,7 +374,7 @@ void OpenSprinkler::station_apply() {
     bitvalue = (enabled && !raindelayed) ? station_bitvalues[MAX_EXT_BOARDS-b] : 0x00;
     for(i=0;i<8;i++) {
       digitalWrite(PIN_SR_CLOCK, LOW);
-      digitalWrite(PIN_SR_DATA, (bitvalue & ((unsigned int)1<<(7-i))) ? HIGH : LOW );
+      digitalWrite(PIN_SR_DATA, (bitvalue & ((byte)1<<(7-i))) ? HIGH : LOW );
       digitalWrite(PIN_SR_CLOCK, HIGH);          
     }
   }
@@ -549,6 +583,17 @@ byte OpenSprinkler::button_read(byte waitmode)
   int read_value = analogRead(PIN_READ_BUTTON);
   delay(BUTTON_DELAY_MS);
 
+#ifdef SVC_HW_VERSION_12
+  if (read_value > 450) {
+    curr = button_read_busy(450, waitmode, BUTTON_1, is_holding);
+  }
+  else if (read_value > 300) {
+    curr = button_read_busy(300, waitmode, BUTTON_2, is_holding);
+  }
+  else if (read_value > 150) {
+    curr = button_read_busy(150, waitmode, BUTTON_3, is_holding);
+  } 
+#else
   if (read_value > 750) {
     curr = button_read_busy(750, waitmode, BUTTON_1, is_holding);
   }
@@ -558,6 +603,7 @@ byte OpenSprinkler::button_read(byte waitmode)
   else if (read_value > 100) {
     curr = button_read_busy(100, waitmode, BUTTON_3, is_holding);
   } 
+#endif
 
   /* set button flag in return value */
   byte ret = curr;
@@ -620,10 +666,10 @@ void OpenSprinkler::ui_toggle_time_display() {
   time_display_mode = 1-time_display_mode;
 }
 
-// user interface for setting time manually
+// on-board user interface for setting time manually
 void OpenSprinkler::ui_set_time() {
-
-  byte odm = time_display_mode;
+	// ====> Commented out to save program memory space
+  /*byte odm = time_display_mode;
 
   time_display_mode = 0;  // turn to full time display
   lcd_print_time(0);  
@@ -687,13 +733,14 @@ void OpenSprinkler::ui_set_time() {
   lcd.noBlink();
   lcd.clear();
 
-  time_display_mode = odm;  
+  time_display_mode = odm;*/
 }
 
-// user interface for seting rain delay
+// on-board user interface for seting rain delay
 int OpenSprinkler::ui_set_raindelay()
 {
-  boolean finished = false;
+	// ======> remove the comments if you need this feature
+  /*boolean finished = false;
   boolean timeout = false;
   byte button;
   
@@ -732,7 +779,7 @@ int OpenSprinkler::ui_set_raindelay()
   
   lcd.noBlink();
   if (timeout)  return -1;
-  else return rd;
+  else return rd;*/
 }
 
 // ==================
@@ -838,7 +885,6 @@ void OpenSprinkler::ext_eeprom_write_byte(unsigned int eeaddress, byte data) {
   Wire.send((int)(eeaddress & 0xFF)); // LSB
   Wire.send(rdata);
   Wire.endTransmission();
-  delay(1);
 }
 
 // WARNING: address is a page address, 6-bit end will wrap around
@@ -851,7 +897,7 @@ void OpenSprinkler::ext_eeprom_write_buffer(unsigned int eeaddresspage, byte* bu
   for ( c = 0; c < length; c++)
     Wire.send(buffer[c]);
   Wire.endTransmission();
-  delay(15);
+  delay(10);
 }
 
 byte OpenSprinkler::ext_eeprom_read_byte(unsigned int eeaddress) {
@@ -862,7 +908,6 @@ byte OpenSprinkler::ext_eeprom_read_byte(unsigned int eeaddress) {
   Wire.endTransmission();
   Wire.requestFrom(I2C_EEPROM_DEVICE_ADDR,1);
   if (Wire.available()) rdata = Wire.receive();
-  delay(1);
   return rdata;
 }
 
@@ -876,6 +921,5 @@ void OpenSprinkler::ext_eeprom_read_buffer(unsigned int eeaddress, byte *buffer,
   int c = 0;
   for ( c = 0; c < length; c++ )
     if (Wire.available()) buffer[c] = Wire.receive();
-  delay(1);
 }
 

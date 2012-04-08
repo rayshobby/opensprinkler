@@ -43,6 +43,9 @@ typedef enum {
 	OPTION_DAY_END,
 	OPTION_MULTISTATION,
 	OPTION_EXT_BOARDS,
+	OPTION_REQUIRE_NETWORK,
+	OPTION_MASTER_STATION,
+	OPTION_USE_RAINSENSOR,
 	OPTION_RESET,
 	NUM_OPTIONS	// total number of options
 } OS_OPTION_t;
@@ -59,8 +62,22 @@ typedef enum {
 // ====== Arduino Pin Assignments ======
 // Different hardware versions may defined pins differently
 
+//#define SVC_HW_VERSION_12
+
 #ifdef SVC_HW_VERSION_12
 
+	#define PIN_READ_BUTTON    0    // analog pin assigned for button reading
+	#define PIN_SR_LATCH       7    // shift register latch pin
+	#define PIN_SR_DATA        5    // shift register data pin
+	#define PIN_SR_CLOCK       6    // shift register clock pin
+	#define PIN_LCD_RS         5    // LCD rs pin
+	#define PIN_LCD_EN         4    // LCD enable pin
+	#define PIN_LCD_D4         6    // LCD d4 pin
+	#define PIN_LCD_D5         9    // LCD d5 pin
+	#define PIN_LCD_D6        16    // LCD d6 pin
+	#define PIN_LCD_D7        17    // LCD d7 pin
+	#define PIN_DEBUG          3    // pin 3 is left unused
+	
 #else
 
 	#define PIN_READ_BUTTON    0    // analog pin assigned for button reading
