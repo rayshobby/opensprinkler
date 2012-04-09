@@ -133,8 +133,8 @@ prog_uchar OpenSprinkler::options_flag[NUM_OPTIONS] PROGMEM={
   OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // ms
   OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // ext
   OPFLAG_EDITABLE | OPFLAG_BOOL,		 // rn
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // ma
-  OPFLAG_EDITABLE | OPFLAG_WEB_EDIT, // rs    
+  OPFLAG_EDITABLE, // ma
+  OPFLAG_EDITABLE | OPFLAG_BOOL, // rs    
   OPFLAG_EDITABLE | OPFLAG_BOOL      // reset
 };  
 
@@ -309,7 +309,7 @@ byte OpenSprinkler::option_get_max(int i)
 
 // schedule the master station
 void OpenSprinkler::master_schedule() {
-	if (options[OPTION_MASTER_STATION]) {
+	if (options[OPTION_MASTER_STATION] != 0) {
 		// begin by turning the master station off
 		station_bitvalues[0] = station_bitvalues[0] & ~((byte)1<<(options[OPTION_MASTER_STATION]-1));
 		for (byte b=0;b<=options[OPTION_EXT_BOARDS];b++) {
@@ -668,8 +668,7 @@ void OpenSprinkler::ui_toggle_time_display() {
 
 // on-board user interface for setting time manually
 void OpenSprinkler::ui_set_time() {
-	// ====> Commented out to save program memory space
-  /*byte odm = time_display_mode;
+  byte odm = time_display_mode;
 
   time_display_mode = 0;  // turn to full time display
   lcd_print_time(0);  
@@ -733,7 +732,7 @@ void OpenSprinkler::ui_set_time() {
   lcd.noBlink();
   lcd.clear();
 
-  time_display_mode = odm;*/
+  time_display_mode = odm;
 }
 
 // on-board user interface for seting rain delay
@@ -780,6 +779,7 @@ int OpenSprinkler::ui_set_raindelay()
   lcd.noBlink();
   if (timeout)  return -1;
   else return rd;*/
+  return 0;
 }
 
 // ==================
