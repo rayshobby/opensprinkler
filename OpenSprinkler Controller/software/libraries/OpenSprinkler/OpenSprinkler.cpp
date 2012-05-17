@@ -5,9 +5,6 @@
    Mar 2012 @ Rayshobby.net
 */
 
-#include <WProgram.h> 
-#include <avr/eeprom.h>
-
 #include "OpenSprinkler.h"
 
 // define class data members
@@ -72,7 +69,7 @@ prog_uchar OpenSprinkler::options_max[NUM_OPTIONS] PROGMEM = {
 // Display string of each option
 prog_char _str_fwv [] PROGMEM = "FW";
 prog_char _str_tz  [] PROGMEM = "Time zone:";
-prog_char _str_dhcp[] PROGMEM = "Enable DHCP: ";
+prog_char _str_dhcp[] PROGMEM = "Use DHCP: ";
 prog_char _str_ip1 [] PROGMEM = "Static.ip1: ";
 prog_char _str_ip2 [] PROGMEM = "Static.ip2: ";
 prog_char _str_ip3 [] PROGMEM = "Static.ip3: ";
@@ -88,7 +85,7 @@ prog_char _str_ms  [] PROGMEM = "Multi station:";
 prog_char _str_ext [] PROGMEM = "Ext. Boards: ";
 prog_char _str_rn  [] PROGMEM = "Require net: ";
 prog_char _str_ma  [] PROGMEM = "Master stn:";
-prog_char _str_rs  [] PROGMEM = "Use rainsensor:";
+prog_char _str_rs  [] PROGMEM = "Rain sensor:";
 prog_char _str_reset[] PROGMEM = "Reset all? ";
 
 char* OpenSprinkler::options_str[NUM_OPTIONS]  = {
@@ -166,9 +163,14 @@ void(* resetFunc) (void) = 0;
 
 // Reset ethernet controller
 void OpenSprinkler::reset_ethernet() {
+#if SVC_HW_VERSION == 12
+
+#else
+  pinMode(PIN_ETHER_RESET, OUTPUT);
   digitalWrite(PIN_ETHER_RESET, LOW);
   delay(50);
   digitalWrite(PIN_ETHER_RESET, HIGH);
+#endif
 }
 
 // Reboot controller
@@ -184,7 +186,6 @@ void OpenSprinkler::begin() {
   digitalWrite(PIN_SR_LATCH, HIGH);
   pinMode(PIN_SR_CLOCK, OUTPUT);
   pinMode(PIN_SR_DATA,  OUTPUT);
-  pinMode(PIN_ETHER_RESET, OUTPUT);
 
 	// Reset all stations
   station_reset();
@@ -405,7 +406,7 @@ boolean OpenSprinkler::multistation_check() {
 void OpenSprinkler::lcd_print_pgm(PGM_P PROGMEM str) {
   uint8_t c;
   while((c=pgm_read_byte(str++))!= '\0') {
-    lcd.print(c);
+    lcd.print((char)c);
   }
 }
 
@@ -415,7 +416,7 @@ void OpenSprinkler::lcd_print_line_clear_pgm(PGM_P PROGMEM str, byte line) {
   uint8_t c;
   int8_t cnt = 0;
   while((c=pgm_read_byte(str++))!= '\0') {
-    lcd.print(c);
+    lcd.print((char)c);
     cnt++;
   }
   for(; (16-cnt) >= 0; cnt ++) lcd.print(' ');  
@@ -500,7 +501,7 @@ byte OpenSprinkler::lcd_print_station(byte line, char c)
   else {
 	  byte bitvalue = station_bitvalues[lcd_display_board];
 	  for (byte i=0; i<8; i++) {
-  	  lcd.print((bitvalue&1) ? c : '_');
+  	  lcd.print((bitvalue&1) ? (char)c : '_');
   	  bitvalue >>= 1;
 	  }
 	}
@@ -583,7 +584,7 @@ byte OpenSprinkler::button_read(byte waitmode)
   int read_value = analogRead(PIN_READ_BUTTON);
   delay(BUTTON_DELAY_MS);
 
-#ifdef SVC_HW_VERSION_12
+#if SVC_HW_VERSION == 12
   if (read_value > 450) {
     curr = button_read_busy(450, waitmode, BUTTON_1, is_holding);
   }
@@ -881,9 +882,9 @@ void OpenSprinkler::ext_eeprom_clear(unsigned int start, unsigned int end)
 void OpenSprinkler::ext_eeprom_write_byte(unsigned int eeaddress, byte data) {
   int rdata = data;
   Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
-  Wire.send((int)(eeaddress >> 8)); // MSB
-  Wire.send((int)(eeaddress & 0xFF)); // LSB
-  Wire.send(rdata);
+  Wire.write((int)(eeaddress >> 8)); // MSB
+  Wire.write((int)(eeaddress & 0xFF)); // LSB
+  Wire.write(rdata);
   Wire.endTransmission();
 }
 
@@ -891,11 +892,11 @@ void OpenSprinkler::ext_eeprom_write_byte(unsigned int eeaddress, byte data) {
 // also, data can be maximum of about 30 bytes, because the Wire library has a buffer of 32 bytes
 void OpenSprinkler::ext_eeprom_write_buffer(unsigned int eeaddresspage, byte* buffer, byte length) {
   Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
-  Wire.send((int)(eeaddresspage >> 8)); // MSB
-  Wire.send((int)(eeaddresspage & 0xFF)); // LSB
+  Wire.write((int)(eeaddresspage >> 8)); // MSB
+  Wire.write((int)(eeaddresspage & 0xFF)); // LSB
   byte c;
   for ( c = 0; c < length; c++)
-    Wire.send(buffer[c]);
+    Wire.write(buffer[c]);
   Wire.endTransmission();
   delay(10);
 }
@@ -903,23 +904,23 @@ void OpenSprinkler::ext_eeprom_write_buffer(unsigned int eeaddresspage, byte* bu
 byte OpenSprinkler::ext_eeprom_read_byte(unsigned int eeaddress) {
   byte rdata = 0xFF;
   Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
-  Wire.send((int)(eeaddress >> 8)); // MSB
-  Wire.send((int)(eeaddress & 0xFF)); // LSB
+  Wire.write((int)(eeaddress >> 8)); // MSB
+  Wire.write((int)(eeaddress & 0xFF)); // LSB
   Wire.endTransmission();
   Wire.requestFrom(I2C_EEPROM_DEVICE_ADDR,1);
-  if (Wire.available()) rdata = Wire.receive();
+  if (Wire.available()) rdata = Wire.read();
   return rdata;
 }
 
 // maybe let's not read more than 30 or 32 bytes at a time!
 void OpenSprinkler::ext_eeprom_read_buffer(unsigned int eeaddress, byte *buffer, int length) {
   Wire.beginTransmission(I2C_EEPROM_DEVICE_ADDR);
-  Wire.send((int)(eeaddress >> 8)); // MSB
-  Wire.send((int)(eeaddress & 0xFF)); // LSB
+  Wire.write((int)(eeaddress >> 8)); // MSB
+  Wire.write((int)(eeaddress & 0xFF)); // LSB
   Wire.endTransmission();
   Wire.requestFrom(I2C_EEPROM_DEVICE_ADDR,length);
   int c = 0;
   for ( c = 0; c < length; c++ )
-    if (Wire.available()) buffer[c] = Wire.receive();
+    if (Wire.available()) buffer[c] = Wire.read();
 }
 

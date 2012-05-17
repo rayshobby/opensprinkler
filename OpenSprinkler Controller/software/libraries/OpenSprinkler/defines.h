@@ -9,10 +9,10 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  14
+#define SVC_FW_VERSION  15
 
 // ====== Hardware Defines ======
-#define MAX_EXT_BOARDS         7	// maximum number of ext. boards (each ext. board contains 8 stations), hence total number of stations: (1+MAX_EXT_BOARDS) * 8
+#define MAX_EXT_BOARDS         3	// maximum number of ext. boards (each ext. board contains 8 stations), hence total number of stations: (1+MAX_EXT_BOARDS) * 8
 													
 // External I2C EEPROM
 #define I2C_EEPROM_DEVICE_ADDR 0x50
@@ -56,15 +56,19 @@ typedef enum {
 #define OPFLAG_WEB_EDIT     0x02    // the option is editable through the web
 #define OPFLAG_BOOL         0x10    // the option takes bool values
 
-
 #define SC_RAINDELAY_MAX     144		// maximum number of rain delay hours
 
 // ====== Arduino Pin Assignments ======
-// Different hardware versions may defined pins differently
+// Define hardware version here
 
-//#define SVC_HW_VERSION_12
+#define SVC_HW_VERSION 12
+//#define SVC_HW_VERSION 11
 
-#ifdef SVC_HW_VERSION_12
+#ifndef SVC_HW_VERSION
+#error "You must define SVC_HW_VERSION in libraries/OpenSprnikler/defines.h"
+#endif
+
+#if SVC_HW_VERSION == 12
 
 	#define PIN_READ_BUTTON    0    // analog pin assigned for button reading
 	#define PIN_SR_LATCH       7    // shift register latch pin

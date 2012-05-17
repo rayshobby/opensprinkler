@@ -8,6 +8,8 @@
 #ifndef _OpenSprinkler_h
 #define _OpenSprinkler_h
 
+#include <WProgram.h>
+#include <avr/eeprom.h>
 #include "Wire.h"
 #include "EEPROM.h"
 #include "Time.h"
