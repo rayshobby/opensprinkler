@@ -1,0 +1,40 @@
+====== Update ======
+* Mar 25, 2012:
+  - changed code to use the OpenSprinkler Arduino library
+  - support for an arbitrary number of extension boards
+  - moved book-keeping data (i.e. each station's stop time and scheduled time) to EEPROM to free up SRAM space.
+  - added 'reset all' button to close all stations at once
+
+====== License ======
+
+Unless specified otherwise, all code is licensed under the Creative Commons Attribution-ShareAlike 3.0 license.
+
+====== Description ======
+This is a simple button-based web control interface. Each station can be toggled individually using a button (or directly through http command). You can set the duration for each station. The program keeps track of the running time and stops a station when the duration is reached. The duration is set with the number of hours and minutes. Leaving them to 0 means the duration is indefinite (i.e. once on, the stations will remain open until you click on 'Turn it Off').
+
+For direct http access, follow this example:
+
+http://192.168.1.22/set?b=5&v=1&h=1&m=30
+
+- b is the station index (starts from 0)
+- v is the bit value (0 for closing and 1 for opening)
+- h is the number of hours
+- m is the number of minutes
+
+In the above example, station 6 will open for 1 hour and 30 minutes.
+As an another example:
+
+http://192.168.1.22/set?b=5&v=1
+
+will open station 6 until it's closed using http://192.168.1.22/set?b=5&v=0
+Finally, use
+
+http://192.168.1.22/reset
+
+to reset all stations at once.
+
+====== How to use the code ======
+The code is tested in Arduino-0022 and 0023. It's not guaranteed to work with other versions of Arduino. The code requires the 'OpenSprinkler' library, which you should copy (or put a symbolic link) in the Arduino's 'libraries' directory. To compile, open svc_button_ctrl.pde in Arduino IDE and click on 'compile'. 
+
+Check webpage.png for an example of the webpage interface.
+
