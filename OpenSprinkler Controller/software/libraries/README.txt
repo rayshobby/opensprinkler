@@ -1,4 +1,10 @@
 ====== Updates ======
+* May 17, 2012
+ - Update the library with new Wire class
+ - Added hardware definition macro. Before using the library, please define your hardware version in 'defines.h'
+ - Added svc_interval_schedule program. Work still in progress.
+ - Moved example programs into the 'examples' folder, making it easier to load an example program.
+ 
 * Apr 8, 2012
  - added support for master station: the master station will be turned on if there any other station is on. any station on the master controller (stations 1-8) can be assigned as a master station. the default value is 0, which means no master station is assigned. 
 
