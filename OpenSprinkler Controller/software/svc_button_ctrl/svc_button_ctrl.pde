@@ -68,7 +68,6 @@ void web_mode_loop()
   // Ethernet controller packet loop
   pos = ether.packetLoop(ether.packetReceive());
   if (pos) {  // package received
-
     bfill = ether.tcpOffset();
     analyze_get_url((char*)Ethernet::buffer+pos);
     //Serial.println(bfill.position());  // print packet size to make sure we are not exceeding the limit
@@ -268,6 +267,7 @@ void setup() {
   // if TCNT2 overflows at 250, this will generate a 125Hz overflow cloc
 
   web_mode_setup();
+  
 }
 
 void loop() {

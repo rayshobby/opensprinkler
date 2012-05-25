@@ -1,4 +1,8 @@
 ====== Updates ======
+* May 25, 2012
+ - Update the EtherCard files to use JeeLab's latest library code. Improved DHCP robustness.
+ - Added boards.txt for v1.2u on-board USBtiny programmer.
+
 * May 17, 2012
  - Update the library with new Wire class
  - Added hardware definition macro. Before using the library, please define your hardware version in 'defines.h'

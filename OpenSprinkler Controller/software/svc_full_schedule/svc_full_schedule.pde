@@ -92,7 +92,7 @@ void web_mode_loop()
   	  bfill = ether.tcpOffset();
   	  analyze_get_url((char*)Ethernet::buffer+pos);
     
-  	  //Serial.println(bfill.position());
+  	  // .println(bfill.position());
     
   	  ether.httpServerReply(bfill.position());   
   	}
