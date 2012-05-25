@@ -7,14 +7,25 @@
 //      DHCP code: Andrew Lindsay
 // Hence: GPL V2
 //
-// jcw, 2010-05-19
+// 2010-05-19 <jc@wippler.nl>
 
 #ifndef EtherCard_h
 #define EtherCard_h
 
-#include <WProgram.h>
+
+#if ARDUINO >= 100
+  #include <Arduino.h> // Arduino 1.0
+  #define WRITE_RESULT size_t
+  #define WRITE_RETURN return 1;
+#else
+  #include <WProgram.h> // Arduino 0022
+  #define WRITE_RESULT void
+  #define WRITE_RETURN
+#endif
+
 #include <avr/pgmspace.h>
 #include "enc28j60.h"
+#include "net.h"
 
 typedef struct {
   uint8_t count;     // number of allocated pages
@@ -64,9 +75,8 @@ public:
   char get ();
   uint16_t size ();
 
-  virtual void write(uint8_t b) {
-    put(b);
-  }
+  virtual WRITE_RESULT write(uint8_t b) { put(b); WRITE_RETURN }
+  
   // virtual int available() {
   //   if (curr != last)
   //     return 1;
@@ -100,12 +110,13 @@ public:
   BufferFiller (uint8_t* buf) : start (buf), ptr (buf) {}
       
   void emit_p (PGM_P fmt, ...);
-  void emit_raw (const char* s, uint8_t n) { memcpy(ptr, s, n); ptr += n; }
+  void emit_raw (const char* s, uint16_t n) { memcpy(ptr, s, n); ptr += n; }
+  void emit_raw_p (PGM_P p, uint16_t n) { memcpy_P(ptr, p, n); ptr += n; }
   
   uint8_t* buffer () const { return start; }
   uint16_t position () const { return ptr - start; }
   
-  virtual void write (uint8_t v) { *ptr++ = v; }
+  virtual WRITE_RESULT write (uint8_t v) { *ptr++ = v; WRITE_RETURN }
 };
 
 class EtherCard : public Ethernet {
@@ -118,13 +129,13 @@ public:
   static uint8_t dnsip[4];  // dns server
   static uint8_t hisip[4];  // dns result
   static uint16_t hisport;  // tcp port to connect to (default 80)
-  
-  static uint8_t begin (const uint16_t size, const uint8_t* macaddr);
-  
-  // tcpip.cpp
+  // EtherCard.cpp
+  static uint8_t begin (const uint16_t size, const uint8_t* macaddr,
+                        uint8_t csPin =8);  
   static bool staticSetup (const uint8_t* my_ip =0,
                             const uint8_t* gw_ip =0,
                              const uint8_t* dns_ip =0);
+  // tcpip.cpp
   static void initIp (uint8_t *myip,uint16_t wwwp);
   static void makeUdpReply (char *data,uint8_t len, uint16_t port);
   static uint16_t packetLoop (uint16_t plen);
@@ -151,11 +162,12 @@ public:
   static void sendWol (uint8_t *wolmac);
   // new stash-based API
   static uint8_t tcpSend ();
+  static const char* tcpReply (byte fd);
   // dhcp.cpp
   static bool dhcpSetup ();
   static bool dhcpExpired ();
   // dns.cpp
-  static bool dnsLookup (prog_char* name);
+  static bool dnsLookup (prog_char* name, bool fromRam =false);
   // webutil.cpp
   static void copyIp (uint8_t *dst, const uint8_t *src);
   static void copyMac (uint8_t *dst, const uint8_t *src);

@@ -9,7 +9,7 @@
 // packet. The client "web browser" as implemented here can also receive
 // large pages.
 //
-// Mods bij jcw, 2010-05-20
+// 2010-05-20 <jc@wippler.nl>
 
 #include "EtherCard.h"
 #include "net.h"
@@ -51,6 +51,8 @@ static byte waitgwmac; // 0=wait, 1=first req no anser, 2=have gwmac, 4=refeshin
 #define WGW_ACCEPT_ARP_REPLY 8
 static word info_data_len;
 static byte seqnum = 0xa; // my initial tcp sequence number
+static byte result_fd = 123; // session id of last reply
+static const char* result_ptr;
 
 #define CLIENTMSS 550
 #define TCP_DATA_START ((word)TCP_SRC_PORT_H_P+(gPB[TCP_HEADER_LEN_P]>>4)*4)
@@ -59,6 +61,7 @@ const char arpreqhdr[] PROGMEM = { 0,1,8,0,6,4,0,1 };
 const char iphdr[] PROGMEM = { 0x45,0,0,0x82,0,0,0x40,0,0x20 };
 const char ntpreqhdr[] PROGMEM = { 0xE3,0,4,0xFA,0,1,0,0,0,1 };
 const byte allOnes[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+const byte ipBroadcast[] = {255, 255, 255, 255};
 
 static void fill_checksum(byte dest, byte off, word len,byte type) {
   const byte* ptr = gPB + off;
@@ -310,6 +313,9 @@ byte EtherCard::ntpProcessAnswer (uint32_t *time,byte dstport_l) {
 
 void EtherCard::udpPrepare (word sport, byte *dip, word dport) {
   setMACandIPs(gwmacaddr, dip);
+  // see http://tldp.org/HOWTO/Multicast-HOWTO-2.html
+  if ((dip[0] & 0xF0) == 0xE0) // multicast address
+    EtherCard::copyMac(gPB + ETH_DST_MAC, allOnes);
   gPB[ETH_TYPE_H_P] = ETHTYPE_IP_H_V;
   gPB[ETH_TYPE_L_P] = ETHTYPE_IP_L_V;
   memcpy_P(gPB + IP_P,iphdr,9);
@@ -343,12 +349,12 @@ void EtherCard::sendUdp (char *data,byte datalen,word sport, byte *dip, word dpo
 }
 
 void EtherCard::sendWol (byte *wolmac) {
-  setMACandIPs(allOnes, EtherCard::myip);
+  setMACandIPs(allOnes, ipBroadcast);
   gPB[ETH_TYPE_H_P] = ETHTYPE_IP_H_V;
   gPB[ETH_TYPE_L_P] = ETHTYPE_IP_L_V;
   memcpy_P(gPB + IP_P,iphdr,9);
-  gPB[IP_TOTLEN_L_P] = 0x54;
-  gPB[IP_PROTO_P] = IP_PROTO_ICMP_V;
+  gPB[IP_TOTLEN_L_P] = 0x82;
+  gPB[IP_PROTO_P] = IP_PROTO_UDP_V;
   fill_ip_hdr_checksum();
   gPB[UDP_DST_PORT_H_P] = 0;
   gPB[UDP_DST_PORT_L_P] = 0x9; // wol = normally 9
@@ -365,7 +371,7 @@ void EtherCard::sendWol (byte *wolmac) {
     copyMac(gPB + pos, wolmac);
   }
   fill_checksum(UDP_CHECKSUM_H_P, IP_SRC_P, 16 + 102,1);
-  packetSend(pos);
+  packetSend(pos + 6);
 }
 
 // make a arp request
@@ -494,7 +500,7 @@ void EtherCard::browseUrl (prog_char *urlbuf, const char *urlbuf_varpart, prog_c
   client_hoststr = hoststr;
   client_postval = 0;
   client_browser_cb = callback;
-  www_fd = clientTcpReq(&www_client_internal_result_cb,&www_client_internal_datafill_cb,80);
+  www_fd = clientTcpReq(&www_client_internal_result_cb,&www_client_internal_datafill_cb,hisport);
 }
 
 void EtherCard::httpPost (prog_char *urlbuf, prog_char *hoststr, prog_char *additionalheaderline,const char *postval,void (*callback)(byte,word,word)) {
@@ -503,7 +509,7 @@ void EtherCard::httpPost (prog_char *urlbuf, prog_char *hoststr, prog_char *addi
   client_additionalheaderline = additionalheaderline;
   client_postval = postval;
   client_browser_cb = callback;
-  www_fd = clientTcpReq(&www_client_internal_result_cb,&www_client_internal_datafill_cb,80);
+  www_fd = clientTcpReq(&www_client_internal_result_cb,&www_client_internal_datafill_cb,hisport);
 }
 
 static word tcp_datafill_cb(byte fd) {
@@ -511,20 +517,34 @@ static word tcp_datafill_cb(byte fd) {
   Stash::extract(0, len, EtherCard::tcpOffset());
   Stash::cleanup();
   EtherCard::tcpOffset()[len] = 0;
+#if SERIAL
   Serial.print("REQUEST: ");
   Serial.println(len);
   Serial.println((char*) EtherCard::tcpOffset());
+#endif
+  result_fd = 123; // bogus value
   return len;
 }
 
 static byte tcp_result_cb(byte fd, byte status, word datapos, word datalen) {
-  Serial.println("REPLY:");
-  Serial.println((char*) ether.buffer + datapos);
+  if (status == 0) {
+    result_fd = fd; // a valid result has been received, remember its session id
+    result_ptr = (char*) ether.buffer + datapos;
+    // result_ptr[datalen] = 0;
+  }
+  return 1;
 }
 
 byte EtherCard::tcpSend () {
   www_fd = clientTcpReq(&tcp_result_cb, &tcp_datafill_cb, hisport);
   return www_fd;
+}
+
+const char* EtherCard::tcpReply (byte fd) {
+  if (result_fd != fd)
+    return 0;
+  result_fd = 123; // set to a bogus value to prevent future match
+  return result_ptr;
 }
 
 void EtherCard::registerPingCallback (void (*callback)(byte *srcip)) {
@@ -574,7 +594,7 @@ word EtherCard::packetLoop (word plen) {
       return 0;
     if (gPB[TCP_FLAGS_P] & TCP_FLAGS_RST_V) {
       if (client_tcp_result_cb)
-(*client_tcp_result_cb)((gPB[TCP_DST_PORT_L_P]>>5)&0x7,3,0,0);
+        (*client_tcp_result_cb)((gPB[TCP_DST_PORT_L_P]>>5)&0x7,3,0,0);
       tcp_client_state = 5;
       return 0;
     }
@@ -599,7 +619,8 @@ word EtherCard::packetLoop (word plen) {
       return 0;
     }
     if (tcp_client_state==3 && len>0) { 
-      tcp_client_state = 4;
+      // Comment out to enable large files, e.g. mp3 streams to be downloaded
+//      tcp_client_statete = 4;
       if (client_tcp_result_cb) {
         word tcpstart = TCP_DATA_START; // TCP_DATA_START is a formula
         if (tcpstart>plen-8)

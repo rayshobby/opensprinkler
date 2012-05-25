@@ -2,7 +2,7 @@
 // http://www.ietf.org/rfc/rfc2131.txt
 //
 // Author: Andrew Lindsay
-// Rewritten and optimized by Jean-Claude Wippler, http:// (labs.org/
+// Rewritten and optimized by Jean-Claude Wippler, http://jeelabs.org/
 //
 // Copyright: GPL V2
 // See http://www.gnu.org/licenses/gpl.html
@@ -16,13 +16,15 @@
 #define DHCP_BOOTRESPONSE 2
 
 // DHCP States for access in applications
-#define DHCP_STATE_INIT 0
-#define DHCP_STATE_DISCOVER 1
-#define DHCP_STATE_OFFER 2
-#define DHCP_STATE_REQUEST 3
-#define DHCP_STATE_ACK 4
-#define DHCP_STATE_OK 5
-#define DHCP_STATE_RENEW 6
+enum {
+    DHCP_STATE_INIT,
+    DHCP_STATE_DISCOVER,
+    DHCP_STATE_OFFER,
+    DHCP_STATE_REQUEST,
+    DHCP_STATE_ACK,
+    DHCP_STATE_OK,
+    DHCP_STATE_RENEW,
+};
 
 // size 236
 typedef struct {
@@ -40,7 +42,7 @@ typedef struct {
 #define DHCP_DEST_PORT 68
 
 static byte dhcpState;
-static char hostname[] = "SprinklerC"; 
+static char hostname[] = "Arduino-00";
 static uint32_t currentXid;
 static uint32_t leaseStart;
 static uint32_t leaseTime;
@@ -182,10 +184,13 @@ static void check_for_dhcp_answer (word len) {
 bool EtherCard::dhcpSetup () {
   currentXid = millis();
   // Set a unique hostname, use Arduino-?? with last octet of mac address
-//hostname[8] = 'A' + (mymac[5] >> 4);
-//hostname[9] = '0' + (mymac[5] & 0x0F);
+  hostname[8] = 'A' + (mymac[5] >> 4);
+  hostname[9] = 'A' + (mymac[5] & 0x0F);
   myip[0] = 0; // force invalid IP address
 
+  // Enable reception of broadcast packets as some DHCP servers
+  // use this to send responses
+  enableBroadcast();
   for (byte i = 0; i < 3; ++i) {
     dhcpState = DHCP_STATE_INIT;
     word start = millis();
@@ -193,7 +198,7 @@ bool EtherCard::dhcpSetup () {
       if (!isLinkUp())
         continue;
       word len = packetReceive();
-      if (len == 0 || packetLoop(len) > 0)
+      if (dhcpState != DHCP_STATE_INIT && (len == 0 || packetLoop(len) > 0))
         continue;
       
       switch (dhcpState) {
@@ -212,10 +217,12 @@ bool EtherCard::dhcpSetup () {
       if (myip[0] != 0) {
         if (gwip[0] != 0)
           setGwIp(gwip);
+        disableBroadcast();
         return true;
       }
     }
   }
+  disableBroadcast();
   return false;
 }
 

@@ -1,3 +1,14 @@
+// This code slightly follows the conventions of, but is not derived from:
+//      EHTERSHIELD_H library for Arduino etherShield
+//      Copyright (c) 2008 Xing Yu.  All right reserved. (this is LGPL v2.1)
+// It is however derived from the enc28j60 and ip code (which is GPL v2)
+//      Author: Pascal Stang 
+//      Modified by: Guido Socher
+//      DHCP code: Andrew Lindsay
+// Hence: GPL V2
+//
+// 2010-05-19 <jc@wippler.nl>
+
 #include <EtherCard.h>
 #include <stdarg.h>
 #include <avr/eeprom.h>
@@ -119,6 +130,16 @@ uint16_t Stash::size () {
   return 63 * count + fetchByte(last, 62) - sizeof (StashHeader);
 }
 
+/*
+static char* wtoa (word value, char* ptr) {
+  if (value > 9)
+    ptr = wtoa(value / 10, ptr);
+  *ptr = '0' + value % 10;
+  *++ptr = 0;
+  return ptr;
+}
+*/
+
 void Stash::prepare (PGM_P fmt, ...) {
   Stash::load(0, 0);
   word* segs = Stash::bufs[0].words;
@@ -135,17 +156,16 @@ void Stash::prepare (PGM_P fmt, ...) {
       switch (pgm_read_byte(fmt++)) {
         case 'D': {
           char buf[7];
-          itoa(argval, buf, 10); //TODO avoid itoa(), pulls in too much code
+          itoa(argval, buf, 10);
           arglen = strlen(buf);
           break;
         }
         case 'S':
           arglen = strlen((const char*) argval);
           break;
-        case 'F': {
+        case 'F':
           arglen = strlen_P((PGM_P) argval);
           break;
-        }
         case 'E': {
           byte* s = (byte*) argval;
           char c;
@@ -190,7 +210,7 @@ void Stash::extract (word offset, word count, void* buf) {
         mode = pgm_read_byte(fmt++);
         switch (mode) {
           case 'D':
-            itoa(arg, tmp, 10); //TODO avoid itoa(), pulls in too much code
+            itoa(arg, tmp, 10);
             ptr = tmp;
             break;
           case 'S':
@@ -261,7 +281,7 @@ void BufferFiller::emit_p(PGM_P fmt, ...) {
         c = pgm_read_byte(fmt++);
         switch (c) {
             case 'D':
-                itoa(va_arg(ap, int), (char*) ptr, 10);
+                itoa(va_arg(ap, word), (char*) ptr, 10);
                 break;
             case 'S':
                 strcpy((char*) ptr, va_arg(ap, const char*));
@@ -300,10 +320,12 @@ uint8_t EtherCard::dnsip[4];  // dns server
 uint8_t EtherCard::hisip[4];  // dns result
 uint16_t EtherCard::hisport = 80; // tcp port to browse to
 
-uint8_t EtherCard::begin (const uint16_t size, const uint8_t* macaddr) {
+uint8_t EtherCard::begin (const uint16_t size,
+                           const uint8_t* macaddr,
+                            uint8_t csPin) {
   Stash::initMap(56);
   copyMac(mymac, macaddr);
-  return initialize(size, mymac);
+  return initialize(size, mymac, csPin);
 }
 
 bool EtherCard::staticSetup (const uint8_t* my_ip,

@@ -2,7 +2,7 @@
 // Author: Guido Socher 
 // Copyright: GPL V2
 //
-// Mods bij jcw, 2010-05-20
+// 2010-05-20 <jc@wippler.nl>
 
 #include "EtherCard.h"
 #include "net.h"
@@ -12,7 +12,7 @@
 static byte dnstid_l; // a counter for transaction ID
 #define DNSCLIENT_SRC_PORT_H 0xE0 
 
-static void dnsRequest (const prog_char *progmem_hostname) {
+static void dnsRequest (const prog_char *progmem_hostname, bool fromRam) {
   ++dnstid_l; // increment for next request, finally wrap
   if (ether.dnsip[0] == 0)
     memset(ether.dnsip, 8, 4); // use 8.8.8.8 Google DNS as default
@@ -25,7 +25,8 @@ static void dnsRequest (const prog_char *progmem_hostname) {
   do {
     byte n = 0;
     for(;;) {
-      c = pgm_read_byte(progmem_hostname++);
+      c = fromRam ? *progmem_hostname : pgm_read_byte(progmem_hostname);
+      ++progmem_hostname;
       if (c == '.' || c == 0)
         break;
       p[++n] = c;
@@ -53,7 +54,7 @@ static void checkForDnsAnswer (uint16_t plen) {
                    gPB[UDP_DST_PORT_H_P] != DNSCLIENT_SRC_PORT_H ||
                    gPB[UDP_DST_PORT_L_P] != dnstid_l ||
                    p[1] != dnstid_l ||
-                   (p[3] & 0x8F) != 0x80) 
+                   (p[3] & 0x0F) != 0) 
     return;
 
   p += *p; // we encoded the query len into tid
@@ -78,12 +79,12 @@ static void checkForDnsAnswer (uint16_t plen) {
 }
 
 // use during setup, as this discards all incoming requests until it returns
-bool EtherCard::dnsLookup (prog_char* name) {
+bool EtherCard::dnsLookup (prog_char* name, bool fromRam) {
   while (!isLinkUp() || clientWaitingGw())
     packetLoop(packetReceive());
     
   memset(hisip, 0, 4);
-  dnsRequest(name);
+  dnsRequest(name, fromRam);
 
   word start = millis();
   while (hisip[0] == 0) {

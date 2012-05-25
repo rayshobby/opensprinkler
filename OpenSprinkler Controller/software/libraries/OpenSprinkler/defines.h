@@ -61,7 +61,7 @@ typedef enum {
 // ====== Arduino Pin Assignments ======
 // Define hardware version here
 
-#define SVC_HW_VERSION 12
+//#define SVC_HW_VERSION 12
 //#define SVC_HW_VERSION 11
 
 #ifndef SVC_HW_VERSION

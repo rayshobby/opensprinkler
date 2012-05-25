@@ -2,9 +2,8 @@
 // Author: Guido Socher
 // Copyright: GPL V2
 //
-// Mods bij jcw, 2010-05-20
+// 2010-05-20 <jc@wippler.nl>
 
-#include <ctype.h>
 #include "EtherCard.h"
 
 void EtherCard::copyIp (byte *dst, const byte *src) {

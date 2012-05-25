@@ -6,12 +6,16 @@
 // For AVRlib See http://www.procyonengineering.com/
 // Used with explicit permission of Pascal Stang.
 //
-// Mods bij jcw, 2010-05-20
+// 2010-05-20 <jc@wippler.nl>
 
-#include <WProgram.h>
+#if ARDUINO >= 100
+#include <Arduino.h> // Arduino 1.0
+#else
+#include <WProgram.h> // Arduino 0022
+#endif
 #include "enc28j60.h"
 
-uint16_t ENC28J60::bufferSize;
+word ENC28J60::bufferSize;
 
 // ENC28J60 Control Registers
 // Control register definitions are a combination of address,
@@ -37,10 +41,10 @@ uint16_t ENC28J60::bufferSize;
 #define ERXND           (0x0A|0x00)
 #define ERXRDPT         (0x0C|0x00)
 // #define ERXWRPT         (0x0E|0x00)
-// #define EDMAST          (0x10|0x00)
-// #define EDMAND          (0x12|0x00)
+#define EDMAST          (0x10|0x00)
+#define EDMAND          (0x12|0x00)
 // #define EDMADST         (0x14|0x00)
-// #define EDMACS          (0x16|0x00)
+#define EDMACS          (0x16|0x00)
 // Bank 1 registers
 #define EHT0             (0x00|0x20)
 #define EHT1             (0x01|0x20)
@@ -89,7 +93,7 @@ uint16_t ENC28J60::bufferSize;
 #define MAADR4           (0x05|0x60|0x80)
 #define EBSTSD           (0x06|0x60)
 #define EBSTCON          (0x07|0x60)
-// #define EBSTCS          (0x08|0x60)
+#define EBSTCS          (0x08|0x60)
 #define MISTAT           (0x0A|0x60|0x80)
 #define EREVID           (0x12|0x60)
 #define ECOCON           (0x15|0x60)
@@ -172,6 +176,16 @@ uint16_t ENC28J60::bufferSize;
 #define MISTAT_SCAN      0x02
 #define MISTAT_BUSY      0x01
 
+// ENC28J60 EBSTCON Register Bit Definitions
+#define EBSTCON_PSV2     0x80
+#define EBSTCON_PSV1     0x40
+#define EBSTCON_PSV0     0x20
+#define EBSTCON_PSEL     0x10
+#define EBSTCON_TMSEL1   0x08
+#define EBSTCON_TMSEL0   0x04
+#define EBSTCON_TME      0x02
+#define EBSTCON_BISTST    0x01
+
 // PHY registers
 #define PHCON1           0x00
 #define PHSTAT1          0x01
@@ -233,11 +247,11 @@ uint16_t ENC28J60::bufferSize;
 // (note: maximum ethernet frame length would be 1518)
 #define MAX_FRAMELEN      1500        
 
-static byte Enc28j60Bank;
-static int16_t gNextPacketPtr;
+#define FULL_SPEED  1   // switch to full-speed SPI for bulk transfers
 
-#define SELECT_BIT  0   // 0 = B0 = pin 8, 2 = B2 = pin 10
-#define FULL_SPEED  1   // use full-speed SPI for bulk transfers
+static byte Enc28j60Bank;
+static int gNextPacketPtr;
+static byte selectBit;  // 0 = B0 = pin 8, 1 = B1 = pin 9, 2 = B2 = pin 10
 
 void ENC28J60::initSPI () {
     const byte SPI_SS   = 10;
@@ -260,11 +274,11 @@ void ENC28J60::initSPI () {
 
 static void enableChip () {
     cli();
-    bitClear(PORTB, SELECT_BIT);
+    bitClear(PORTB, selectBit);
 }
 
 static void disableChip () {
-    bitSet(PORTB, SELECT_BIT);
+    bitSet(PORTB, selectBit);
     sei();
 }
 
@@ -294,33 +308,19 @@ static void writeOp (byte op, byte address, byte data) {
 
 static void readBuf(word len, byte* data) {
     enableChip();
-#if FULL_SPEED
-    byte spiSave = SPCR;
-    SPCR = bit(SPE) | bit(MSTR); // 8 MHz @ 16
-#endif
     xferSPI(ENC28J60_READ_BUF_MEM);
     while (len--) {
         xferSPI(0x00);
         *data++ = SPDR;
     }
-#if FULL_SPEED
-    SPCR = spiSave;
-#endif
     disableChip();
 }
 
 static void writeBuf(word len, const byte* data) {
     enableChip();
-#if FULL_SPEED
-    byte spiSave = SPCR;
-    SPCR = bit(SPE) | bit(MSTR); // 8 MHz @ 16
-#endif
     xferSPI(ENC28J60_WRITE_BUF_MEM);
     while (len--)
         xferSPI(*data++);
-#if FULL_SPEED
-    SPCR = spiSave;
-#endif
     disableChip();
 }
 
@@ -335,6 +335,10 @@ static void SetBank (byte address) {
 static byte readRegByte (byte address) {
     SetBank(address);
     return readOp(ENC28J60_READ_CTRL_REG, address);
+}
+
+static word readReg(byte address) {
+	return readRegByte(address) + (readRegByte(address+1) << 8);
 }
 
 static void writeRegByte (byte address, byte data) {
@@ -363,15 +367,16 @@ static void writePhy (byte address, word data) {
         ;
 }
 
-byte ENC28J60::initialize (word size, const byte* macaddr) {
+byte ENC28J60::initialize (word size, const byte* macaddr, byte csPin) {
     bufferSize = size;
     if (bitRead(SPCR, SPE) == 0)
       initSPI();
-      
-    bitSet(DDRB, SELECT_BIT);
+    selectBit = csPin - 8;  
+    bitSet(DDRB, selectBit);
     disableChip();
     
     writeOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);
+    delay(2); // errata B7/2
     while (!readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY)
         ;
         
@@ -381,7 +386,7 @@ byte ENC28J60::initialize (word size, const byte* macaddr) {
     writeReg(ERXND, RXSTOP_INIT);
     writeReg(ETXST, TXSTART_INIT);
     writeReg(ETXND, TXSTOP_INIT);
-    writeRegByte(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN);
+    enableBroadcast(); // change to add ERXFCON_BCEN recommended by epam
     writeReg(EPMM0, 0x303f);
     writeReg(EPMCS, 0xf7f9);
     writeRegByte(MACON1, MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS);
@@ -402,7 +407,13 @@ byte ENC28J60::initialize (word size, const byte* macaddr) {
     writeOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE|EIE_PKTIE);
     writeOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXEN);
 
-    return readRegByte(EREVID);
+    byte rev = readRegByte(EREVID);
+    // microchip forgot to step the number on the silcon when they
+    // released the revision B7. 6 is now rev B7. We still have
+    // to see what they do when they release B8. At the moment
+    // there is no B8 out yet
+    if (rev > 5) ++rev;
+    return rev;
 }
 
 bool ENC28J60::isLinkUp() {
@@ -478,3 +489,113 @@ byte ENC28J60::peekin (byte page, byte off) {
     }
     return result;
 }
+
+// Contributed by Alex M. Based on code from: http://blog.derouineau.fr
+//                  /2011/07/putting-enc28j60-ethernet-controler-in-sleep-mode/
+void ENC28J60::powerDown() {
+    writeOp(ENC28J60_BIT_FIELD_CLR, ECON1, ECON1_RXEN);
+    while(readRegByte(ESTAT) & ESTAT_RXBUSY);
+    while(readRegByte(ECON1) & ECON1_TXRTS);
+    writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_VRPS);
+    writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_PWRSV);
+}
+
+void ENC28J60::powerUp() {
+    writeOp(ENC28J60_BIT_FIELD_CLR, ECON2, ECON2_PWRSV);
+    while(!readRegByte(ESTAT) & ESTAT_CLKRDY);
+    writeOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXEN);
+}
+
+// Functions to enable/disable broadcast filter bits
+// With the bit set, broadcast packets are filtered.
+void ENC28J60::enableBroadcast () {
+    writeRegByte(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN|ERXFCON_BCEN);
+}
+
+void ENC28J60::disableBroadcast () {
+    writeRegByte(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN);
+}
+
+uint8_t ENC28J60::doBIST ( byte csPin) {
+	#define RANDOM_FILL		0b0000
+	#define ADDRESS_FILL	0b0100
+	#define PATTERN_SHIFT	0b1000
+	#define RANDOM_RACE		0b1100
+
+// init	
+    if (bitRead(SPCR, SPE) == 0)
+      initSPI();
+    selectBit = csPin - 8;  
+    bitSet(DDRB, selectBit);
+    disableChip();
+    
+    writeOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);
+    delay(2); // errata B7/2
+    while (!readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY) ;
+
+
+	// now we can start the memory test
+	
+	word macResult;
+	word bitsResult;
+
+	// clear some of the registers registers
+    writeRegByte(ECON1, 0);
+	writeReg(EDMAST, 0);
+	
+	// Set up necessary pointers for the DMA to calculate over the entire memory
+	writeReg(EDMAND, 0x1FFFu);
+	writeReg(ERXND, 0x1FFFu);
+
+	// Enable Test Mode and do an Address Fill
+	SetBank(EBSTCON);
+	writeRegByte(EBSTCON, EBSTCON_TME | EBSTCON_BISTST | ADDRESS_FILL);
+	
+	// wait for BISTST to be reset, only after that are we actually ready to
+	// start the test
+	// this was undocumented :(
+    while (readOp(ENC28J60_READ_CTRL_REG, EBSTCON) & EBSTCON_BISTST);
+	writeOp(ENC28J60_BIT_FIELD_CLR, EBSTCON, EBSTCON_TME);
+
+
+	// now start the actual reading an calculating the checksum until the end is
+	// reached
+	writeOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_DMAST | ECON1_CSUMEN);
+	SetBank(EDMACS);
+	while(readOp(ENC28J60_READ_CTRL_REG, ECON1) & ECON1_DMAST);
+	macResult = readReg(EDMACS);
+	bitsResult = readReg(EBSTCS);
+	// Compare the results
+	// 0xF807 should always be generated in Address fill mode
+	if ((macResult != bitsResult) || (bitsResult != 0xF807)) {
+		return 0;
+	}
+	// reset test flag
+	writeOp(ENC28J60_BIT_FIELD_CLR, EBSTCON, EBSTCON_TME);
+	
+	
+	// Now start the BIST with random data test, and also keep on swapping the
+	// DMA/BIST memory ports.
+	writeRegByte(EBSTSD, 0b10101010 | millis());
+	writeRegByte(EBSTCON, EBSTCON_TME | EBSTCON_PSEL | EBSTCON_BISTST | RANDOM_FILL);
+						 
+						 
+	// wait for BISTST to be reset, only after that are we actually ready to
+	// start the test
+	// this was undocumented :(
+    while (readOp(ENC28J60_READ_CTRL_REG, EBSTCON) & EBSTCON_BISTST);
+	writeOp(ENC28J60_BIT_FIELD_CLR, EBSTCON, EBSTCON_TME);
+	
+	
+	// now start the actual reading an calculating the checksum until the end is
+	// reached
+	writeOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_DMAST | ECON1_CSUMEN);
+	SetBank(EDMACS);
+	while(readOp(ENC28J60_READ_CTRL_REG, ECON1) & ECON1_DMAST);
+
+	macResult = readReg(EDMACS);
+	bitsResult = readReg(EBSTCS);
+	// The checksum should be equal 
+	return macResult == bitsResult;
+}
+
