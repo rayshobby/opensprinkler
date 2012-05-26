@@ -10,7 +10,7 @@ svc.bootloader.path=optiboot
 svc.bootloader.file=optiboot_atmega328.hex
 svc.bootloader.unlock_bits=0x3F
 svc.bootloader.lock_bits=0x0F
-svc.build.mcu=atmega328
+svc.build.mcu=atmega328p
 svc.build.f_cpu=8000000L
 svc.build.core=arduino
 
