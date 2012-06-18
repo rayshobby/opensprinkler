@@ -1,4 +1,8 @@
 ====== Updates ======
+* June 17, 2012
+ - Updated OpenSprinkler library. Version number is now 1.6. Major changes are added data structures, modified options (including a sequential option, rainsensor, and rtc option), added location string to prepare for the weather feature.
+ - Modified EtherCard::emit_p to print unsigned long values.
+ 
 * May 25, 2012
  - Update the EtherCard files to use JeeLab's latest library code. Improved DHCP robustness.
  - Added boards.txt for v1.2u on-board USBtiny programmer.

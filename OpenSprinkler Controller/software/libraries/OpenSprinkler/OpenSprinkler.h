@@ -1,8 +1,8 @@
 // Arduino library code for OpenSprinkler
 
-/* Class definition of OpenSprinkler
+/* OpenSprinkler Class Definition
    Creative Commons Attribution-ShareAlike 3.0 license
-   Mar 2012 @ Rayshobby.net
+   June 2012 @ Rayshobby.net
 */
 
 #ifndef _OpenSprinkler_h
@@ -10,101 +10,103 @@
 
 #include <WProgram.h>
 #include <avr/eeprom.h>
+#include <avr/wdt.h>
 #include "Wire.h"
-#include "EEPROM.h"
 #include "Time.h"
 #include "LiquidCrystal.h"
 #include "EtherCard.h"
 #include "defines.h"
 
+struct StatusBits {
+  byte enabled:1;           // operation enable (when set, controller operation is enabled)
+  byte rain_delayed:1;      // rain delay bit (when set, rain delay is applied)
+  byte rain_sensed:1;       // rain sensor bit (when set, it indicates that rain is detected)
+  byte network_failed:1;    // network status bit (when set, network failure is detected)
+  byte program_busy:1;      // when set, a program is being executed currently
+  byte display_board:3;     // the board that is being displayed onto the lcd
+}; 
+  
 class OpenSprinkler {
 public:
-	static LiquidCrystal lcd;
-	static byte enabled;
-	static byte raindelayed;
-  static byte options[];			// option values, each option is a byte
+  
+  // ====== Data Members ======
+  static LiquidCrystal lcd;
+  static StatusBits status;
+  
+  static byte options[];			// option values, each option takes one byte
   static char* options_str[];	// display string of each option
   static char* days_str[];		// string of each weekday
+  static byte station_bits[]; // station activation bits. each byte corresponds to a board (8 stations)
+                              // first byte-> master controller, second byte-> ext. board 1, and so on
 
-  static byte time_display_mode;	// time display mode
-  static byte lcd_display_board;	// which ext board to display on the lcd
-  static byte station_bitvalues[];  // scheduled open/close bit value of each station
-  static unsigned int remaining_time[];	// remaining time of an open station
-  static byte ext_eeprom_busy;
+  ///static unsigned long time_second_counter;   // counts number of seconds since program starts (system time)
+  static unsigned long raindelay_stop_time;   // time (in seconds) when raindelay is stopped
+  static int16_t  tm2_ov_cnt;                 // timer2 overflow counter
   
+  // ====== Member Functions ======
+  // -- Setup --
   static void reboot();
-  static void reset_ethernet();
-  static void begin();
-  static void self_test();
+  static void begin();    // initialization, must call this function before calling other functions
+  static byte start_network(byte mymac[], int http_port=80);  // initialize network with the given mac and port
+  static void self_test();  // self-test function
+  static void timer_start();// start timer2 interrupt (counts system time)
+  static void timer_stop(); // stop timer2 interrupt
+  
+  // -- Options --
   static void options_setup();
-	static void options_load();
-	static void options_save();
-	static byte option_get_flag(int i);
+  static void options_load();
+  static void options_save();
+  static byte option_get_flag(int i);
   static byte option_get_max(int i);
 
-  static byte get_board_schedule(byte bidx) {
-  	return station_bitvalues[bidx];
-  }
+  // -- Operation --
+  static void enable();     // enable controller operation
+  static void disable();    // disable controller operation, all stations will be closed
+  static void raindelay_start(byte rd);  // start raindelay for rd hours
+  static void raindelay_stop(); // stop rain delay
+  static byte weekday_today();  // returns index of today's weekday (Monday is 0) 
   
-  static void master_schedule();												// schedule master station if it's enabled
-	static void board_schedule(byte bidx, byte value);		// schedule all stations on a single board
-  static void station_reset();													// reset (close) all stations
-	static void station_schedule(byte index, byte value);	// call this function to schedule a station
-	static void station_schedule_clear();									// clear the schedule of all stations
-  static void station_apply();													// call this function to apply the current schedule
-  static boolean multistation_check();									// check for multiple station safety
+  // -- Station schedules --
+  // Call functions below to set station bits
+  // Then call apply_station_bits() to activate/deactivate valves
+  static void set_board_bits(byte bid, byte value); // set station bits of one board (bid->board index)
+  static void set_station_bit(byte sid, byte value); // set station bit of one station (sid->station index, value->0/1)
+  static void clear_all_station_bits(); // clear all station bits
+  static void apply_all_station_bits(); // apply all station bits (activate/deactive values)
 
-  static void lcd_print_pgm(PGM_P PROGMEM str);				// print a program memory string to the lcd
+  // -- Weather --
+  static void location_get(char* loc);  // read location string from eeprom
+  static void location_set(char* loc);  // write location string to eeprom
+  
+  // -- LCD functions --
+  static void lcd_print_pgm(PGM_P PROGMEM str);           // print a program memory string
   static void lcd_print_line_clear_pgm(PGM_P PROGMEM str, byte line);
   static void lcd_print_lines_clear_pgm(PGM_P PROGMEM str1, PGM_P PROGMEM str2);
-  
-  static void lcd_print_time(byte line);						  // print the current time to the lcd
-  static void lcd_print_ip(const byte *ip, byte line);// print the ip address to the lcd
-  static byte lcd_print_station(byte line, char c);			// print the station values of the ext board selected by lcd_display_board
-  static void lcd_print_raindelay(byte rd, byte line);	// print raindelay status to the lcd
+  static void lcd_print_time(byte line);                  // print current time
+  static void lcd_print_ip(const byte *ip, int http_port);// print ip and port number
+  static void lcd_print_station(byte line, char c);       // print station bits of the board selected by display_board
+  static void lcd_print_status(); // print selected status bits
+ 
+  // -- Button and UI functions --
+  static byte button_read(byte waitmode); // Read button value. options for 'waitmodes' are:
+                                          // BUTTON_WAIT_NONE, BUTTON_WAIT_RELEASE, BUTTON_WAIT_HOLD
+                                          // return values are 'OR'ed with flags
+                                          // check defines.h for details
 
-	// read butto. options for 'waitmodes' are:
-	// BUTTON_WAIT_NONE, BUTTON_WAIT_RELEASE, BUTTON_WAIT_HOLD
-	// return values are BUTTON_1, BUTTON_2, or BUTTON_3 ORed with button flags
-  // check defines.h for details
-  static byte button_read(byte waitmode);
-  
-  static void ui_set_options(int which_option); // ui for setting options
-  static void ui_toggle_time_display();
-  static void ui_set_time();										// ui for manually set time
-	static int ui_set_raindelay();								// ui for seting rain delay	
-  
-  static void password_set(char *pw);
-  static byte password_verify(char *pw);
-  static byte weekday_today();
-  
-  static unsigned long get_station_scheduled_seconds(byte i);
-  static void set_station_scheduled_seconds(byte i, unsigned long value);
-  static unsigned long get_station_scheduled_stop_time(byte i);
-  static void set_station_scheduled_stop_time(byte i, unsigned long value);
-  
-	static void int_eeprom_write_buffer(unsigned int address, byte* buffer, byte length);
-	static void int_eeprom_read_buffer (unsigned int address, byte* buffer, byte length);
-	
-	static byte ext_eeprom_write_lock();
-	static void ext_eeprom_write_unlock();
-  static void ext_eeprom_clear(unsigned int start, unsigned int end);
-  static void ext_eeprom_write_byte(unsigned int eeaddress, byte data);
-  static byte ext_eeprom_read_byte (unsigned int eeaddress);
-  
-	// Warning: max 16 bytes per write
-  static void ext_eeprom_write_buffer(unsigned int eeaddresspage, byte* buffer, byte length);
-  static void ext_eeprom_read_buffer (unsigned int eeaddress, byte *buffer, int length);
+  // -- UI functions --
+  static void ui_set_options(int oid);    // ui for setting options (oid-> starting option index)
+
+  // -- Password functions --
+  static void password_set(char *pw);     // save password to eeprom
+  static byte password_verify(char *pw);  // verify password
 
 private:
-  static byte options_flag[];		// flag of each option
+  static void set_master_station_bit();  // set master station
+  static byte options_flag[];   // editable flag of each option
   static byte options_max[];    // max value of each option
-  
-  static void lcd_print_option(int i);							// print an option to the lcd
+  static void lcd_print_option(int i);  // print an option to the lcd
   static byte button_read_busy(int value, byte waitmode, byte butt, byte is_holding);
 
 };
-
-extern BufferFiller bfill;
 
 #endif

@@ -160,6 +160,12 @@ void Stash::prepare (PGM_P fmt, ...) {
           arglen = strlen(buf);
           break;
         }
+        case 'L': { // ray
+          char buf[12];
+          ultoa(argval, buf, 10);
+          arglen = strlen(buf);
+          break;
+        }
         case 'S':
           arglen = strlen((const char*) argval);
           break;
@@ -196,7 +202,7 @@ void Stash::extract (word offset, word count, void* buf) {
   word* segs = Stash::bufs[0].words;
   PGM_P fmt = (PGM_P) *++segs;
   Stash stash;
-  char mode = '@', tmp[7], *ptr, *out = (char*) buf;
+  char mode = '@', tmp[12], *ptr, *out = (char*) buf;
   for (word i = 0; i < offset + count; ) {
     char c = 0;
     switch (mode) {
@@ -213,6 +219,9 @@ void Stash::extract (word offset, word count, void* buf) {
             itoa(arg, tmp, 10);
             ptr = tmp;
             break;
+          case 'L': // ray
+            ultoa(arg, tmp, 10);
+            ptr = tmp;
           case 'S':
           case 'F':
           case 'E':
@@ -226,7 +235,9 @@ void Stash::extract (word offset, word count, void* buf) {
         continue;
       }
       case 'D':
+      case 'L': // ray
       case 'S':
+
         c = *ptr++;
         break;
       case 'F':
@@ -282,6 +293,9 @@ void BufferFiller::emit_p(PGM_P fmt, ...) {
         switch (c) {
             case 'D':
                 itoa(va_arg(ap, word), (char*) ptr, 10);
+                break;
+            case 'L': // ray
+                ultoa(va_arg(ap, unsigned long), (char*) ptr, 10);
                 break;
             case 'S':
                 strcpy((char*) ptr, va_arg(ap, const char*));
