@@ -65,10 +65,10 @@ function plot_sched(simminutes,dur_array,pid_array,et_array) { // plot schedule 
         total_seconds+= dur_array[sid]; // accumulate duration
       } else {  // concurrent
         // this program has just started running
-        if(et_array[sid] == simminutes+(dur_array[sid]/60>>0))
+        if(et_array[sid] == simminutes+(dur_array[sid]/60)) {
           plot_bar(sid,simminutes,0,dur_array[sid],pid_array[sid]);
-        total_seconds=1;
-        //if(dur_array[sid]>total_seconds)  total_seconds=dur_array[sid]; // find max duration
+        }
+        total_seconds=60;
       }
     }
   }
@@ -124,7 +124,7 @@ function draw() {
         match=check_match(sid,simminutes,simdate,simday);
         if(match[0]!=0) {
           dur_array[sid]=match[0];pid_array[sid]=match[1];
-          et_array[sid]=simminutes+(match[0]/60>>0);
+          et_array[sid]=simminutes+match[0]/60;
           match_found=1;
         }//if
       }//for_s

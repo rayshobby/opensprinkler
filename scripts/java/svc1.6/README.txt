@@ -4,5 +4,9 @@ The only constraint is that these scripts must be accessible through a direct ht
 http://xxxx/home.js
 Any file hosting service that can provide direct file access link is ok.
 
-Unless specified otherwise, all content here is published under Creative Commons Attribution-ShareAlike 3.0 license
+**********************************************************
+Unless specified otherwise, all content is published under
+the Creative Commons Attribution-ShareAlike 3.0 license.
+
 June 2012 @ http://rayshobby.net
+**********************************************************
