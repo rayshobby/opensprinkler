@@ -1,0 +1,25 @@
+====== Update ======
+
+* Mar 31, 2012
+ - Set 'multistation' option to 0 to force stations to be serialized (i.e. instead of open all stations at the same time, open them one after another). 
+ 
+====== License ======
+
+Unless specified otherwise, all code is licensed under the Creative Commons Attribution-ShareAlike 3.0 license.
+
+====== Description ======
+This is an interval scheduling program for OpenSprinkler. For each station, you can set how often you would like to water per day, and the water time (down to seconds). Check the images in the 'screenshot' folder for examples.
+
+There are three main webpages:
+
+- The 'homepage' prints out the current status of each station, including the multi-station error, raindelay status, and controller enabled status.
+
+- The 'config' page allows you to change a selected set of options.
+
+- The 'schedule' page sets schedules. If there are more than one controller boards, each board can be scheduled separately. For each station, set the interval between two waterings, and the desired water time.
+
+====== How to use the code ======
+The code is tested in Arduino-0022 and 0023. It's not guaranteed to work with other versions of Arduino. The code requires the 'OpenSprinkler' library, which you should copy (or put a symbolic link) in the Arduino's 'libraries' directory. To compile, open svc_interval_schedule.pde in Arduino IDE and click on 'compile'. 
+
+Check images in the 'screenshot' folder for examples of the webpages.
+

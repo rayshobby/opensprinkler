@@ -1,0 +1,26 @@
+====== Update ======
+* Mar 25, 2012:
+  - changed code to use the OpenSprinkler Arduino library
+  - support for arbitrary number of extension boards
+  - external EEPROM stores data in NOT format (i.e. ~value instead of value), so that it's consistent with un-initialized EEPROM.
+
+====== License ======
+
+Unless specified otherwise, all code is licensed under the Creative Commons Attribution-ShareAlike 3.0 license.
+
+====== Description ======
+This is a web-based scheduling program for OpenSprinkler. Each station is individually scheduled using a html table interface. Check the images in the 'screenshot' folder for examples.
+
+There are three main webpages:
+
+- The 'homepage' prints out the current status of each station, including the multi-station error, raindelay status, and controller enabled status.
+
+- The 'config' page allows you to change a selected set of options.
+
+- The 'schedule' page sets schedules using html tables. if there are more than one controller boards, each board can be scheduled separately. 15-minute slots are set by default, which can be changed by modifying the parameter in schedule.h.
+
+====== How to use the code ======
+The code is tested in Arduino-0022 and 0023. It's not guaranteed to work with other versions of Arduino. The code requires the 'OpenSprinkler' library, which you should copy (or put a symbolic link) in the Arduino's 'libraries' directory. To compile, open svc_full_schedule.pde in Arduino IDE and click on 'compile'. 
+
+Check images in the 'screenshot' folder for examples of the webpages.
+
