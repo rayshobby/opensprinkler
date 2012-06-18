@@ -228,7 +228,7 @@ void OpenSprinkler::begin() {
   Wire.begin();
   
   // Reset status variables
-	status.enabled = 0;
+	status.enabled = 1;
 	status.rain_delayed = 0;
 	status.rain_sensed = 0;
 	status.network_failed = 0;

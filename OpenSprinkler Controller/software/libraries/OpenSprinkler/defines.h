@@ -69,6 +69,7 @@ typedef enum {
 // you must manually provide the hardware version number here
 // Uncomment only one line below
 
+#define SVC_HW_VERSION 13
 //#define SVC_HW_VERSION 12
 //#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same pinouts as v1.1
 
@@ -76,7 +77,22 @@ typedef enum {
 #error "==This error is intentional==: you must define SVC_HW_VERSION in arduino-0023/libraries/OpenSprnikler/defines.h"
 #endif
 
-#if SVC_HW_VERSION == 12
+#if SVC_HW_VERSION == 13
+
+  #define PIN_READ_BUTTON    0    // analog pin assigned for button reading
+  #define PIN_SR_LATCH       7    // shift register latch pin
+  #define PIN_SR_DATA        5    // shift register data pin
+  #define PIN_SR_CLOCK       6    // shift register clock pin
+  #define PIN_SR_OE          3    // shift register output enable pin
+  #define PIN_LCD_RS         0    // LCD rs pin
+  #define PIN_LCD_EN         4    // LCD enable pin
+  #define PIN_LCD_D4         1    // LCD d4 pin
+  #define PIN_LCD_D5         5    // LCD d5 pin
+  #define PIN_LCD_D6         6    // LCD d6 pin
+  #define PIN_LCD_D7         9    // LCD d7 pin
+  #define PIN_RAINSENSOR    15    // by default rain sensor is connected to pin A1
+                                  // change if you need
+#elif SVC_HW_VERSION == 12
 
   #define PIN_READ_BUTTON    0    // analog pin assigned for button reading
   #define PIN_SR_LATCH       7    // shift register latch pin
