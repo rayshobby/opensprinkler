@@ -235,7 +235,7 @@ void print_webpage_change_schedule(char *p, byte pos) {
   
   p=p+2;
   byte nchar=0;
-  byte pair[2];
+  int pair[2];
   byte write_alert = 0;
   
   // !!! must read from the buffer first, do not do bfill.emit_p yet !!!
