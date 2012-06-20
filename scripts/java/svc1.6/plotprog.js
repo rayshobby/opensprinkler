@@ -141,6 +141,7 @@ function draw() {
       simminutes++; // increment simulation time
     }
   } while(simminutes<24*60); // simulation ends
+  if(simday==devday)  window.scrollTo(0,gety((devmin/60>>0)*60)); // scroll to the hour line cloest to the current time
 }
 w("<body onload=\"draw()\">");
 w("<canvas id=\"canvas\" width=\""+winwidth+"\" height=\""+winheight+"\"></canvas>");

@@ -3,6 +3,7 @@
 // June 2012
 var str_days=["Mon","Tue","Wed","Thur","Fri","Sat","Sun"];
 function w(s) {document.writeln(s);}
+function imgstr(s) {return "<img src=\"http://rayshobby.net/images/icons/svc_"+s+".png\" height=20 align=absmiddle>&nbsp;";}
 function del(form,idx) {var p=prompt("Please enter your password:","");if(p!=null){form.elements[0].value=p;form.elements[1].value=idx;form.submit();}}
 function mod(form,idx) {form.elements[0].value=idx;form.submit();}
 // parse and print days
@@ -27,7 +28,7 @@ function pstations(data){
     bits=data[bid+6];
     for(s=0;s<8;s++){
       sn=bid*8+s+1;
-      if(bits&(1<<s)) w("<td style=background-color:#7AFA7A>S"+(sn/10>>0)+(sn%10)+"</td>");
+      if(bits&(1<<s)) w("<td style=background-color:#9AFA9A>S"+(sn/10>>0)+(sn%10)+"</td>");
       else w("<td>S"+(sn/10>>0)+(sn%10)+"</td>");
     }
     w("</tr>");
@@ -39,9 +40,9 @@ w("<h4><a href=/><-Home</a></h4>");
 w("<form name=df action=dp method=get><input type=hidden name=pw><input type=hidden name=pid></form>");
 w("<form name=mf action=mp method=get><input type=hidden name=pid></form>")
 w("<form name=gf action=gp method=get target=\"_blank\"><input type=hidden name=d value=today></form>")
-w("<button style=\"height:32\" onclick=mod(mf,-1)>Add a new program</button>");
-w("<button style=\"height:32\" onclick=del(df,-1)>Delete all programs</button>");
-w("<button style=\"height:32\" onclick=\"gf.submit()\">Graphical Preview</button><br>");
+w("<button style=\"height:36\" onclick=mod(mf,-1)>"+imgstr("addall")+"Add a New Program</button>");
+w("<button style=\"height:36\" onclick=del(df,-1)>"+imgstr("delall")+"Delete All</button>");
+w("<button style=\"height:36\" onclick=\"gf.submit()\">"+imgstr("preview")+"Preview</button><br><hr>");
 if(nprogs==0) w("(Empty)");
 // print programs
 var pid,st,et,iv,du;

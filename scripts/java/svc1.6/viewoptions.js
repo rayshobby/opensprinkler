@@ -18,6 +18,6 @@ for(oid=0;oid<nopts;oid++){
 
 w("<font size=3><b>Location:</b><input type=text value=\""+loc+"\" name=loc></font><br><font size=2>(City name or zip code. Use, or + in place of space,<br>such as \'New,York\' or \'New+York\').</font>");
 w("<h4>Password:<input type=password size=10 name=pw></h4>");
-w("<input type=submit style=\"height:28\" value=\"Submit Changes\">");
+w("<button style=\"height:36\" onclick=\"of.submit()\">Submit Changes</button>");
 w("<h4>Change password</b>:<input type=password size=10 name=npw>&nbsp;&nbsp;Confirm:&nbsp;<input type=password size=10 name=cpw></h4>");
 w("</form>");

@@ -91,7 +91,7 @@ w("<button style=\"height:32\" onclick=\"fsubmit(mf)\">Submit</button><button st
 id("days_week").checked=true;id("days_norst").checked=true;
 id("dn").value="3";id("drem").value="0";
 id("tsh").value="06";id("tsm").value="00";id("teh").value="18";id("tem").value="00";
-id("tih").value="04";id("tim").value="30";id("tdm").value="05";id("tds").value="15";
+id("tih").value="04";id("tim").value="00";id("tdm").value="15";id("tds").value="00";
 // fill in existing program values
 if(pid>-1) {
 	// process days
