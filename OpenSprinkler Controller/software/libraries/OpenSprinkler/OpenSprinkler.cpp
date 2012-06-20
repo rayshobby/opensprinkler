@@ -13,7 +13,6 @@ StatusBits OpenSprinkler::status;
 byte OpenSprinkler::station_bits[MAX_EXT_BOARDS+1];
 
 unsigned long OpenSprinkler::raindelay_stop_time = 0;
-int16_t OpenSprinkler::tm2_ov_cnt = TM2_OVCNT_LOAD_VALUE;
   
 // Default option values
 byte OpenSprinkler::options[NUM_OPTIONS] = {
@@ -144,20 +143,6 @@ char* OpenSprinkler::days_str[7] = {
 // Arduino software reset function
 void(* resetFunc) (void) = 0;
 
-// timer2 overflow interrupt service routine
-// configured to trigger at 125Hz (every 8ms)
-ISR(TIMER2_OVF_vect) {  
-  TCNT2 = TCNT2_LOAD_VALUE;
-  if ((--OpenSprinkler::tm2_ov_cnt)!=0)  return;
-  OpenSprinkler::tm2_ov_cnt = TM2_OVCNT_LOAD_VALUE;
-
-  // time_second_counter increments every second
-  // this does't have to be extremely precise
-  // it is mainly used for time-keeping of tasks
-  ///OpenSprinkler::time_second_counter ++;
-  wdt_reset();  // resets watch dog timer every second
-}
-
 // Initialize network with given mac and http port
 byte OpenSprinkler::start_network(byte mymac[], int http_port) {
 
@@ -233,16 +218,12 @@ void OpenSprinkler::begin() {
 	status.rain_sensed = 0;
 	status.network_failed = 0;
 	status.program_busy = 0;
+	status.manual_mode = 0;
 	status.display_board = 0;
 
   // begin lcd
   lcd.begin(16, 2);
   
-  // Atmega328 timer2 setup
-  TCCR2A = 0x00;                  // normal operation
-  TCCR2B |= (1<<CS22)|(1<<CS21);  // 256 pre-scalar, generating 31250Hz on 8MHz CPU
-                                  // when TCNT2 overflow is set to 250,
-                                  // timer2 overflow ISR will trigger at 125Hz
 }
 
 // Self_test function
@@ -267,7 +248,7 @@ void OpenSprinkler::self_test() {
 
 // Index of today's weekday (Monday is 0)
 byte OpenSprinkler::weekday_today() {
-  return ((byte)weekday()+5)%7; // Timer::weekday() assumes Sunday is 1
+  return ((byte)weekday()+5)%7; // Time::weekday() assumes Sunday is 1
 }
 
 // Set station bit
@@ -430,19 +411,6 @@ void OpenSprinkler::disable() {
   apply_all_station_bits();
 }
 
-// Enable timer2 overflow interrupt
-void OpenSprinkler::timer_start() {
-  ///time_second_counter = 0;
-  tm2_ov_cnt = TM2_OVCNT_LOAD_VALUE;
-  TCNT2 = TCNT2_LOAD_VALUE;
-  TIMSK2 |= (1<<TOIE2);    // turn on interrupt bit
-}
-
-// disable timer2 overflow interrupt
-void OpenSprinkler::timer_stop() {
-  TIMSK2 &=~(1<<TOIE2);    // turn off interrupt bit
-}
-
 void OpenSprinkler::raindelay_start(byte rd) {
   if(rd == 0) return;
   raindelay_stop_time = now() + (unsigned long) rd * 3600;
@@ -453,6 +421,20 @@ void OpenSprinkler::raindelay_start(byte rd) {
 void OpenSprinkler::raindelay_stop() {
   status.rain_delayed = 0;
   apply_all_station_bits();
+}
+
+void OpenSprinkler::manual_mode_on() {
+	// Reset all stations
+  clear_all_station_bits();
+  apply_all_station_bits();
+  status.manual_mode = 1;
+}
+
+void OpenSprinkler::manual_mode_off() {
+	// Reset all stations
+  clear_all_station_bits();
+  apply_all_station_bits();
+  status.manual_mode = 0;
 }
 
 // =================

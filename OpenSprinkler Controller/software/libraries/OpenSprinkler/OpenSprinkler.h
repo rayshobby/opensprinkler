@@ -10,7 +10,6 @@
 
 #include <WProgram.h>
 #include <avr/eeprom.h>
-#include <avr/wdt.h>
 #include "Wire.h"
 #include "Time.h"
 #include "LiquidCrystal.h"
@@ -23,7 +22,8 @@ struct StatusBits {
   byte rain_sensed:1;       // rain sensor bit (when set, it indicates that rain is detected)
   byte network_failed:1;    // network status bit (when set, network failure is detected)
   byte program_busy:1;      // when set, a program is being executed currently
-  byte display_board:3;     // the board that is being displayed onto the lcd
+  byte manual_mode:1;       // when set, the controller is in manual mode
+  byte display_board:2;     // the board that is being displayed onto the lcd
 }; 
   
 class OpenSprinkler {
@@ -41,7 +41,6 @@ public:
 
   ///static unsigned long time_second_counter;   // counts number of seconds since program starts (system time)
   static unsigned long raindelay_stop_time;   // time (in seconds) when raindelay is stopped
-  static int16_t  tm2_ov_cnt;                 // timer2 overflow counter
   
   // ====== Member Functions ======
   // -- Setup --
@@ -49,8 +48,6 @@ public:
   static void begin();    // initialization, must call this function before calling other functions
   static byte start_network(byte mymac[], int http_port=80);  // initialize network with the given mac and port
   static void self_test();  // self-test function
-  static void timer_start();// start timer2 interrupt (counts system time)
-  static void timer_stop(); // stop timer2 interrupt
   
   // -- Options --
   static void options_setup();
@@ -65,7 +62,8 @@ public:
   static void raindelay_start(byte rd);  // start raindelay for rd hours
   static void raindelay_stop(); // stop rain delay
   static byte weekday_today();  // returns index of today's weekday (Monday is 0) 
-  
+  static void manual_mode_on();  // switch controller to manual mode
+  static void manual_mode_off(); // switch controller to program mode
   // -- Station schedules --
   // Call functions below to set station bits
   // Then call apply_station_bits() to activate/deactivate valves

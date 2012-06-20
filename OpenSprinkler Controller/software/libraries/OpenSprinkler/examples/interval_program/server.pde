@@ -114,6 +114,13 @@ boolean print_webpage_modify_program(char *p, byte pos) {
   return true;
 }
 
+/*=============================================
+  HTTP GET command format:
+  /dp?pw=xxx&pid=xxx
+  
+  pw: password
+  pid:program index (-1 will delete all programs)
+  =============================================*/
 boolean print_webpage_delete_program(char *p, byte pos) {
 
   p=p+(pos+1);
@@ -129,7 +136,7 @@ boolean print_webpage_delete_program(char *p, byte pos) {
     
   int pid=atoi(tmp_buffer);
   if (pid == -1) {
-    pd.clear();
+    pd.erase();
   } else if (pid < pd.nprograms) {
     pd.del(pid);
   } else {
@@ -142,6 +149,16 @@ boolean print_webpage_delete_program(char *p, byte pos) {
   return true;
 }
 
+/*=============================================
+  HTTP GET command format:
+  /gp?d=xx&m=xx&y=xx
+  
+  d: day (either a number or string 'today')
+  m: month
+  y: year
+  (if any field is missing, will use the current
+   date/month/year)
+  =============================================*/
 boolean print_webpage_plot_program(char *p, byte pos) {
   p=p+(pos+1);
   ether.urlDecode(p);
@@ -274,10 +291,11 @@ boolean print_webpage_home()
     bfill.emit_p(PSTR("[$D,$D,$D],"), pd.scheduled_program_index[sid], pd.scheduled_duration[sid], pd.remaining_time[sid]);
   } 
   svc.location_get(tmp_buffer);
-  bfill.emit_p(PSTR("[0,0,0]];\nvar en=$D,rd=$D,rs=$D,rdst=$L,mas=$D,urs=$D,loc=\"$S\";"),
+  bfill.emit_p(PSTR("[0,0,0]];\nvar en=$D,rd=$D,rs=$D,mm=$D,rdst=$L,mas=$D,urs=$D,loc=\"$S\";"),
     svc.status.enabled,
     svc.status.rain_delayed,
     svc.status.rain_sensed,
+    svc.status.manual_mode,
     svc.raindelay_stop_time,
     svc.options[OPTION_MASTER_STATION],
     svc.options[OPTION_USE_RAINSENSOR],
@@ -314,6 +332,16 @@ boolean print_webpage_view_options()
   return true;
 }
 
+/*=============================================
+  HTTP GET command format:
+  /cv?pw=xxx&rst=x&en=x&mm=x&rd=x
+  
+  pw:  password
+  rst: reset (0 or 1)
+  en:  enable (0 or 1)
+  mm:  manual mode (0 or 1)
+  rd:  rain delay hours (0 turns off rain delay)
+  =============================================*/
 boolean print_webpage_change_values(char *p, byte pos)
 {
   p += (pos+1);
@@ -322,28 +350,52 @@ boolean print_webpage_change_values(char *p, byte pos)
     return false;
   }
 
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "en")) {
-    if (tmp_buffer[0]=='1') svc.enable();
-    else if (tmp_buffer[0]=='0') svc.disable();
-  }   
-  
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rd")) {
-    int rd = atoi(tmp_buffer);
-    if (rd>0) {
-      svc.raindelay_start(rd);
-    } else {
-      svc.raindelay_stop();
-    }
-  }  
-  
-#define TIME_REBOOT_DELAY  15
+#define TIME_REBOOT_DELAY  12
 
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rst") && atoi(tmp_buffer) > 0) {
     bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"$D; url=/\">"), htmlOkHeader, TIME_REBOOT_DELAY);
     bfill.emit_p(PSTR("Rebooting, wait for $D seconds..."), TIME_REBOOT_DELAY);
     ether.httpServerReply(bfill.position());   
     svc.reboot();
+  } 
+  
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "en")) {
+    byte oldvalue = svc.status.enabled;
+    if (tmp_buffer[0]=='1') {
+      if (oldvalue!=1)  svc.enable(); // do this only if status has changed
+    } else if (tmp_buffer[0]=='0') {
+      if (oldvalue!=0)  svc.disable(); 
+    }
+    else {
+      return false;
+    }
+  }   
+  
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "mm")) {
+    byte oldvalue = svc.status.manual_mode;
+    if (tmp_buffer[0]=='1') {
+      if (oldvalue!=1) {
+        svc.manual_mode_on(); // do this only if we are not already in manual mode
+        pd.reset_runtime();
+      }
+    }
+    else if (tmp_buffer[0]=='0') {
+      if (oldvalue!=0) {
+        svc.manual_mode_off();
+        pd.reset_runtime();
+      }
+    }
+    else return false;
+  }
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rd")) {
+    int rd = atoi(tmp_buffer);
+    if (rd>0) {
+      svc.raindelay_start(rd);
+    } else if (rd==0){
+      svc.raindelay_stop();
+    } else  return false;
   }  
+ 
   
   bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"0; url=/\">"), htmlOkHeader);
   return true;
@@ -413,10 +465,85 @@ boolean print_webpage_change_options(char *p, byte pos)
   bfill.emit_p(PSTR("$F<script>alert(\"Options values saved.\")</script>\n"), htmlOkHeader);
   bfill.emit_p(PSTR("<meta http-equiv=\"refresh\" content=\"0; url=/vo\">"));
   
-  if (old_tz != svc.options[OPTION_TIMEZONE])
-    getNtpTime();
+  if (old_tz != svc.options[OPTION_TIMEZONE]) {
+    time_t t = getNtpTime();
+    if (t!=0)
+      setTime(t);
+  }
     
   return true;
+}
+
+/*=================================================
+  HTTP GET command format:
+  /snx     -> get station bit (e.g. /sn1, /sn2 etc.)
+  /sn0     -> get all bits
+  
+  The following will only work if controller is
+  switched to manual mode:
+  
+  /snx=0   -> turn off station 
+  /snx=1   -> turn on station
+  /snx=1&t=xx -> turn on with timer (in seconds)
+  =================================================*/
+boolean print_webpage_station_bits(char *p, byte pos) {
+
+  p += pos;
+  int sid;
+  byte i, sidmin, sidmax;  
+
+  // parse station name
+  i=0;
+  while((*p)>='0'&&(*p)<='9'&&i<4) {
+    tmp_buffer[i++] = (*p++);
+  }
+  tmp_buffer[i]=0;
+  sid = atoi(tmp_buffer);
+  if (!(sid>=0&&sid<=(svc.options[OPTION_EXT_BOARDS]+1)*8)) return false;
+  
+  // parse get/set command
+  if ((*p)=='=') {
+    if (sid==0) return false;
+    sid--;
+    // this is a set command
+    // can only do it when in manual mode
+    if (!svc.status.manual_mode) {
+      bfill.emit_p(PSTR("$F<script>alert(\"Station bits can only be set in manual mode.\")</script>\n</script>"), htmlOkHeader);
+      return true;
+    }
+    // parse value
+    p++;
+    if ((*p)=='0') {
+      manual_station_off(sid);
+    } else if ((*p)=='1') {
+      int ontimer = 0;
+      if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "t")) {
+        ontimer = atoi(tmp_buffer);
+        if (!(ontimer>=0))  return false;
+      }
+      manual_station_on((byte)sid, ontimer);
+    } else {
+      return false;
+    }
+    bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"0; url=/\">"), htmlOkHeader);      
+    return true;
+  } else {
+    // this is a get command
+    bfill.emit_p(PSTR("$F"), htmlOkHeader);
+    if (sid==0) { // print all station bits
+      sidmin=0;sidmax=(svc.options[OPTION_EXT_BOARDS]+1)*8;
+    } else {  // print one station bit
+      sidmin=(sid-1);
+      sidmax=sid;
+    }
+    for (sid=sidmin;sid<sidmax;sid++) {
+      if (svc.status.enabled && (!svc.status.rain_delayed) && !(svc.options[OPTION_USE_RAINSENSOR] && svc.status.rain_sensed)) {
+        bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
+      } else bfill.emit_p(PSTR("$D"), 0);
+    }
+    return true;      
+  }
+  return false;
 }
 
 boolean print_webpage_favicon()
@@ -487,8 +614,9 @@ void analyze_get_url(char *p)
     success = print_webpage_view_options();
   } else if (strncmp("co", str, 2)==0) {  // change options
     success = print_webpage_change_options(str, 2);
+  } else if (strncmp("sn", str, 2)==0) { // get/set station bits
+    success = print_webpage_station_bits(str, 2);
   }
-  
   if (success == false) {
     bfill.emit_p(PSTR("$F"), htmlUnauthorized);
   }

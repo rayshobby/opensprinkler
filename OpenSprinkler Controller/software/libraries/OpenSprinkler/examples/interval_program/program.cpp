@@ -16,22 +16,22 @@ byte ProgramData::scheduled_program_index[(MAX_EXT_BOARDS+1)*8];
 unsigned long ProgramData::scheduled_stop_time[(MAX_EXT_BOARDS+1)*8];
 
 void ProgramData::init() {
-	
-  // init data members
+	reset_runtime();
+  load_count();
+  // reset log variables
+  lastrun.station = 0;
+  lastrun.program = 0;
+  lastrun.duration = 0;
+  lastrun.endtime = 0;  
+}
+
+void ProgramData::reset_runtime() {
   for (byte i=0; i<(MAX_EXT_BOARDS+1)*8; i++) {
     remaining_time[i] = 0;
     scheduled_stop_time[i] = 0;
     scheduled_program_index[i] = 0;
     scheduled_duration[i] = 0;
   }
-  load_count();
-
-  // init log variables
-  lastrun.station = 0;
-  lastrun.program = 0;
-  lastrun.duration = 0;
-  lastrun.endtime = 0;
- 
 }
 
 // load program count from EEPROM
@@ -45,7 +45,7 @@ void ProgramData::save_count() {
 }
 
 // reset all program data
-void ProgramData::clear() {
+void ProgramData::erase() {
   byte zero = 0;
   for(unsigned int addr=ADDR_PROGRAMDATA; addr<ADDR_PROGRAMDATA+(nprograms*PROGRAMSTRUCT_SIZE); addr++)
     eeprom_write_block((const void*)&zero, (void *)addr, 1);

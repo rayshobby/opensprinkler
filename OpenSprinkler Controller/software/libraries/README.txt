@@ -1,4 +1,9 @@
 ====== Updates ======
+The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
+
+* June 19, 2012
+ - Added manual_mode_on and manual_mode_off functions.
+  
 * June 17, 2012
  - Updated OpenSprinkler library. Version number is now 1.6. Major changes are added data structures, modified options (including a sequential option, rainsensor, and rtc option), added location string to prepare for the weather feature.
  - Modified EtherCard::emit_p to print unsigned long values.
@@ -22,6 +27,4 @@
  -Modified button control during powering up: hold B1 during powerup actives a self-test program (each station is turned on for 5 seconds, including all extended stations); B2 activates reset; B3 activates the default option setup.
  -changed reset value of external EEPROM to 0xFF so that it's consistent with un-initialized EEPROM.
 
-====== How to use the code ======
-Copy this folder to the Arduino's libraries directory (or make a symbolic link there).
 

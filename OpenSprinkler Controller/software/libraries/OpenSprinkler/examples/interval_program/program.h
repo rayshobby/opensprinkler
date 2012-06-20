@@ -49,7 +49,8 @@ public:
   static LogStruct lastrun;   // last run log
   
   static void init();
-  static void clear();
+  static void reset_runtime();
+  static void erase();
   static void read(byte pid, ProgramStruct *buf);
   static void add(ProgramStruct *buf);
   static void modify(byte pid, ProgramStruct *buf);

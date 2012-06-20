@@ -13,7 +13,6 @@
 #include <limits.h>
 #include <OpenSprinkler.h>
 #include "program.h"
-#include <avr/wdt.h>
 
 // This is the path where external Javascripst are stored
 // To create custom Javascripts, you need to make a copy of the scripts
@@ -102,11 +101,10 @@ void setup() {
   setSyncInterval(3600);  // setup NTP time sync: sync interval 3600 seconds
   setSyncProvider(getNtpTime);  // NTP sync callback function
 
-  svc.timer_start();    // enabled system timer
   svc.enable(); // enable controller operation  
   svc.lcd_print_time(0);  // display time to LCD
 
-  wdt_enable(WDTO_4S);  // start 4 seconds watchdog timer
+  //wdt_enable(WDTO_4S);  // start 4 seconds watchdog timer
 }
 
 // =================
@@ -115,7 +113,6 @@ void setup() {
 void loop()
 {
   static unsigned long last_time = 0;
-  static int16_t old_tm2_ov_cnt = -1;
   static unsigned int last_minute = 0x7fff;
 
   static word pos;
@@ -135,15 +132,6 @@ void loop()
   }
   // ======================================
 
-  // tm2_ov_cnt increments every 8ms
-  if (old_tm2_ov_cnt == svc.tm2_ov_cnt) return;
-  old_tm2_ov_cnt = svc.tm2_ov_cnt;  
-
-  if (old_tm2_ov_cnt%5) return;
-  // code below this line is executed every 8ms*5=40ms
-  // this gives the processor more fraction of time to
-  // respond to network traffic
-  
   button_poll();    // process button press
 
   // if 1 second has passed
@@ -166,13 +154,15 @@ void loop()
       }
     }
     
-    // ====== Check rain sensor ======
+    // ====== Check rain sensor status ======
     svc.status.rain_sensed = digitalRead(PIN_RAINSENSOR) == LOW ? 0 : 1;
     
+    
     // ====== Schedule program data ======
-    // check if we are allowed to run stations in parallel
-    // or if there is no program running currently
-    if (sequential==0 || svc.status.program_busy == 0) {
+    // check program data and schedule stations only if
+    // 1) the controller is in program mode (not manual mode)
+    // 2) no existing program is running, or parallel running is allowed
+    if (svc.status.manual_mode == 0 && (svc.status.program_busy == 0 || sequential==0)) {
       // we are cleared to schedule a new program
       int curr_minute = minute(curr_time);
       // do not check if we are still in the same minute
@@ -220,7 +210,7 @@ void loop()
     } //if_cleared_for_checking
     
     // ====== Run program data ======
-    // check if some program is running now
+    // do program bookkeeping if a program is running currently
     if (svc.status.program_busy){
       for(bid=0;bid<=svc.options[OPTION_EXT_BOARDS]; bid++) {
         bitvalue = svc.station_bits[bid];
@@ -250,7 +240,7 @@ void loop()
               pd.scheduled_program_index[sid] = 0;
 
               // if stations run sequentially
-              if (sequential) {
+              if (svc.status.manual_mode == 0 && sequential) {
                 // search for the next station that has a non-zero remaining time
                 for(byte nextsid=sid+1;nextsid<(svc.options[OPTION_EXT_BOARDS]+1)*8;nextsid++) {
                   if (svc.options[OPTION_MASTER_STATION] == nextsid+1) continue;  // skip master
@@ -294,4 +284,48 @@ void loop()
   }
 }
 
+void manual_station_off(byte sid) {
+
+  byte bid;
+  svc.set_station_bit(sid, 0);
+
+  // record lastrun log
+  pd.lastrun.station = sid+1;
+  pd.lastrun.program = pd.scheduled_program_index[sid];
+  pd.lastrun.duration = pd.scheduled_duration[sid];
+  pd.lastrun.endtime = now();
+  
+  // reset variables
+  pd.remaining_time[sid] = 0;
+  pd.scheduled_duration[sid] = 0;
+  pd.scheduled_program_index[sid] = 0;
+                
+  svc.apply_all_station_bits();                
+  
+  // check if any station is still running
+  boolean any_station_on = false;
+  for(bid=0;bid<=svc.options[OPTION_EXT_BOARDS];bid++) {
+    if (svc.station_bits[bid]!=0) {
+      any_station_on = true;
+      break;
+    }
+  }
+  // if no station is currently running, set program_busy to 0
+  if (any_station_on == false) {
+    svc.status.program_busy = 0;
+  }  
+}
+
+void manual_station_on(byte sid, int ontimer) {
+  pd.remaining_time[sid] = ontimer;
+  if (ontimer == 0) {
+    pd.scheduled_stop_time[sid]=ULONG_MAX;
+  } else { 
+    pd.scheduled_stop_time[sid] = now() + (unsigned long) ontimer;
+  }
+  pd.scheduled_duration[sid] = ontimer;
+  pd.scheduled_program_index[sid] = 255;
+  svc.set_station_bit(sid, 1);
+  svc.status.program_busy = 1;
+}
 
