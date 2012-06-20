@@ -70,7 +70,7 @@ typedef enum {
 // Uncomment only one line below
 
 //#define SVC_HW_VERSION 12
-#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same pinouts as v1.1
+//#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same pinouts as v1.1
 
 #ifndef SVC_HW_VERSION
 #error "==This error is intentional==: you must define SVC_HW_VERSION in arduino-0023/libraries/OpenSprnikler/defines.h"
