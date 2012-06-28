@@ -256,7 +256,11 @@ void loop()
             }//if_schedule_is_over
             else {
               // update remaining minutes
-              pd.remaining_time[sid] = (scheduled_stop_time - curr_time);
+              if (pd.scheduled_stop_time[sid]==ULONG_MAX) {
+                pd.remaining_time[sid] = 0;
+              } else {
+                pd.remaining_time[sid] = (scheduled_stop_time - curr_time);
+              }
             }//else
           }//if_station_is_running
         }//end_s
