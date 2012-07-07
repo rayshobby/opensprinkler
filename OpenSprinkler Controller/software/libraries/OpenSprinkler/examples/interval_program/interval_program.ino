@@ -11,6 +11,7 @@
  */
 
 #include <limits.h>
+#include <LiquidCrystal.h>
 #include <OpenSprinkler.h>
 #include "program.h"
 

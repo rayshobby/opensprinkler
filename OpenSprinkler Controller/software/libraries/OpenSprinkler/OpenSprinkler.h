@@ -8,11 +8,11 @@
 #ifndef _OpenSprinkler_h
 #define _OpenSprinkler_h
 
-#include <WProgram.h>
+#include "Arduino.h"
 #include <avr/eeprom.h>
-#include "Wire.h"
 #include "Time.h"
 #include "LiquidCrystal.h"
+#include "Wire.h"
 #include "EtherCard.h"
 #include "defines.h"
 

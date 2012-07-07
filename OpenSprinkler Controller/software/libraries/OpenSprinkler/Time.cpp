@@ -21,7 +21,7 @@
   1  Nov 2010 - fixed setTime bug (thanks to Korman for this)
 */
 
-#include <WProgram.h> 
+#include <Arduino.h>
 
 #include "Time.h"
 

@@ -5,6 +5,7 @@
    June 2012 @ Rayshobby.net
 */
 
+#include <Arduino.h>
 #include <OpenSprinkler.h>
 
 // Program data structure
