@@ -1,3 +1,4 @@
+
 // Example code for OpenSprinkler
 
 /* This is a program-based scheduling algorithm.
@@ -11,6 +12,8 @@
  */
 
 #include <limits.h>
+#include <LiquidCrystal.h>
+#include <Wire.h>
 #include <OpenSprinkler.h>
 #include "program.h"
 
