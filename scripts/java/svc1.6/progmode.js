@@ -24,4 +24,4 @@ for(bid=0;bid<nbrd;bid++){
     w("<br>");
   }
 }
-
+w("</span>");

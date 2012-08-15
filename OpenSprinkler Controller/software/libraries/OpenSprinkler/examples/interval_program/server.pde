@@ -45,39 +45,64 @@ prog_uchar htmlUnauthorized[] PROGMEM =
     "<h1>401 Unauthorized</h1>"
 ;
 
-// fill program data
-void bfill_programdata()
+// split program data to subsections in order
+// to fit each subsection in a single http buffer
+#define PROGRAMDATA_SUBSECTION_SIZE 10
+
+// fill program data subsection
+void bfill_programdata_sub(byte start_index)
 {
   byte pid, bid;
-  ProgramStruct prog;  
-  
-  bfill.emit_p(PSTR("var nprogs=$D;var nboards=$D;var pd=["),
-                    pd.nprograms, svc.options[OPTION_EXT_BOARDS]+1);
-  for (pid=0; pid<pd.nprograms; pid++) {
+  ProgramStruct prog;    
+  for(pid=start_index; pid<start_index+PROGRAMDATA_SUBSECTION_SIZE && pid<pd.nprograms; pid++) {
     pd.read(pid, &prog);
     
     // convert interval remainder (absolute->relative)
     if (prog.days[1] > 1)  pd.drem_to_relative(prog.days);
         
-    bfill.emit_p(PSTR("[$D,$D,$D,$D,$D,$D"), prog.days[0], prog.days[1], prog.start_time, prog.end_time, prog.interval, prog.duration);
+    bfill.emit_p(PSTR("pd[$D]=[$D,$D,$D,$D,$D,$D"), pid, prog.days[0], prog.days[1],
+      prog.start_time, prog.end_time, prog.interval, prog.duration);
     for (bid=0; bid<=svc.options[OPTION_EXT_BOARDS]; bid++) {
       bfill.emit_p(PSTR(",$D"),prog.stations[bid]);
     }
-    if (pid==(pd.nprograms-1))
-      bfill.emit_p(PSTR("]"));
-    else
-      bfill.emit_p(PSTR("],"));
+    bfill.emit_p(PSTR("];"));
   }
-  bfill.emit_p(PSTR("];"));
+}
+
+boolean print_webpage_programdata_subsection(char *p, byte pos) {
+  p=p+pos;
+  ether.urlDecode(p);
+  
+  byte ssid = ((*p)-'0')*10;
+  bfill.emit_p(PSTR("$F"), htmlOkHeader);
+  bfill_programdata_sub(ssid);
+  return true;
+}
+
+// fill program data
+void bfill_programdata()
+{
+  byte ssid;
+  
+  bfill.emit_p(PSTR("<script>var nprogs=$D;var nboards=$D;var pd=[];"),
+                    pd.nprograms, svc.options[OPTION_EXT_BOARDS]+1);
+  bfill_programdata_sub(0);
+  bfill.emit_p(PSTR("</script>\n"));
+  if (pd.nprograms > PROGRAMDATA_SUBSECTION_SIZE) {
+    // create subsection pages
+    for (ssid=1; ssid<=((pd.nprograms-1)/PROGRAMDATA_SUBSECTION_SIZE); ssid++) {
+      bfill.emit_p(PSTR("<script src=pds$D.js></script>\n"), ssid);
+    }
+  }
 }
 
 boolean print_webpage_view_program(char *str, byte pos) {
 
-  bfill.emit_p(PSTR("$F$F<script>"), htmlOkHeader, htmlMobileHeader);
+  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
   
   bfill_programdata();
   
-  bfill.emit_p(PSTR("</script>\n<script src=\"$F/viewprog.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"$F/viewprog.js\"></script>\n"), htmlExtJavascriptPath);
 
   return true;
 }
@@ -185,12 +210,12 @@ boolean print_webpage_plot_program(char *p, byte pos) {
     if (!(yy>=1970))  return false;
   }
   
-  bfill.emit_p(PSTR("$F$F<script>var seq=$D,mas=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"), htmlOkHeader, htmlMobileHeader,
+  bfill.emit_p(PSTR("$F$F<script>var seq=$D,mas=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;</script>\n"), htmlOkHeader, htmlMobileHeader,
                svc.options[OPTION_SEQUENTIAL], svc.options[OPTION_MASTER_STATION], devday, devmin, dd, mm, yy);
 
   bfill_programdata();
   
-  bfill.emit_p(PSTR("</script>\n<script src=\"$F/plotprog.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"$F/plotprog.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
 }
 
@@ -326,7 +351,12 @@ boolean print_webpage_view_options()
     noptions ++;
   }
   svc.location_get(tmp_buffer);
-  bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$S\";</script>\n"), noptions, tmp_buffer);
+  bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$S\";"), noptions, tmp_buffer);
+  if (svc.options[OPTION_USE_RTC]) {
+    bfill.emit_p(PSTR("var yr=$D,mo=$D,dy=$D,hr=$D,min=$D,sec=$D;"),
+      year(), month(), day(), hour(), minute(), second());
+  }
+  bfill.emit_p(PSTR("</script>\n"));
   // include remote javascript
   bfill.emit_p(PSTR("<script src=\"$F/viewoptions.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
@@ -440,6 +470,28 @@ boolean print_webpage_change_options(char *p, byte pos)
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "loc")) {
     ether.urlDecode(tmp_buffer);
     svc.location_set(tmp_buffer);    
+  }
+  
+  // process rtc change
+  if (svc.options[OPTION_USE_RTC]) {
+    // see if 'change time' checkbox is checked
+    if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "tchg")) {
+      int t[6];
+      char tbuf2[3]={'t', 0, 0};
+      for (byte tid=0; tid<6; tid++) {
+        tbuf2[1] = '0'+tid;
+        if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, tbuf2)) {
+          t[tid] = atoi(tmp_buffer);
+        }
+      }
+      if (t[0]<1970 || t[1]<1 || t[1]>12 || t[2]<1 || t[2]>31 || t[3]<0 || t[3]>23 ||
+          t[4]<0 || t[4]>59 || t[5]<0 || t[5]>59) {
+        err=1;
+      } else {
+        setTime(t[3], t[4], t[5], t[2], t[1], t[0]);
+        RTC.set(now());
+      }
+    }
   }
   
   if (err) {
@@ -616,6 +668,8 @@ void analyze_get_url(char *p)
     success = print_webpage_change_options(str, 2);
   } else if (strncmp("sn", str, 2)==0) { // get/set station bits
     success = print_webpage_station_bits(str, 2);
+  } else if (strncmp("pds", str, 3)==0) { // get program data subsection
+    success = print_webpage_programdata_subsection(str, 3);
   }
   if (success == false) {
     bfill.emit_p(PSTR("$F"), htmlUnauthorized);

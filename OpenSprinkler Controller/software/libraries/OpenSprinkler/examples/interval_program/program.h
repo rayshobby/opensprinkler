@@ -33,10 +33,13 @@ struct LogStruct {
   unsigned long endtime;
 };
 
-#define MAX_NUMBER_PROGRAMS  64  // maximum number of programs, restricted by internal EEPROM size
+// program structure size: 14 bytes default
 #define PROGRAMSTRUCT_SIZE   (sizeof(ProgramStruct))
 #define ADDR_PROGRAMCOUNTER  ADDR_EEPROM_USER
 #define ADDR_PROGRAMDATA     (ADDR_EEPROM_USER+2)
+// maximum number of programs, restricted by internal EEPROM size, 40 default
+#define MAX_NUMBER_PROGRAMS  ((INT_EEPROM_SIZE-ADDR_EEPROM_USER-2)/PROGRAMSTRUCT_SIZE)
+
 extern OpenSprinkler svc;
 
 class ProgramData {

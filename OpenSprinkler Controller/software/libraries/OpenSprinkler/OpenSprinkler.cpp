@@ -30,8 +30,14 @@ byte OpenSprinkler::options[NUM_OPTIONS] = {
   0,  // number of extension board. 0-> no extension boards
   0,	// index of master station. 0-> no master station
   1,  // sequential bit. 0-> stations can run concurrently; 1-> stations run sequentially
+  0,  // station delay time, in seconds
   0,	// rain sensor control bit. 0-> ignore rain sensor; 1-> use rain sensor
+  1,  // rain sensor type. 0-> normally closed; 1-> normally open.
+#if SVC_HW_VERSION >= 14
+  1,  // real-time clock (RTC) bit. OpenSprinkler hardware version 1.4 or above has built-in RTC
+#else
   0,  // real-time clock (RTC) bit. 0-> do not use RTC; 1-> use RTC (not available on all hardware)
+#endif
   0   // reset all settings to default
 };
 
@@ -52,7 +58,9 @@ prog_uchar OpenSprinkler::options_max[NUM_OPTIONS] PROGMEM = {
   MAX_EXT_BOARDS, // ext
   8,		// mas
   1,    // seq
+  255,  // sdel
   1,		// urs
+  1,    // rso
   1,		// rtc
   1     // reset
 };
@@ -72,7 +80,9 @@ prog_char _str_gw4 [] PROGMEM = "Gateway.ip4:";
 prog_char _str_ext [] PROGMEM = "Ext. boards:";
 prog_char _str_mas [] PROGMEM = "Master station:";
 prog_char _str_seq [] PROGMEM = "Sequential:";
+prog_char _str_sdel[] PROGMEM = "Station delay:";
 prog_char _str_urs [] PROGMEM = "Use rain sensor:";
+prog_char _str_rso [] PROGMEM = "Normally open:";
 prog_char _str_rtc [] PROGMEM = "Use RTC:";
 prog_char _str_reset[] PROGMEM = "Reset all? ";
 
@@ -91,7 +101,9 @@ char* OpenSprinkler::options_str[NUM_OPTIONS]  = {
   _str_ext,
   _str_mas,
   _str_seq,
+  _str_sdel,
   _str_urs,
+  _str_rso,
   _str_rtc,
   _str_reset
 };
@@ -112,7 +124,9 @@ prog_uchar OpenSprinkler::options_flag[NUM_OPTIONS] PROGMEM={
   OPFLAG_WEB_EDIT, // ext
   OPFLAG_WEB_EDIT, // mas
   OPFLAG_WEB_EDIT | OPFLAG_BOOL,// seq
-  OPFLAG_WEB_EDIT | OPFLAG_BOOL,// urs    
+  OPFLAG_WEB_EDIT, // sdel
+  OPFLAG_WEB_EDIT | OPFLAG_BOOL,// urs
+  OPFLAG_WEB_EDIT | OPFLAG_BOOL,// rso
   OPFLAG_BOOL,    // rtc
   OPFLAG_BOOL     // reset
 };  
@@ -147,7 +161,8 @@ void(* resetFunc) (void) = 0;
 byte OpenSprinkler::start_network(byte mymac[], int http_port) {
 
   lcd_print_lines_clear_pgm(PSTR("Connecting to"), PSTR(" the network..."));
-
+  delay(500);
+  
   ether.hisport = http_port;    
   
   if(!ether.begin(ETHER_BUFFER_SIZE, mymac))  return 0;
@@ -273,7 +288,7 @@ void OpenSprinkler::set_station_bit(byte sid, byte value) {
 // Clear all station bits
 void OpenSprinkler::clear_all_station_bits() {
   byte bid;
-  for(bid=0;bid<=options[OPTION_EXT_BOARDS];bid++) {
+  for(bid=0;bid<=MAX_EXT_BOARDS;bid++) {
     station_bits[bid] = 0;
   }
   set_master_station_bit();
@@ -323,8 +338,12 @@ void OpenSprinkler::set_master_station_bit() {
 
 void OpenSprinkler::options_setup() {
 
+  // add 1 second delay to allow EEPROM to stablize
+  delay(1000);
+  
+  // check reset condition
   if (eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_FW_VERSION))!=SVC_FW_VERSION ||
-      eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_RESET))) {
+      eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_RESET))==0xAA) {
     options_save(); // write default option values
     password_set(DEFAULT_PASSWORD); // write default password
     location_set(DEFAULT_LOCATION); // write default location
@@ -334,8 +353,6 @@ void OpenSprinkler::options_setup() {
     for(int i=ADDR_EEPROM_USER; i<INT_EEPROM_SIZE; i++) {
       eeprom_write_byte((unsigned char *) i, 0);      
     }
-    // also need to reset external eeprom
-    // ray: todo
   } 
   else {
     options_load();
@@ -421,6 +438,10 @@ void OpenSprinkler::raindelay_start(byte rd) {
 void OpenSprinkler::raindelay_stop() {
   status.rain_delayed = 0;
   apply_all_station_bits();
+}
+
+void OpenSprinkler::rainsensor_status() {
+  status.rain_sensed = (digitalRead(PIN_RAINSENSOR) == options[OPTION_RS_NORMALLY_OPEN] ? 0 : 1);
 }
 
 void OpenSprinkler::manual_mode_on() {
@@ -691,6 +712,10 @@ void OpenSprinkler::ui_set_options(int oid)
     case BUTTON_3:
       if (!(button & BUTTON_FLAG_DOWN)) break; 
       if (button & BUTTON_FLAG_HOLD) {
+        // if OPTION_RESET is set to 1, change it to reset condition value
+        if (options[OPTION_RESET] == 1) {
+          options[OPTION_RESET] = 0xAA;
+        }
         // long press, save options
         options_save();
         finished = true;

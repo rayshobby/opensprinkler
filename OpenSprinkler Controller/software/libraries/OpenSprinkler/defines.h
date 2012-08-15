@@ -9,23 +9,27 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  16  // firmware version. when this is different from the version number
+#define SVC_FW_VERSION  17  // firmware version. when this is different from the version number
                             // stored in eeprom, an eeprom reset will be automatically triggered
 
 #define MAX_EXT_BOARDS  3   // maximum number of ext. boards (each consists of 8 stations)
                             // total number of stations: (1+MAX_EXT_BOARDS) * 8
 
+#define STATION_NAME_SIZE  12 // size of each station name, default is 12 letters long
+
 // External I2C EEPROM
-#define I2C_EEPROM_DEVICE_ADDR  0x50
-#define I2C_EEPROM_SIZE         16384 // external eeprom size (in bytes)
-#define EEPROM_BLOCK_SIZE       16    // eeprom block size, DO NOT CHANGE
+//#define I2C_EEPROM_DEVICE_ADDR  0x50
+//#define I2C_EEPROM_SIZE         16384 // external eeprom size (in bytes)
+//#define EEPROM_BLOCK_SIZE       16    // eeprom block size, DO NOT CHANGE
 
 // Internal EEPROM Defines
 #define INT_EEPROM_SIZE         1024    // ATmega328 eeprom size
-#define ADDR_EEPROM_OPTIONS     0x0000  // address where options are stored, 32 bytes reserved
-#define ADDR_EEPROM_PASSWORD    0x0020	// address where password is stored, 16 bytes reserved
-#define ADDR_EEPROM_LOCATION    0x0030  // address where location is stored, 32 bytes reserved
-#define ADDR_EEPROM_USER        0x0050  // address where user data is stored
+#define ADDR_EEPROM_OPTIONS     0x0000  // address where options are stored, 24 bytes reserved
+#define ADDR_EEPROM_PASSWORD    0x0018	// address where password is stored, 16 bytes reserved
+#define ADDR_EEPROM_LOCATION    0x0028  // address where location is stored, 32 bytes reserved
+#define ADDR_EEPROM_SNAMES      0x0048  // address where station names are stored
+#define ADDR_EEPROM_USER        (ADDR_EEPROM_SNAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
+                                        // address where user data is stored
 
 #define DEFAULT_PASSWORD        "opendoor"
 #define DEFAULT_LOCATION        "Boston,MA" // zip code, city name or any google supported location strings
@@ -48,7 +52,9 @@ typedef enum {
   OPTION_EXT_BOARDS,
   OPTION_MASTER_STATION,
   OPTION_SEQUENTIAL,
+  OPTION_STATION_DELAY,
   OPTION_USE_RAINSENSOR,
+  OPTION_RS_NORMALLY_OPEN,
   OPTION_USE_RTC,
   OPTION_RESET,
   NUM_OPTIONS	// total number of options
@@ -69,15 +75,31 @@ typedef enum {
 // you must manually provide the hardware version number here
 // Uncomment only one line below
 
+//#define SVC_HW_VERSION 14
 //#define SVC_HW_VERSION 13
 //#define SVC_HW_VERSION 12
 //#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same pinouts as v1.1
 
 #ifndef SVC_HW_VERSION
-#error "==This error is intentional==: you must define SVC_HW_VERSION in arduino-0023/libraries/OpenSprnikler/defines.h"
+#error "==This error is intentional==: you must define SVC_HW_VERSION in arduino-xxxx/libraries/OpenSprnikler/defines.h"
 #endif
 
-#if SVC_HW_VERSION == 13
+#if SVC_HW_VERSION == 14
+
+  #define PIN_READ_BUTTON    0    // analog pin assigned for button reading
+  #define PIN_SR_LATCH       7    // shift register latch pin
+  #define PIN_SR_DATA        5    // shift register data pin
+  #define PIN_SR_CLOCK       6    // shift register clock pin
+  #define PIN_SR_OE         15    // shift register output enable pin
+  #define PIN_LCD_RS         1    // LCD rs pin
+  #define PIN_LCD_EN         0    // LCD enable pin
+  #define PIN_LCD_D4         4    // LCD d4 pin
+  #define PIN_LCD_D5         5    // LCD d5 pin
+  #define PIN_LCD_D6         6    // LCD d6 pin
+  #define PIN_LCD_D7         9    // LCD d7 pin
+  #define PIN_RAINSENSOR     3    // by default rain sensor is connected to pin D3
+
+#elif SVC_HW_VERSION == 13
 
   #define PIN_READ_BUTTON    0    // analog pin assigned for button reading
   #define PIN_SR_LATCH       7    // shift register latch pin

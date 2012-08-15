@@ -3,7 +3,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
 #include "WProgram.h"
+#endif
 
 // When the display powers up, it is configured as follows:
 //
@@ -258,9 +263,16 @@ inline void LiquidCrystal::command(uint8_t value) {
   send(value, LOW);
 }
 
+#if defined(ARDUINO) && ARDUINO >= 100
+inline size_t LiquidCrystal::write(uint8_t value) {
+  send(value, HIGH);
+  return 1; // assume sucess
+}
+#else
 inline void LiquidCrystal::write(uint8_t value) {
   send(value, HIGH);
 }
+#endif
 
 /************ low level data pushing commands **********/
 

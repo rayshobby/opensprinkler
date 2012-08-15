@@ -1,5 +1,11 @@
 ====== Update ======
 
+* August 14, 2012
+
+- Added support for RTC (OPTION_USE_RTC is functioning now). Enabling this option requires DS1307 RTC. OpenSprinkler 1.4 and above have built-in DS1307. Previous versions require external RTC module (connection from RTC to controller: Vcc->Vin(+5V), Gnd->Gnd, SDA->SDA, SCL->SCL).
+- Split long program data into subsections to support a large number of programs.
+- A couple of changes to increase the robustness of EEPROM read and valve control.
+
 * June 19, 2012
 
 First version of the new interval program. A number of new features have been added, including

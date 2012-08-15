@@ -13,7 +13,7 @@ w("<b>Firmware version</b>: "+(ver/10>>0)+"."+(ver%10)+"<br>");
 w("<b>Device time</b>: "+datestr(devt*1000));
 w("<script type=\"text/javascript\" src=\"http://rayshobby.net/scripts/java/svc1.6/"+((mm)?"manualmode.js":"progmode.js")+"\"></script>");
 // print other information
-w("</span><br><b>Operation</b>: "+(en?("enabled").fontcolor("green"):("DISABLED").fontcolor("red")));
+w("<br><b>Operation</b>: "+(en?("enabled").fontcolor("green"):("DISABLED").fontcolor("red")));
 w("<br><b>Raindelay</b>: "+(rd?("ON").fontcolor("red")+" (till "+datestr(rdst*1000)+")":("off").fontcolor("black")));
 w("<br><b>Rainsense</b>: "+(urs?(rs?("Rain Detected").fontcolor("red"):("no rain").fontcolor("green")):"-"));
 w("<br><b>Sequential</b>: "+(seq?("yes").fontcolor("green"):("no").fontcolor("blue")));

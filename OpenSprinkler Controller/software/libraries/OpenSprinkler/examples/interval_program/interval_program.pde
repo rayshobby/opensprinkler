@@ -17,8 +17,8 @@
 // This is the path where external Javascripst are stored
 // To create custom Javascripts, you need to make a copy of the scripts
 // and put them to your own server, or github, or any available file hosting service
-#define JAVASCRIPT_PATH  "http://rayshobby.net/scripts/java/svc1.6" 
-//"https://github.com/rayshobby/opensprinkler/raw/master/scripts/java/svc1.6"
+#define JAVASCRIPT_PATH  "http://rayshobby.net/scripts/java/svc1.7" 
+//"https://github.com/rayshobby/opensprinkler/raw/master/scripts/java/svc1.7"
 
 
 // ====== Ethernet defines ======
@@ -99,7 +99,12 @@ void setup() {
 
   setTime(0, 0, 0, 1, 1, 1970);         // set initial time
   setSyncInterval(3600);  // setup NTP time sync: sync interval 3600 seconds
-  setSyncProvider(getNtpTime);  // NTP sync callback function
+
+  if (svc.options[OPTION_USE_RTC]) {
+    setSyncProvider(RTC.get);
+  } else {
+    setSyncProvider(getNtpTime);  // NTP sync callback function
+  }
 
   svc.enable(); // enable controller operation  
   svc.lcd_print_time(0);  // display time to LCD
@@ -143,7 +148,7 @@ void loop()
 
     // if ntp sync has failed more than 10 times, restart
     // ray: todo
-    if (ntp_failure > 10)
+    if (timesync_failure > 10)
       svc.reboot();
 
     // ====== Check raindelay status ======
@@ -155,8 +160,7 @@ void loop()
     }
     
     // ====== Check rain sensor status ======
-    svc.status.rain_sensed = digitalRead(PIN_RAINSENSOR) == LOW ? 0 : 1;
-    
+    svc.rainsensor_status();    
     
     // ====== Schedule program data ======
     // check program data and schedule stations only if
@@ -283,6 +287,9 @@ void loop()
       }
     }//if_some_program_is_running
 
+    // activate/deactivate valves
+    svc.apply_all_station_bits();
+      
     // process LCD display
     svc.lcd_print_station(1, ui_anim_chars[curr_time%3]);
   }

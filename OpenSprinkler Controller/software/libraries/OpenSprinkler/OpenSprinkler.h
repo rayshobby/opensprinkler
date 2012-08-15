@@ -8,10 +8,16 @@
 #ifndef _OpenSprinkler_h
 #define _OpenSprinkler_h
 
-#include <WProgram.h>
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
+
 #include <avr/eeprom.h>
 #include "Wire.h"
 #include "Time.h"
+#include "DS1307RTC.h"
 #include "LiquidCrystal.h"
 #include "EtherCard.h"
 #include "defines.h"
@@ -61,6 +67,7 @@ public:
   static void disable();    // disable controller operation, all stations will be closed
   static void raindelay_start(byte rd);  // start raindelay for rd hours
   static void raindelay_stop(); // stop rain delay
+  static void rainsensor_status(); // update rainsensor stateus
   static byte weekday_today();  // returns index of today's weekday (Monday is 0) 
   static void manual_mode_on();  // switch controller to manual mode
   static void manual_mode_off(); // switch controller to program mode

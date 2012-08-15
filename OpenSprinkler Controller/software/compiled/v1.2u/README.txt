@@ -4,6 +4,8 @@
 
 *DO NOT* download .hex files directly from GitHub page by using 'Save File As...' or 'Save Link As...'. Instead, download the entire package as a zip file, or alternatively download individual files using the 'Raw' link.
 
+-------- This folder contains compilex .hex files for OpenSprinkler v1.2u --------
+
 OpenSprinkler v1.2u has on-board USBtiny programmer. Basic instructions are as follows:
 
 - Plug in a USB cable to the USB connector.

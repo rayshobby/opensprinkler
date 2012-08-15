@@ -21,7 +21,11 @@
   1  Nov 2010 - fixed setTime bug (thanks to Korman for this)
 */
 
-#include <WProgram.h> 
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
 
 #include "Time.h"
 
@@ -29,7 +33,7 @@ static tmElements_t tm;          // a cache of time elements
 static time_t       cacheTime;   // the time the cache was updated
 static time_t       syncInterval = 3600;  // time sync will be attempted after this many seconds
 
-int ntp_failure = 0;		// ray: count number of continous ntp sync failures 
+int timesync_failure = 0;
 
 void refreshCache( time_t t){
   if( t != cacheTime)
@@ -250,12 +254,12 @@ time_t now(){
 	if(getTimePtr != 0){
 	  time_t t = getTimePtr();
       if( t != 0) {
-				ntp_failure = 0;
+				timesync_failure = 0;
         setTime(t);
 			}
       else {
         Status = (Status == timeNotSet) ?  timeNotSet : timeNeedsSync;        
-				ntp_failure ++;
+				timesync_failure ++;
 			}
     }
   }  

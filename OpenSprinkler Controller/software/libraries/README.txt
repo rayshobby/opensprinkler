@@ -1,6 +1,12 @@
 ====== Updates ======
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
+* August 14, 2012
+- Update OpenSprinkler library. Firmware version number is now 1.7. Major changes are added support for DS1307 RTC, two new options (station delay time and rain sensor type).
+- Updated code to work with Arduino 1.0 and above. Arduino 0023 is still recommended because it produces binary code that's 1KB smaller than Arudino 1.0.
+- Modified internal EEPROM layout to make space for storing station names (not implemented yet).
+- Fixed clear_station_bits to be consistent with apply_station_bits.
+
 * June 19, 2012
  - Added manual_mode_on and manual_mode_off functions.
   

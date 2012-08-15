@@ -79,7 +79,11 @@ public:
 
   void createChar(uint8_t, uint8_t[]);
   void setCursor(uint8_t, uint8_t); 
+#if defined(ARDUINO) && ARDUINO >= 100
+  virtual size_t write(uint8_t);  
+#else  
   virtual void write(uint8_t);
+#endif  
   void command(uint8_t);
 private:
   void send(uint8_t, uint8_t);

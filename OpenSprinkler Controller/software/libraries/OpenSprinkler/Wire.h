@@ -52,8 +52,13 @@ class TwoWire : public Stream
     uint8_t endTransmission(void);
     uint8_t requestFrom(uint8_t, uint8_t);
     uint8_t requestFrom(int, int);
+#if defined(ARDUINO) && ARDUINO >= 100
+    virtual size_t write(uint8_t);
+    virtual size_t write(const uint8_t *, size_t);
+#else
     virtual void write(uint8_t);
     virtual void write(const uint8_t *, size_t);
+#endif
     virtual int available(void);
     virtual int read(void);
     virtual int peek(void);

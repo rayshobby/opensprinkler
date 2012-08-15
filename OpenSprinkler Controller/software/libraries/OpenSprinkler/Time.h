@@ -120,7 +120,7 @@ void    setSyncInterval(time_t interval); // set the number of seconds between r
 void breakTime(time_t time, tmElements_t &tm);  // break time_t into elements
 time_t makeTime(tmElements_t &tm);  // convert time elements into time_t
 
-extern int ntp_failure;		// ray: count number of continuous ntp failures
+extern int timesync_failure;
 
 #endif /* _Time_h */
 
