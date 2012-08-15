@@ -1,0 +1,1 @@
+Requires Eagle 6.0 or above to open attached .sch and .brd files.
