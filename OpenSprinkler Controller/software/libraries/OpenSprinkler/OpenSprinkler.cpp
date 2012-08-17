@@ -338,8 +338,8 @@ void OpenSprinkler::set_master_station_bit() {
 
 void OpenSprinkler::options_setup() {
 
-  // add 1 second delay to allow EEPROM to stablize
-  delay(1000);
+  // add 0.25 second delay to allow EEPROM to stablize
+  delay(250);
   
   // check reset condition
   if (eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_FW_VERSION))!=SVC_FW_VERSION ||

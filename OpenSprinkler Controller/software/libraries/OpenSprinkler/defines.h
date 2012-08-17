@@ -171,7 +171,7 @@ typedef enum {
 #define DISPLAY_MSG_MS      2000  // message display time (milliseconds)
 
 // ====== Ethernet Defines ======
-#define ETHER_BUFFER_SIZE     700	// increase if webpage becomes too large,
+#define ETHER_BUFFER_SIZE     750	// increase if webpage becomes too large,
                                   // but do not exceed 1000
 #define TMP_BUFFER_SIZE        30 // scratch buffer size
 

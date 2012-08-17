@@ -27,6 +27,13 @@ prog_uchar htmlOkHeader[] PROGMEM =
     "\r\n"
 ;
 
+prog_uchar htmlOkHeaderjs[] PROGMEM = 
+    "HTTP/1.0 200 OK\r\n"
+    "Content-Type: application/x-javascript\r\n"
+    "Pragma: no-cache\r\n"
+    "\r\n"
+;
+
 prog_uchar htmlMobileHeader[] PROGMEM =
     "<meta name=viewport content=\"width=640\">\r\n"
 ;
@@ -74,7 +81,7 @@ boolean print_webpage_programdata_subsection(char *p, byte pos) {
   ether.urlDecode(p);
   
   byte ssid = ((*p)-'0')*10;
-  bfill.emit_p(PSTR("$F"), htmlOkHeader);
+  bfill.emit_p(PSTR("$F"), htmlOkHeaderjs);
   bfill_programdata_sub(ssid);
   return true;
 }
