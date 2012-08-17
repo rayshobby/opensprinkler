@@ -75,7 +75,7 @@ typedef enum {
 // you must manually provide the hardware version number here
 // Uncomment only one line below
 
-//#define SVC_HW_VERSION 14
+#define SVC_HW_VERSION 14
 //#define SVC_HW_VERSION 13
 //#define SVC_HW_VERSION 12
 //#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same pinouts as v1.1
