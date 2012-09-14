@@ -2,44 +2,45 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   June 2012 @ Rayshobby.net
+   Sep 2012 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  17  // firmware version. when this is different from the version number
-                            // stored in eeprom, an eeprom reset will be automatically triggered
+#define SVC_FW_VERSION  18  // firmware version. when this is different from the version number
+                            // stored in EEPROM, an EEPROM reset will be automatically triggered
 
 #define MAX_EXT_BOARDS  3   // maximum number of ext. boards (each consists of 8 stations)
                             // total number of stations: (1+MAX_EXT_BOARDS) * 8
+                            // increasing this number will consume more memory and EEPROM space
 
-#define STATION_NAME_SIZE  12 // size of each station name, default is 12 letters long
-
-// External I2C EEPROM
-//#define I2C_EEPROM_DEVICE_ADDR  0x50
-//#define I2C_EEPROM_SIZE         16384 // external eeprom size (in bytes)
-//#define EEPROM_BLOCK_SIZE       16    // eeprom block size, DO NOT CHANGE
+#define STATION_NAME_SIZE  12 // size of each station name, default is 12 letters max
 
 // Internal EEPROM Defines
 #define INT_EEPROM_SIZE         1024    // ATmega328 eeprom size
-#define ADDR_EEPROM_OPTIONS     0x0000  // address where options are stored, 24 bytes reserved
-#define ADDR_EEPROM_PASSWORD    0x0018	// address where password is stored, 16 bytes reserved
-#define ADDR_EEPROM_LOCATION    0x0028  // address where location is stored, 32 bytes reserved
-#define ADDR_EEPROM_SNAMES      0x0048  // address where station names are stored
-#define ADDR_EEPROM_USER        (ADDR_EEPROM_SNAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
-                                        // address where user data is stored
+#define ADDR_EEPROM_OPTIONS     0x0000  // address where options are stored, 32 bytes reserved
+#define ADDR_EEPROM_PASSWORD    0x0020	// address where password is stored, 16 bytes reserved
+#define ADDR_EEPROM_LOCATION    0x0030  // address where location is stored, 32 bytes reserved
+#define ADDR_EEPROM_STN_NAMES   0x0050  // address where station names are stored
+#define ADDR_EEPROM_RUNONCE     (ADDR_EEPROM_STN_NAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
+                                        // address where run-once data is stored
+#define ADDR_EEPROM_MAS_OP      (ADDR_EEPROM_RUNONCE+(MAX_EXT_BOARDS+1)*8*2)
+                                        // address where master operation bits are stored
+#define ADDR_EEPROM_USER        (ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1))
+                                        // address where program schedule data is stored
 
 #define DEFAULT_PASSWORD        "opendoor"
 #define DEFAULT_LOCATION        "Boston,MA" // zip code, city name or any google supported location strings
                                             // IMPORTANT: use , or + in place of space
                                             // So instead of 'New York', use 'New,York' or 'New+York'
 // macro define of each option
-// See OpenSprinkler.h for details
+// See OpenSprinkler.cpp for details on each option
 typedef enum {
   OPTION_FW_VERSION = 0,
   OPTION_TIMEZONE,
+  OPTION_USE_NTP,
   OPTION_USE_DHCP,
   OPTION_STATIC_IP1,
   OPTION_STATIC_IP2,
@@ -49,36 +50,39 @@ typedef enum {
   OPTION_GATEWAY_IP2,
   OPTION_GATEWAY_IP3,
   OPTION_GATEWAY_IP4,
+  OPTION_HTTPPORT_0,
+  OPTION_HTTPPORT_1,
+  OPTION_NETFAIL_RECONNECT,
   OPTION_EXT_BOARDS,
-  OPTION_MASTER_STATION,
   OPTION_SEQUENTIAL,
-  OPTION_STATION_DELAY,
+  OPTION_STATION_DELAY_TIME,
+  OPTION_MASTER_STATION,
+  OPTION_MASTER_ON_ADJ,
+  OPTION_MASTER_OFF_ADJ,
   OPTION_USE_RAINSENSOR,
-  OPTION_RS_NORMALLY_OPEN,
-  OPTION_USE_RTC,
+  OPTION_RAINSENSOR_TYPE,
+  OPTION_WATER_LEVEL,
+  OPTION_SELFTEST_TIME,
+  OPTION_IGNORE_PASSWORD,
   OPTION_RESET,
   NUM_OPTIONS	// total number of options
 } OS_OPTION_t;
 
-// Option flags
-#define OPFLAG_DEFAULT      0x00
-#define OPFLAG_WEB_EDIT     0x01    // the option is editable on webpage
-#define OPFLAG_BOOL         0x02    // the option is a boolean variable
+// Option Flags
+#define OPFLAG_NONE        0x00  // default flag, this option is not editable
+#define OPFLAG_SETUP_EDIT  0x01  // this option is editable during startup
+#define OPFLAG_WEB_EDIT    0x02  // this option is editable on the Options webpage
+
 
 // =====================================
 // ====== Arduino Pin Assignments ======
 // =====================================
 
 // ------ Define hardware version here ------
-// Since each hardware version may use different pin assignments,
-// and there is currently no mechanism for software to figure that out,
-// you must manually provide the hardware version number here
-// Uncomment only one line below
-
-#define SVC_HW_VERSION 14
+//#define SVC_HW_VERSION 14
 //#define SVC_HW_VERSION 13
 //#define SVC_HW_VERSION 12
-//#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same pinouts as v1.1
+//#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same settings as v1.1
 
 #ifndef SVC_HW_VERSION
 #error "==This error is intentional==: you must define SVC_HW_VERSION in arduino-xxxx/libraries/OpenSprnikler/defines.h"
@@ -97,7 +101,7 @@ typedef enum {
   #define PIN_LCD_D5         5    // LCD d5 pin
   #define PIN_LCD_D6         6    // LCD d6 pin
   #define PIN_LCD_D7         9    // LCD d7 pin
-  #define PIN_RAINSENSOR     3    // by default rain sensor is connected to pin D3
+  #define PIN_RAINSENSOR     3    // rain sensor is connected to pin D3
 
 #elif SVC_HW_VERSION == 13
 
@@ -171,9 +175,9 @@ typedef enum {
 #define DISPLAY_MSG_MS      2000  // message display time (milliseconds)
 
 // ====== Ethernet Defines ======
-#define ETHER_BUFFER_SIZE     750	// increase if webpage becomes too large,
-                                  // but do not exceed 1000
-#define TMP_BUFFER_SIZE        30 // scratch buffer size
+#define ETHER_BUFFER_SIZE     720	// if buffer size is increased, you must check the total RAM consumption
+                                  // otherwise it may cause the program to crash
+#define TMP_BUFFER_SIZE        32 // scratch buffer size
 
 #endif
 

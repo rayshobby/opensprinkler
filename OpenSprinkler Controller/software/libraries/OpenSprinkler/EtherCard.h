@@ -97,7 +97,7 @@ public:
   static void prepare (PGM_P fmt, ...);
   static uint16_t length ();
   static void extract (uint16_t offset, uint16_t count, void* buf);
-  static uint16_t cleanup ();
+  static void cleanup ();
 
   friend void dumpBlock (const char* msg, uint8_t idx); // optional
   friend void dumpStash (const char* msg, void* ptr);   // optional
@@ -164,14 +164,23 @@ public:
   static uint8_t tcpSend ();
   static const char* tcpReply (byte fd);
   // dhcp.cpp
+  static uint32_t dhcpStartTime ();
+  static uint32_t dhcpLeaseTime ();
+  static byte dhcpFSM ();
+  static bool dhcpValid ();
+  static bool dhcpLease ();
+  static bool dhcpSetup (const char *);
   static bool dhcpSetup ();
-  static bool dhcpExpired ();
   // dns.cpp
   static bool dnsLookup (prog_char* name, bool fromRam =false);
   // webutil.cpp
   static void copyIp (uint8_t *dst, const uint8_t *src);
   static void copyMac (uint8_t *dst, const uint8_t *src);
+  /*
+  static void printIp (const byte *buf);
   static void printIp (const char* msg, const uint8_t *buf);
+  static void printIp (const __FlashStringHelper *ifsh, const uint8_t *buf);
+  */
   static uint8_t findKeyVal(const char *str,char *strbuf,
                             uint8_t maxlen, const char *key);
   static void urlDecode(char *urlbuf);

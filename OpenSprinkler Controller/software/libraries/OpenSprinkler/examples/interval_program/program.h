@@ -2,13 +2,14 @@
 
 /* Program Data Structures and Functions
    Creative Commons Attribution-ShareAlike 3.0 license
-   June 2012 @ Rayshobby.net
+   Sep 2012 @ Rayshobby.net
 */
 
 #include <OpenSprinkler.h>
 
 // Program data structure
-struct ProgramStruct {
+class ProgramStruct {
+public:
   // 'days' are formatted as follows:
   // if(days[0].bits[7]==0), this is a standard weekly program:
   //    days[0].bits[0..6] correspond to Monday to Sunday
@@ -23,6 +24,9 @@ struct ProgramStruct {
   uint16_t interval;    // interval in minutes
   uint16_t duration;    // duration in seconds
   byte stations[MAX_EXT_BOARDS+1];  // station bit
+  byte enabled;         // program enable
+  
+  byte check_match(time_t t);
 };
 
 // Log data structure
@@ -33,21 +37,20 @@ struct LogStruct {
   unsigned long endtime;
 };
 
-// program structure size: 14 bytes default
+// program structure size
 #define PROGRAMSTRUCT_SIZE   (sizeof(ProgramStruct))
 #define ADDR_PROGRAMCOUNTER  ADDR_EEPROM_USER
 #define ADDR_PROGRAMDATA     (ADDR_EEPROM_USER+2)
-// maximum number of programs, restricted by internal EEPROM size, 40 default
+// maximum number of programs, restricted by internal EEPROM size, 32 default
 #define MAX_NUMBER_PROGRAMS  ((INT_EEPROM_SIZE-ADDR_EEPROM_USER-2)/PROGRAMSTRUCT_SIZE)
 
 extern OpenSprinkler svc;
 
 class ProgramData {
 public:  
-  static unsigned int remaining_time[];	// remaining schedule time for each station
+  static unsigned long scheduled_start_time[];// scheduled start time for each station
   static unsigned long scheduled_stop_time[]; // scheduled stop time for each station
-  static byte scheduled_program_index[];  // scheduled program index
-  static unsigned int scheduled_duration[]; // scheduled duration (in seconds)
+  static byte scheduled_program_index[]; // scheduled program index
   static byte  nprograms;     // number of programs
   static LogStruct lastrun;   // last run log
   
@@ -58,7 +61,6 @@ public:
   static void add(ProgramStruct *buf);
   static void modify(byte pid, ProgramStruct *buf);
   static void del(byte pid);
-  static unsigned int check_match(byte sid, time_t t, byte *pid);
   static void drem_to_relative(byte days[2]); // absolute to relative reminder conversion
   static void drem_to_absolute(byte days[2]);
 private:  

@@ -156,6 +156,7 @@ void Stash::prepare (PGM_P fmt, ...) {
       switch (pgm_read_byte(fmt++)) {
         case 'D': {
           char buf[7];
+          //wtoa(argval, buf); //ray
           itoa(argval, buf, 10);
           arglen = strlen(buf);
           break;
@@ -165,7 +166,7 @@ void Stash::prepare (PGM_P fmt, ...) {
           ultoa(argval, buf, 10);
           arglen = strlen(buf);
           break;
-        }
+        }        
         case 'S':
           arglen = strlen((const char*) argval);
           break;
@@ -174,8 +175,8 @@ void Stash::prepare (PGM_P fmt, ...) {
           break;
         case 'E': {
           byte* s = (byte*) argval;
-          char c;
-          while ((c = eeprom_read_byte(s++)) != 0)
+          char d;
+          while ((d = eeprom_read_byte(s++)) != 0)
             ++arglen;
           break;
         }
@@ -202,7 +203,7 @@ void Stash::extract (word offset, word count, void* buf) {
   word* segs = Stash::bufs[0].words;
   PGM_P fmt = (PGM_P) *++segs;
   Stash stash;
-  char mode = '@', tmp[12], *ptr, *out = (char*) buf;
+  char mode = '@', tmp[7], *ptr = NULL, *out = (char*) buf;
   for (word i = 0; i < offset + count; ) {
     char c = 0;
     switch (mode) {
@@ -216,12 +217,14 @@ void Stash::extract (word offset, word count, void* buf) {
         mode = pgm_read_byte(fmt++);
         switch (mode) {
           case 'D':
+            //wtoa(arg, tmp); //ray
             itoa(arg, tmp, 10);
             ptr = tmp;
             break;
           case 'L': // ray
             ultoa(arg, tmp, 10);
             ptr = tmp;
+            break;            
           case 'S':
           case 'F':
           case 'E':
@@ -235,9 +238,8 @@ void Stash::extract (word offset, word count, void* buf) {
         continue;
       }
       case 'D':
-      case 'L': // ray
+      case 'L':
       case 'S':
-
         c = *ptr++;
         break;
       case 'F':
@@ -260,7 +262,7 @@ void Stash::extract (word offset, word count, void* buf) {
   }
 }
 
-word Stash::cleanup () {
+void Stash::cleanup () {
   Stash::load(0, 0);
   word* segs = Stash::bufs[0].words;
   PGM_P fmt = (PGM_P) *++segs;
@@ -292,26 +294,27 @@ void BufferFiller::emit_p(PGM_P fmt, ...) {
         c = pgm_read_byte(fmt++);
         switch (c) {
             case 'D':
+                //wtoa(va_arg(ap, word), (char*) ptr);  //ray
                 itoa(va_arg(ap, word), (char*) ptr, 10);
                 break;
-            case 'L': // ray
-                ultoa(va_arg(ap, unsigned long), (char*) ptr, 10);
+            case 'L':
+                ultoa(va_arg(ap, long), (char*) ptr, 10);
                 break;
             case 'S':
                 strcpy((char*) ptr, va_arg(ap, const char*));
                 break;
             case 'F': {
                 PGM_P s = va_arg(ap, PGM_P);
-                char c;
-                while ((c = pgm_read_byte(s++)) != 0)
-                    *ptr++ = c;
+                char d;
+                while ((d = pgm_read_byte(s++)) != 0)
+                    *ptr++ = d;
                 continue;
             }
             case 'E': {
                 byte* s = va_arg(ap, byte*);
-                char c;
-                while ((c = eeprom_read_byte(s++)) != 0)
-                    *ptr++ = c;
+                char d;
+                while ((d = eeprom_read_byte(s++)) != 0)
+                    *ptr++ = d;
                 continue;
             }
             default:

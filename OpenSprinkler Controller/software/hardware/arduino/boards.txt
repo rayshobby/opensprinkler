@@ -3,9 +3,9 @@
 svc.name=OpenSprinkler
 svc.upload.using=arduino:usbtinyisp
 svc.upload.maximum_size=32768
-svc.bootloader.low_fuses=0xFF
-svc.bootloader.high_fuses=0xD7
-svc.bootloader.extended_fuses=0x07
+svc.bootloader.low_fuses=0xE2
+svc.bootloader.high_fuses=0xD1
+svc.bootloader.extended_fuses=0x06
 svc.bootloader.path=optiboot
 svc.bootloader.file=optiboot_atmega328.hex
 svc.bootloader.unlock_bits=0x3F

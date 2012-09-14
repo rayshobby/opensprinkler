@@ -2,13 +2,13 @@
 
 /* Server functions
    Creative Commons Attribution-ShareAlike 3.0 license
-   Mar 2012 @ Rayshobby.net
+   Sep 2012 @ Rayshobby.net
 */
 
 #include <OpenSprinkler.h>
 
 // External variables defined in main pde file
-extern int ntpclientportL;
+extern uint8_t ntpclientportL;
 extern byte ntpip[];
 extern BufferFiller bfill;
 extern char tmp_buffer[];
@@ -27,22 +27,8 @@ prog_uchar htmlOkHeader[] PROGMEM =
     "\r\n"
 ;
 
-prog_uchar htmlOkHeaderjs[] PROGMEM = 
-    "HTTP/1.0 200 OK\r\n"
-    "Content-Type: application/x-javascript\r\n"
-    "Pragma: no-cache\r\n"
-    "\r\n"
-;
-
 prog_uchar htmlMobileHeader[] PROGMEM =
     "<meta name=viewport content=\"width=640\">\r\n"
-;
-
-prog_uchar htmlFavicon[] PROGMEM = 
-    "HTTP/1.0 301 Moved Permanently\r\nLocation: "
-    "http://rayshobby.net/rayshobby.ico"
-    "\r\n\r\nContent-Type: text/html\r\n\r\n"
-    "<h1>301 Moved Permanently</h1>\n"
 ;
 
 prog_uchar htmlUnauthorized[] PROGMEM = 
@@ -52,9 +38,103 @@ prog_uchar htmlUnauthorized[] PROGMEM =
     "<h1>401 Unauthorized</h1>"
 ;
 
+prog_uchar htmlReturnHome[] PROGMEM = 
+  "<script>window.location=\"/\";</script>\n"
+;
+
+prog_uchar htmlReturnOptions[] PROGMEM = 
+  "window.location=\"/vo\";</script>\n"
+;
+
+/*prog_uchar htmlFavicon[] PROGMEM = 
+    "HTTP/1.0 301 Moved Permanently\r\nLocation: "
+    "http://rayshobby.net/rayshobby.ico"
+    "\r\n\r\nContent-Type: text/html\r\n\r\n"
+    "<h1>301 Moved Permanently</h1>\n"
+;*/
+
+// check and verify password
+boolean check_password(char *p)
+{
+  if (svc.options[OPTION_IGNORE_PASSWORD].value)  return true;
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw") || !svc.password_verify(tmp_buffer)) {
+    return false;
+  }
+  return true;
+}
+  
+// fill buffer with station names
+void bfill_station_names()
+{
+  byte sid;
+  bfill.emit_p(PSTR("snames=["));
+  for(sid=0;sid<svc.nstations;sid++) {
+    svc.get_station_name(sid, tmp_buffer);
+    bfill.emit_p(PSTR("\'$S\',"), tmp_buffer);
+  }
+  bfill.emit_p(PSTR("\'\'];\n"));
+}
+
+// webpage for printing station names
+boolean print_webpage_view_stations(char *p)
+{
+  bfill.emit_p(PSTR("$F<script>var nboards=$D,maxlen=$D,mas=$D,ipas=$D,"), htmlOkHeader,
+               svc.nboards, STATION_NAME_SIZE, svc.options[OPTION_MASTER_STATION].value,
+               svc.options[OPTION_IGNORE_PASSWORD].value);
+  bfill_station_names();
+  // fill master operation bits
+  bfill.emit_p(PSTR("var masop=["));
+  for(byte i=0;i<svc.nboards;i++) {
+    bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
+  }
+  bfill.emit_p(PSTR("0];</script>\n<script src=\"$F/viewstations.js\"></script>\n"), htmlExtJavascriptPath);
+  return true;
+}
+
+// This is part of javascript for printing station names
+boolean print_webpage_station_names(char *p) {
+
+  bfill.emit_p(PSTR("$Fvar "), htmlOkHeader);
+  bfill_station_names();
+  return true;
+}
+
+// server function for accepting station name changes
+boolean print_webpage_change_stations(char *p)
+{
+  p+=3;
+  
+  // check password
+  if(check_password(p)==false)  return false;
+  
+  byte sid,bid;
+  char tbuf2[4] = {'s', 0, 0, 0};
+  // process station names
+  for(sid=0;sid<svc.nstations;sid++) {
+    itoa(sid, tbuf2+1, 10);
+    if(ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, tbuf2)) {
+      ether.urlDecode(tmp_buffer);
+      svc.set_station_name(sid, tmp_buffer);
+    }
+  }
+
+  // process station master operation bits
+  tbuf2[0]='m';
+  for(bid=0;bid<svc.nboards;bid++) {
+    itoa(bid, tbuf2+1, 10);
+    if(ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, tbuf2)) {
+      svc.masop_bits[bid] = atoi(tmp_buffer);
+    }
+  }
+  svc.masop_save();
+  
+  bfill.emit_p(PSTR("$F<script>alert(\"Station changes saved.\");window.location=\"/vs\";</script>\n"), htmlOkHeader);
+  return true;
+}
+
 // split program data to subsections in order
 // to fit each subsection in a single http buffer
-#define PROGRAMDATA_SUBSECTION_SIZE 10
+#define PROGRAMDATA_SUBSECTION_SIZE  8
 
 // fill program data subsection
 void bfill_programdata_sub(byte start_index)
@@ -67,55 +147,125 @@ void bfill_programdata_sub(byte start_index)
     // convert interval remainder (absolute->relative)
     if (prog.days[1] > 1)  pd.drem_to_relative(prog.days);
         
-    bfill.emit_p(PSTR("pd[$D]=[$D,$D,$D,$D,$D,$D"), pid, prog.days[0], prog.days[1],
-      prog.start_time, prog.end_time, prog.interval, prog.duration);
-    for (bid=0; bid<=svc.options[OPTION_EXT_BOARDS]; bid++) {
+    bfill.emit_p(PSTR("pd[$D]=[$D,$D,$D,$D,$D,$D,$D"), pid, prog.enabled, 
+      prog.days[0], prog.days[1], prog.start_time, prog.end_time, prog.interval, prog.duration);
+    for (bid=0; bid<svc.nboards; bid++) {
       bfill.emit_p(PSTR(",$D"),prog.stations[bid]);
     }
     bfill.emit_p(PSTR("];"));
   }
 }
 
-boolean print_webpage_programdata_subsection(char *p, byte pos) {
-  p=p+pos;
+// Javascript for printing program data subsection page
+boolean print_webpage_programdata_subsection(char *p) {
+  p+=2;
   ether.urlDecode(p);
   
-  byte ssid = ((*p)-'0')*10;
-  bfill.emit_p(PSTR("$F"), htmlOkHeaderjs);
+  byte ssid = ((*p)-'0')*PROGRAMDATA_SUBSECTION_SIZE;
+  bfill.emit_p(PSTR("$F"), htmlOkHeader);
   bfill_programdata_sub(ssid);
   return true;
 }
 
-// fill program data
+// fill buffer with program data
 void bfill_programdata()
 {
   byte ssid;
   
-  bfill.emit_p(PSTR("<script>var nprogs=$D;var nboards=$D;var pd=[];"),
-                    pd.nprograms, svc.options[OPTION_EXT_BOARDS]+1);
+  bfill.emit_p(PSTR("var nprogs=$D,nboards=$D,ipas=$D,mnp=$D,pd=[];"),
+                    pd.nprograms, svc.nboards,svc.options[OPTION_IGNORE_PASSWORD].value, MAX_NUMBER_PROGRAMS);
   bfill_programdata_sub(0);
   bfill.emit_p(PSTR("</script>\n"));
   if (pd.nprograms > PROGRAMDATA_SUBSECTION_SIZE) {
     // create subsection pages
     for (ssid=1; ssid<=((pd.nprograms-1)/PROGRAMDATA_SUBSECTION_SIZE); ssid++) {
-      bfill.emit_p(PSTR("<script src=pds$D.js></script>\n"), ssid);
+      bfill.emit_p(PSTR("<script src=ps$D.js></script>\n"), ssid);
     }
   }
 }
 
-boolean print_webpage_view_program(char *str, byte pos) {
+// webpage for printing run-once program
+boolean print_webpage_view_runonce(char *str) {
+  bfill.emit_p(PSTR("$F$F<script>var nboards=$D,mas=$D,ipas=$D,dur=["), htmlOkHeader, htmlMobileHeader,
+               svc.nboards, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_IGNORE_PASSWORD].value);
 
-  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
+  byte sid;
+  uint16_t dur;
+  unsigned char *addr = (unsigned char*)ADDR_EEPROM_RUNONCE;
+  for(sid=0;sid<svc.nstations;sid++, addr+=2) {
+    dur=eeprom_read_byte(addr);
+    dur=(dur<<8)+eeprom_read_byte(addr+1);
+    bfill.emit_p(PSTR("$D,"),dur);
+  }
+  bfill.emit_p(PSTR("0];</script>\n"));
+  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
+  bfill.emit_p(PSTR("<script src=\"$F/viewro.js\"></script>\n"), htmlExtJavascriptPath);
+  
+  return true;
+}
+
+// server function to accept run-once program
+boolean print_webpage_change_runonce(char *p) {
+  p+=3;
+  ether.urlDecode(p);
+  
+  // check password
+  if(check_password(p)==false)  return false;
+  
+  // search for the start of v=[
+  char *pv;
+  boolean found=false;
+  for(pv=p;(*pv)!=0 && pv<p+100;pv++) {
+    if(strncmp(pv, "t=[", 3)==0) {
+      found=true;
+      break;
+    }
+  }
+  if(!found)  return false;
+  pv+=3;
+  
+  // reset all stations and prepare to run one-time program
+  reset_all_stations();
+      
+  byte sid;
+  uint16_t dur;
+  unsigned char *addr = (unsigned char*)ADDR_EEPROM_RUNONCE;
+  boolean match_found = false;
+  for(sid=0;sid<svc.nstations;sid++, addr+=2) {
+    dur=parse_listdata(&pv);
+    eeprom_write_byte(addr, (dur>>8));
+    eeprom_write_byte(addr+1, (dur&0xff));
+    if (dur>0) {
+      pd.scheduled_stop_time[sid] = dur;
+      pd.scheduled_program_index[sid] = 254;      
+      match_found = true;
+    }
+  }
+  if(match_found) {
+    schedule_all_stations(now());
+  }
+  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlReturnHome);
+  return true;
+}
+
+// webpage for printing program summary page
+boolean print_webpage_view_program(char *str) {
+
+  bfill.emit_p(PSTR("$F$F<script>"), htmlOkHeader, htmlMobileHeader);
   
   bfill_programdata();
+  
+  // print station names
+  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
   
   bfill.emit_p(PSTR("<script src=\"$F/viewprog.js\"></script>\n"), htmlExtJavascriptPath);
 
   return true;
 }
 
-boolean print_webpage_modify_program(char *p, byte pos) {
-  p=p+(pos+1);
+// webpage for printing program modification page 
+boolean print_webpage_modify_program(char *p) {
+  p+=3;
   ether.urlDecode(p);
   
   if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pid")) {
@@ -124,10 +274,7 @@ boolean print_webpage_modify_program(char *p, byte pos) {
   int pid=atoi(tmp_buffer);
   if (!(pid>=-1 && pid< pd.nprograms)) return false;
   bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
-  bfill.emit_p(PSTR("<script>var nboards=$D;var pid=$D;"),
-               svc.options[OPTION_EXT_BOARDS]+1, pid);
-  // if(pid>-1), this is modifying an existing program
-  // if(pid==1), this is adding a new program, no need to provide programdata
+  bfill.emit_p(PSTR("<script>var nboards=$D,pid=$D,ipas=$D;"), svc.nboards, pid, svc.options[OPTION_IGNORE_PASSWORD].value);
   if(pid>-1) {
     ProgramStruct prog;
     pd.read(pid, &prog);
@@ -135,33 +282,35 @@ boolean print_webpage_modify_program(char *p, byte pos) {
     // process interval day remainder (absolute->relative)
     if (prog.days[1] > 1)  pd.drem_to_relative(prog.days);
     
-    bfill.emit_p(PSTR("var prog=[$D,$D,$D,$D,$D,$D"),
+    bfill.emit_p(PSTR("var prog=[$D,$D,$D,$D,$D,$D,$D"), prog.enabled,
                  prog.days[0], prog.days[1], prog.start_time, prog.end_time, prog.interval, prog.duration);
-    for(byte bid=0;bid<svc.options[OPTION_EXT_BOARDS]+1;bid++) {
+    for(byte bid=0;bid<svc.nboards;bid++) {
       bfill.emit_p(PSTR(",$D"), prog.stations[bid]);
     }
     bfill.emit_p(PSTR("];"));
   }
-  bfill.emit_p(PSTR("</script>\n<script src=\"$F/modprog.js\"></script>\n"), htmlExtJavascriptPath);
+  // print station names
+  bfill.emit_p(PSTR("</script>\n<script src=\"pn.js\"></script>\n"));  
+  bfill.emit_p(PSTR("<script src=\"$F/modprog.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
 }
 
 /*=============================================
+  Delete Program
+  
   HTTP GET command format:
   /dp?pw=xxx&pid=xxx
   
   pw: password
   pid:program index (-1 will delete all programs)
   =============================================*/
-boolean print_webpage_delete_program(char *p, byte pos) {
+boolean print_webpage_delete_program(char *p) {
 
-  p=p+(pos+1);
+  p+=3;
   ether.urlDecode(p);
   
   // check password
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw") || !svc.password_verify(tmp_buffer)) {
-    return false;
-  }
+  if(check_password(p)==false)  return false;
   
   if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pid"))
     return false;
@@ -172,16 +321,16 @@ boolean print_webpage_delete_program(char *p, byte pos) {
   } else if (pid < pd.nprograms) {
     pd.del(pid);
   } else {
-    bfill.emit_p(PSTR("$F<script>alert(\"Program index out of range.\")</script>\n"), htmlOkHeader);
-    bfill.emit_p(PSTR("<meta http-equiv=\"refresh\" content=\"0; url=/vp\">"));    
-    return true;
+    return false;
   }
 
-  bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"0; url=/vp\">"), htmlOkHeader);
+  bfill.emit_p(PSTR("$F<script>window.location=\"/vp\";</script>"), htmlOkHeader);
   return true;
 }
 
 /*=============================================
+  Plot Program Data
+  
   HTTP GET command format:
   /gp?d=xx&m=xx&y=xx
   
@@ -191,8 +340,8 @@ boolean print_webpage_delete_program(char *p, byte pos) {
   (if any field is missing, will use the current
    date/month/year)
   =============================================*/
-boolean print_webpage_plot_program(char *p, byte pos) {
-  p=p+(pos+1);
+boolean print_webpage_plot_program(char *p) {
+  p+=3;
   ether.urlDecode(p);
   
   // yy,mm,dd are simulated date for graphical view
@@ -203,53 +352,56 @@ boolean print_webpage_plot_program(char *p, byte pos) {
   devday = t/SECS_PER_DAY;  devmin = hour(t)*60+minute();
   
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "d")) {
-    if (strncmp(tmp_buffer, "today", 5)!=0) {
-      dd=atoi(tmp_buffer);
-      if (!(dd>0 && dd<=31))  return false;
-    }
+    dd=atoi(tmp_buffer);
+    if (dd==0)  dd=day(t);
   }
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "m")) {
     mm=atoi(tmp_buffer);
-    if (!(mm>0 && mm<=12))  return false;
   }
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "y")) {
     yy=atoi(tmp_buffer);
-    if (!(yy>=1970))  return false;
   }
   
-  bfill.emit_p(PSTR("$F$F<script>var seq=$D,mas=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;</script>\n"), htmlOkHeader, htmlMobileHeader,
-               svc.options[OPTION_SEQUENTIAL], svc.options[OPTION_MASTER_STATION], devday, devmin, dd, mm, yy);
-
+  bfill.emit_p(PSTR("$F<script>var seq=$D,mas=$D,wl=$D,sdt=$D,mton=$D,mtoff=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"),
+               htmlOkHeader, svc.options[OPTION_SEQUENTIAL].value, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_WATER_LEVEL].value,
+               svc.options[OPTION_STATION_DELAY_TIME].value, svc.options[OPTION_MASTER_ON_ADJ].value, svc.options[OPTION_MASTER_OFF_ADJ].value,
+               devday, devmin, dd, mm, yy);
+  bfill.emit_p(PSTR("var masop=["));
+  for(byte i=0;i<svc.nboards;i++) {
+    bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
+  }
+  bfill.emit_p(PSTR("0];"));
   bfill_programdata();
-  
+  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));    
   bfill.emit_p(PSTR("<script src=\"$F/plotprog.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
 }
 
-uint16_t parse_programdata_field(char **p) {
+// parse one number from a comma separate list
+uint16_t parse_listdata(char **p) {
   char* pv;
   int i=0;
   tmp_buffer[i]=0;
   // copy to tmp_buffer until a non-number is encountered
   for(pv=(*p);pv<(*p)+10;pv++) {
-    if(!((*pv)>='0'&&(*pv)<='9'))  break;
-    else tmp_buffer[i++] = (*pv);
+    if ((*pv)=='-' || (*pv)=='+' || ((*pv)>='0'&&(*pv)<='9'))
+      tmp_buffer[i++] = (*pv);
+    else
+      break;
   }
   tmp_buffer[i]=0;
   *p = pv+1;
   return atoi(tmp_buffer);
 }
 
-// webpage for handling program changes
-boolean print_webpage_change_program(char *p, byte pos) {
+// server function to accept program changes
+boolean print_webpage_change_program(char *p) {
 
-  p=p+(pos+1);
+  p+=3;
   ether.urlDecode(p);
   
   // check password
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw") || !svc.password_verify(tmp_buffer)) {
-    return false;
-  }
+  if(check_password(p)==false)  return false;
     
   // parse program index
   if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pid")) {
@@ -273,16 +425,17 @@ boolean print_webpage_change_program(char *p, byte pos) {
   if(!found)  return false;
   pv+=3;
   // parse data field
-  prog.days[0]= parse_programdata_field(&pv);
-  prog.days[1]= parse_programdata_field(&pv);
-  prog.start_time = parse_programdata_field(&pv);
-  prog.end_time = parse_programdata_field(&pv);
-  prog.interval = parse_programdata_field(&pv);
-  prog.duration = parse_programdata_field(&pv);
-  
+  prog.enabled = parse_listdata(&pv);
+  prog.days[0]= parse_listdata(&pv);
+  prog.days[1]= parse_listdata(&pv);
+  prog.start_time = parse_listdata(&pv);
+  prog.end_time = parse_listdata(&pv);
+  prog.interval = parse_listdata(&pv);
+  prog.duration = parse_listdata(&pv);
+
   byte bid;
-  for(bid=0;bid<svc.options[OPTION_EXT_BOARDS]+1;bid++) {
-    prog.stations[bid] = parse_programdata_field(&pv);
+  for(bid=0;bid<svc.nboards;bid++) {
+    prog.stations[bid] = parse_listdata(&pv);
   }
   for(;bid<MAX_EXT_BOARDS+1;bid++) {
     prog.stations[bid] = 0;     // clear unused field
@@ -300,47 +453,54 @@ boolean print_webpage_change_program(char *p, byte pos) {
     pd.modify(pid, &prog);
     bfill.emit_p(PSTR("alert(\"Program $D modified\");"), pid+1);
   }
-  bfill.emit_p(PSTR("</script>\n<meta http-equiv=\"refresh\" content=\"0; url=/vp\">"));
+  bfill.emit_p(PSTR("window.location=\"/vp\";</script>\n"));
   return true;
 }
 
 // print home page
-boolean print_webpage_home()
+boolean print_webpage_home(char *p)
 {
   byte bid, sid;
+  unsigned long curr_time = now();
   bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
   bfill.emit_p(PSTR("<script>var ver=$D,devt=$L;\n"),
-               SVC_FW_VERSION, now());
-  bfill.emit_p(PSTR("var nbrd=$D,seq=$D,tz=$D,sbits=["),
-               (int)svc.options[OPTION_EXT_BOARDS]+1,
-               (int)svc.options[OPTION_SEQUENTIAL],
-               (int)svc.options[OPTION_TIMEZONE]-12
-              );
-  for(bid=0;bid<=svc.options[OPTION_EXT_BOARDS];bid++)
+               SVC_FW_VERSION, curr_time);
+  bfill.emit_p(PSTR("var nbrd=$D,tz=$D,sbits=["), (int)svc.nboards, (int)svc.options[OPTION_TIMEZONE].value);
+  for(bid=0;bid<svc.nboards;bid++)
     bfill.emit_p(PSTR("$D,"), svc.station_bits[bid]);
   bfill.emit_p(PSTR("0];var ps=["));
-  for(sid=0;sid<(svc.options[OPTION_EXT_BOARDS]+1)*8;sid++) {
-    bfill.emit_p(PSTR("[$D,$D,$D],"), pd.scheduled_program_index[sid], pd.scheduled_duration[sid], pd.remaining_time[sid]);
+  for(sid=0;sid<svc.nstations;sid++) {
+    unsigned long rem = 0;
+    if (pd.scheduled_program_index[sid] > 0) {
+      rem = (curr_time >= pd.scheduled_start_time[sid]) ? (pd.scheduled_stop_time[sid]-curr_time) : (pd.scheduled_stop_time[sid]-pd.scheduled_start_time[sid]);
+    }
+    bfill.emit_p(PSTR("[$D,$L],"), pd.scheduled_program_index[sid], rem);
   } 
-  svc.location_get(tmp_buffer);
-  bfill.emit_p(PSTR("[0,0,0]];\nvar en=$D,rd=$D,rs=$D,mm=$D,rdst=$L,mas=$D,urs=$D,loc=\"$S\";"),
+  //svc.location_get(tmp_buffer);
+  svc.eeprom_string_get(ADDR_EEPROM_LOCATION, tmp_buffer);
+  bfill.emit_p(PSTR("[0,0]];\nvar en=$D,rd=$D,rs=$D,mm=$D,rdst=$L,mas=$D,urs=$D,wl=$D,ipas=$D,loc=\"$S\";"),
     svc.status.enabled,
     svc.status.rain_delayed,
     svc.status.rain_sensed,
     svc.status.manual_mode,
     svc.raindelay_stop_time,
-    svc.options[OPTION_MASTER_STATION],
-    svc.options[OPTION_USE_RAINSENSOR],
+    svc.options[OPTION_MASTER_STATION].value,
+    svc.options[OPTION_USE_RAINSENSOR].value,
+    svc.options[OPTION_WATER_LEVEL].value,
+    svc.options[OPTION_IGNORE_PASSWORD].value,
     tmp_buffer
   );
-  bfill.emit_p(PSTR("var lrun=[$D,$D,$D,$L];\n"),
+  bfill.emit_p(PSTR("\nvar lrun=[$D,$D,$D,$L]</script>\n"),
                pd.lastrun.station, pd.lastrun.program,pd.lastrun.duration,pd.lastrun.endtime);
+  // print station names
+  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
   // include remote javascript
-  bfill.emit_p(PSTR("</script>\n<script src=\"$F/home.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"$F/home.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
 }
 
-boolean print_webpage_view_options()
+// webpage for printing options page
+boolean print_webpage_view_options(char *p)
 {
   bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
   bfill.emit_p(PSTR("<script>var opts=["));
@@ -349,20 +509,17 @@ boolean print_webpage_view_options()
   byte noptions = 0;
   // print web editable options
   for (oid=0; oid<NUM_OPTIONS; oid++) {
-    if ((svc.option_get_flag(oid)&OPFLAG_WEB_EDIT)==0) continue;
+    if ((svc.options[oid].flag&OPFLAG_WEB_EDIT)==0) continue;  
     bfill.emit_p(PSTR("\"$F\",$D,$D,$D,"),
-                 svc.options_str[oid],
-                 svc.option_get_flag(oid)&OPFLAG_BOOL,
-                 (oid==OPTION_TIMEZONE) ? (int)svc.options[oid]-12 : (int)svc.options[oid],
+                 svc.options[oid].str,
+                 (svc.options[oid].max==1)?1:0,
+                 (oid==OPTION_MASTER_OFF_ADJ)?(int)svc.options[oid].value-60:(int)svc.options[oid].value,
                  oid);
     noptions ++;
   }
-  svc.location_get(tmp_buffer);
+  //svc.location_get(tmp_buffer);
+  svc.eeprom_string_get(ADDR_EEPROM_LOCATION, tmp_buffer);
   bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$S\";"), noptions, tmp_buffer);
-  if (svc.options[OPTION_USE_RTC]) {
-    bfill.emit_p(PSTR("var yr=$D,mo=$D,dy=$D,hr=$D,min=$D,sec=$D;"),
-      year(), month(), day(), hour(), minute(), second());
-  }
   bfill.emit_p(PSTR("</script>\n"));
   // include remote javascript
   bfill.emit_p(PSTR("<script src=\"$F/viewoptions.js\"></script>\n"), htmlExtJavascriptPath);
@@ -370,6 +527,8 @@ boolean print_webpage_view_options()
 }
 
 /*=============================================
+  Change Controller Values
+  
   HTTP GET command format:
   /cv?pw=xxx&rst=x&en=x&mm=x&rd=x
   
@@ -379,50 +538,38 @@ boolean print_webpage_view_options()
   mm:  manual mode (0 or 1)
   rd:  rain delay hours (0 turns off rain delay)
   =============================================*/
-boolean print_webpage_change_values(char *p, byte pos)
+boolean print_webpage_change_values(char *p)
 {
-  p += (pos+1);
+  p+=3;
   // if no password is attached, or password is incorrect
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw") || !svc.password_verify(tmp_buffer)) {
-    return false;
+  if(check_password(p)==false)  return false;
+
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rsn")) {
+    reset_all_stations();
   }
+#define TIME_REBOOT_DELAY  10
 
-#define TIME_REBOOT_DELAY  12
-
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rst") && atoi(tmp_buffer) > 0) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rbt") && atoi(tmp_buffer) > 0) {
     bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"$D; url=/\">"), htmlOkHeader, TIME_REBOOT_DELAY);
-    bfill.emit_p(PSTR("Rebooting, wait for $D seconds..."), TIME_REBOOT_DELAY);
+    bfill.emit_p(PSTR("Rebooting..."));
     ether.httpServerReply(bfill.position());   
     svc.reboot();
   } 
   
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "en")) {
-    byte oldvalue = svc.status.enabled;
-    if (tmp_buffer[0]=='1') {
-      if (oldvalue!=1)  svc.enable(); // do this only if status has changed
-    } else if (tmp_buffer[0]=='0') {
-      if (oldvalue!=0)  svc.disable(); 
-    }
-    else {
-      return false;
-    }
+    if (tmp_buffer[0]=='1' && !svc.status.enabled)  svc.enable();
+    else if (tmp_buffer[0]=='0' &&  svc.status.enabled)  svc.disable();
   }   
   
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "mm")) {
-    byte oldvalue = svc.status.manual_mode;
-    if (tmp_buffer[0]=='1') {
-      if (oldvalue!=1) {
-        svc.manual_mode_on(); // do this only if we are not already in manual mode
-        pd.reset_runtime();
-      }
+    if (tmp_buffer[0]=='1' && !svc.status.manual_mode) {
+      reset_all_stations();
+      svc.status.manual_mode = 1;
+      
+    } else if (tmp_buffer[0]=='0' &&  svc.status.manual_mode) {
+      reset_all_stations();
+      svc.status.manual_mode = 0;
     }
-    else if (tmp_buffer[0]=='0') {
-      if (oldvalue!=0) {
-        svc.manual_mode_off();
-        pd.reset_runtime();
-      }
-    }
-    else return false;
   }
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rd")) {
     int rd = atoi(tmp_buffer);
@@ -433,41 +580,37 @@ boolean print_webpage_change_values(char *p, byte pos)
     } else  return false;
   }  
  
-  
-  bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"0; url=/\">"), htmlOkHeader);
+  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlReturnHome);
   return true;
 }
-  
-boolean print_webpage_change_options(char *p, byte pos)
+
+// server function to accept option changes
+boolean print_webpage_change_options(char *p)
 {
-  p += (pos+1);
+  p+=3;
 
   // if no password is attached, or password is incorrect
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw") || !svc.password_verify(tmp_buffer)) {
-    return false;
-  }
+  if(check_password(p)==false)  return false;
 
-  byte old_tz = svc.options[OPTION_TIMEZONE];
-  
   // !!! p and bfill share the same buffer, so don't write
   // to bfill before you are done analyzing the buffer !!!
   
   // process option values
   byte err = 0;
   for (byte oid=0; oid<NUM_OPTIONS; oid++) {
-    if ((svc.option_get_flag(oid)&OPFLAG_WEB_EDIT)==0) continue;
-    if (svc.option_get_flag(oid)&OPFLAG_BOOL)  svc.options[oid] = 0;  // set a bool variable to 0 first
+    if ((svc.options[oid].flag&OPFLAG_WEB_EDIT)==0) continue;
+    if (svc.options[oid].max==1)  svc.options[oid].value = 0;  // set a bool variable to 0 first
     char tbuf2[5] = {'o', 0, 0, 0, 0};
     itoa(oid, tbuf2+1, 10);
     if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, tbuf2)) {
-      if (svc.option_get_flag(oid)&OPFLAG_BOOL) {
-        svc.options[oid] = 1;  // if the bool variable is detected, set to 1
+      if (svc.options[oid].max==1) {
+        svc.options[oid].value = 1;  // if the bool variable is detected, set to 1
         continue;
       }
       int v = atoi(tmp_buffer);
-      if (oid==OPTION_TIMEZONE) { v += 12; }
-      if (v>=0 && v<=svc.option_get_max(oid)) {
-        svc.options[oid] = v;
+      if (oid==OPTION_MASTER_OFF_ADJ) {v+=60;} // master off time
+      if (v>=0 && v<=svc.options[oid].max) {
+        svc.options[oid].value = v;
       } else {
         err = 1;
       }
@@ -476,34 +619,12 @@ boolean print_webpage_change_options(char *p, byte pos)
   
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "loc")) {
     ether.urlDecode(tmp_buffer);
-    svc.location_set(tmp_buffer);    
-  }
-  
-  // process rtc change
-  if (svc.options[OPTION_USE_RTC]) {
-    // see if 'change time' checkbox is checked
-    if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "tchg")) {
-      int t[6];
-      char tbuf2[3]={'t', 0, 0};
-      for (byte tid=0; tid<6; tid++) {
-        tbuf2[1] = '0'+tid;
-        if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, tbuf2)) {
-          t[tid] = atoi(tmp_buffer);
-        }
-      }
-      if (t[0]<1970 || t[1]<1 || t[1]>12 || t[2]<1 || t[2]>31 || t[3]<0 || t[3]>23 ||
-          t[4]<0 || t[4]>59 || t[5]<0 || t[5]>59) {
-        err=1;
-      } else {
-        setTime(t[3], t[4], t[5], t[2], t[1], t[0]);
-        RTC.set(now());
-      }
-    }
+    //svc.location_set(tmp_buffer);    
+    svc.eeprom_string_set(ADDR_EEPROM_LOCATION, tmp_buffer);
   }
   
   if (err) {
-    bfill.emit_p(PSTR("$F<script>alert(\"Some values are out of bound.\")</script>\n"), htmlOkHeader);
-    bfill.emit_p(PSTR("<meta http-equiv=\"refresh\" content=\"0; url=/vo\">"));
+    bfill.emit_p(PSTR("$F<script>alert(\"Values out of bound!\");$F"), htmlOkHeader, htmlReturnOptions);
     return true;
   } 
 
@@ -511,29 +632,24 @@ boolean print_webpage_change_options(char *p, byte pos)
   
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "npw")) {
     char tbuf2[TMP_BUFFER_SIZE];
-    if (ether.findKeyVal(p, tbuf2, TMP_BUFFER_SIZE, "cpw") && strcmp(tmp_buffer, tbuf2) == 0) {
-      svc.password_set(tmp_buffer);
-      bfill.emit_p(PSTR("$F<script>alert(\"New password set.\")</script>\n"), htmlOkHeader);
+    if (ether.findKeyVal(p, tbuf2, TMP_BUFFER_SIZE, "cpw") && strncmp(tmp_buffer, tbuf2, 16) == 0) {
+      //svc.password_set(tmp_buffer);
+      svc.eeprom_string_set(ADDR_EEPROM_PASSWORD, tmp_buffer);
+      bfill.emit_p(PSTR("$F<script>alert(\"New password set.\");$F"), htmlOkHeader, htmlReturnOptions);
+      return true;
     } else {
-      bfill.emit_p(PSTR("$F<script>alert(\"Confirmation does not match!\")</script>\n"), htmlOkHeader);
+      bfill.emit_p(PSTR("$F<script>alert(\"New passwords must match!\");$F"), htmlOkHeader, htmlReturnOptions);
+      return true;
     }
-    bfill.emit_p(PSTR("<meta http-equiv=\"refresh\" content=\"0; url=/vo\">"));
-    return true;
   }
 
-  bfill.emit_p(PSTR("$F<script>alert(\"Options values saved.\")</script>\n"), htmlOkHeader);
-  bfill.emit_p(PSTR("<meta http-equiv=\"refresh\" content=\"0; url=/vo\">"));
-  
-  if (old_tz != svc.options[OPTION_TIMEZONE]) {
-    time_t t = getNtpTime();
-    if (t!=0)
-      setTime(t);
-  }
-    
+  bfill.emit_p(PSTR("$F<script>alert(\"Options values saved.\");$F"), htmlOkHeader, htmlReturnOptions);  
   return true;
 }
 
 /*=================================================
+  Get/Set Station Bits:
+  
   HTTP GET command format:
   /snx     -> get station bit (e.g. /sn1, /sn2 etc.)
   /sn0     -> get all bits
@@ -545,9 +661,9 @@ boolean print_webpage_change_options(char *p, byte pos)
   /snx=1   -> turn on station
   /snx=1&t=xx -> turn on with timer (in seconds)
   =================================================*/
-boolean print_webpage_station_bits(char *p, byte pos) {
+boolean print_webpage_station_bits(char *p) {
 
-  p += pos;
+  p+=2;
   int sid;
   byte i, sidmin, sidmax;  
 
@@ -558,7 +674,7 @@ boolean print_webpage_station_bits(char *p, byte pos) {
   }
   tmp_buffer[i]=0;
   sid = atoi(tmp_buffer);
-  if (!(sid>=0&&sid<=(svc.options[OPTION_EXT_BOARDS]+1)*8)) return false;
+  if (!(sid>=0&&sid<=svc.nstations)) return false;
   
   // parse get/set command
   if ((*p)=='=') {
@@ -567,8 +683,8 @@ boolean print_webpage_station_bits(char *p, byte pos) {
     // this is a set command
     // can only do it when in manual mode
     if (!svc.status.manual_mode) {
-      bfill.emit_p(PSTR("$F<script>alert(\"Station bits can only be set in manual mode.\")</script>\n</script>"), htmlOkHeader);
-      return true;
+      //bfill.emit_p(PSTR("$F<script>alert(\"Station bits can only be set in manual mode.\")</script>\n"), htmlOkHeader);
+      return false;
     }
     // parse value
     p++;
@@ -584,32 +700,33 @@ boolean print_webpage_station_bits(char *p, byte pos) {
     } else {
       return false;
     }
-    bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"0; url=/\">"), htmlOkHeader);      
+    bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"1; url=/\">"), htmlOkHeader);      
     return true;
   } else {
     // this is a get command
     bfill.emit_p(PSTR("$F"), htmlOkHeader);
     if (sid==0) { // print all station bits
-      sidmin=0;sidmax=(svc.options[OPTION_EXT_BOARDS]+1)*8;
+      sidmin=0;sidmax=(svc.nstations);
     } else {  // print one station bit
       sidmin=(sid-1);
       sidmax=sid;
     }
     for (sid=sidmin;sid<sidmax;sid++) {
-      if (svc.status.enabled && (!svc.status.rain_delayed) && !(svc.options[OPTION_USE_RAINSENSOR] && svc.status.rain_sensed)) {
+      if (svc.status.enabled && (!svc.status.rain_delayed) && !(svc.options[OPTION_USE_RAINSENSOR].value && svc.status.rain_sensed)) {
         bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
       } else bfill.emit_p(PSTR("$D"), 0);
     }
     return true;      
   }
+
   return false;
 }
 
-boolean print_webpage_favicon()
+/*boolean print_webpage_favicon()
 {
   bfill.emit_p(PSTR("$F"), htmlFavicon);
   return true;
-}
+}*/
 
 // =============
 // NTP Functions
@@ -618,7 +735,8 @@ boolean print_webpage_favicon()
 unsigned long ntp_wait_response()
 {
   uint32_t time;
-  for (uint32_t i=0; i<10000; i++) {
+  unsigned long start = millis();
+  do {
     ether.packetLoop(ether.packetReceive());
     if (ether.ntpProcessAnswer(&time, ntpclientportL))
     {
@@ -626,60 +744,88 @@ unsigned long ntp_wait_response()
         time+=2085978496;
       }else{
         time-=2208988800UL;
-      }   
-      return time + (int32_t)3600*(int32_t)(svc.options[OPTION_TIMEZONE]-12);
+      }
+      return time + (int32_t)3600/4*(int32_t)(svc.options[OPTION_TIMEZONE].value-48);
     }
-    
-  }  
+  } while(millis() - start < 1000); // wait at most 1 seconds for ntp result
   return 0;
 }
-
 unsigned long getNtpTime()
 {
   unsigned long ans;
   byte tick = 0;
-  do {
-    ether.ntpRequest(ntpip, ntpclientportL);
-    ans = ntp_wait_response();
+  do
+  {
+    ether.ntpRequest(ntpip, ++ntpclientportL);
     delay(250);
+    ans = ntp_wait_response();
     tick ++;
-  } while( ans == 0 && tick < 10 );  
+  } 
+  while( ans == 0 && tick < 5 );  
   return ans;
 }
+
+struct URLStruct{
+  PGM_P PROGMEM url;
+  boolean (*handler)(char*);
+};
+
+// Server function urls
+// !!!Important!!!: to save space, each url must be two characters long
+prog_char _url_cv [] PROGMEM = "cv";
+prog_char _url_vp [] PROGMEM = "vp";
+prog_char _url_mp [] PROGMEM = "mp";
+prog_char _url_dp [] PROGMEM = "dp";
+prog_char _url_cp [] PROGMEM = "cp";
+prog_char _url_gp [] PROGMEM = "gp";
+prog_char _url_vo [] PROGMEM = "vo";
+prog_char _url_co [] PROGMEM = "co";
+prog_char _url_sn [] PROGMEM = "sn";
+prog_char _url_ps [] PROGMEM = "ps";
+prog_char _url_vs [] PROGMEM = "vs";
+prog_char _url_cs [] PROGMEM = "cs";
+prog_char _url_vr [] PROGMEM = "vr";
+prog_char _url_cr [] PROGMEM = "cr";
+prog_char _url_pn [] PROGMEM = "pn";
+
+// Server function handlers
+URLStruct urls[] = {
+  {_url_cv,print_webpage_change_values},
+  {_url_vp,print_webpage_view_program},
+  {_url_mp,print_webpage_modify_program},
+  {_url_dp,print_webpage_delete_program},
+  {_url_cp,print_webpage_change_program},
+  {_url_gp,print_webpage_plot_program},
+  {_url_vo,print_webpage_view_options},
+  {_url_co,print_webpage_change_options},
+  {_url_sn,print_webpage_station_bits},
+  {_url_ps,print_webpage_programdata_subsection},
+  {_url_vs,print_webpage_view_stations},
+  {_url_cs,print_webpage_change_stations},
+  {_url_vr,print_webpage_view_runonce},
+  {_url_cr,print_webpage_change_runonce},
+  {_url_pn,print_webpage_station_names}
+};
 
 // analyze the current url
 void analyze_get_url(char *p)
 {
   // the tcp packet usually starts with 'GET /' -> 5 chars    
   char *str = p+5;
-  boolean success = false;
-  if (strncmp(" ", str, 1)==0) {
-    success = print_webpage_home();
-  } else if (strncmp("favicon.ico", str, 11)==0) {
-    success = print_webpage_favicon();
-  } else if (strncmp("cv", str, 2)==0) {  // change values
-    success = print_webpage_change_values(str, 2);
-  } else if (strncmp("vp", str, 2)==0) {  // view program
-    success = print_webpage_view_program(str, 2);
-  } else if (strncmp("mp", str, 2)==0) {  // modify program
-    success = print_webpage_modify_program(str, 2);
-  } else if (strncmp("dp", str, 2)==0) {  // delete program
-    success = print_webpage_delete_program(str, 2);
-  } else if (strncmp("cp", str, 2)==0) {  // change program
-    success = print_webpage_change_program(str, 2);
-  } else if (strncmp("gp", str, 2)==0) { // graphics view
-    success = print_webpage_plot_program(str, 2);
-  } else if (strncmp("vo", str, 2)==0) {  // view options
-    success = print_webpage_view_options();
-  } else if (strncmp("co", str, 2)==0) {  // change options
-    success = print_webpage_change_options(str, 2);
-  } else if (strncmp("sn", str, 2)==0) { // get/set station bits
-    success = print_webpage_station_bits(str, 2);
-  } else if (strncmp("pds", str, 3)==0) { // get program data subsection
-    success = print_webpage_programdata_subsection(str, 3);
+ 
+  if(str[0]==' ') {
+    print_webpage_home(str);  // home page handler
+  } else {
+    for(byte i=0;i<15;i++) {
+      if(pgm_read_byte(urls[i].url)==str[0]
+       &&pgm_read_byte(urls[i].url+1)==str[1]) {
+        if ((urls[i].handler)(str) == false) {
+          bfill.emit_p(PSTR("$F"), htmlUnauthorized);
+        }
+        break;
+      }
+    }
   }
-  if (success == false) {
-    bfill.emit_p(PSTR("$F"), htmlUnauthorized);
-  }
+  delay(50); // add a bit of delay here
 }
 

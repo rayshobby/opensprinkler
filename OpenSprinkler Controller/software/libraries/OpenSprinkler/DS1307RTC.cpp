@@ -31,7 +31,14 @@ DS1307RTC::DS1307RTC()
 {
   Wire.begin();
 }
-  
+
+uint8_t DS1307RTC::testerr()
+{
+  Wire.beginTransmission(DS1307_CTRL_ID);
+  Wire.write((uint8_t)(0x00));
+  return Wire.endTransmission();
+}
+
 // PUBLIC FUNCTIONS
 time_t DS1307RTC::get()   // Aquire data from buffer and convert to time_t
 {
@@ -40,7 +47,7 @@ time_t DS1307RTC::get()   // Aquire data from buffer and convert to time_t
   return(makeTime(tm));
 }
 
-void  DS1307RTC::set(time_t t)
+void DS1307RTC::set(time_t t)
 {
   tmElements_t tm;
   breakTime(t, tm);

@@ -2,18 +2,18 @@
 
 /* Program Data Structures and Functions
    Creative Commons Attribution-ShareAlike 3.0 license
-   June 2012 @ Rayshobby.net
+   Sep 2012 @ Rayshobby.net
 */
 
+#include <limits.h>
 #include "program.h"
 
 // Declaure static data members
 byte ProgramData::nprograms = 0;
 LogStruct ProgramData::lastrun;
-unsigned int ProgramData::remaining_time[(MAX_EXT_BOARDS+1)*8];
-unsigned int ProgramData::scheduled_duration[(MAX_EXT_BOARDS+1)*8];
-byte ProgramData::scheduled_program_index[(MAX_EXT_BOARDS+1)*8];
+unsigned long ProgramData::scheduled_start_time[(MAX_EXT_BOARDS+1)*8];
 unsigned long ProgramData::scheduled_stop_time[(MAX_EXT_BOARDS+1)*8];
+byte ProgramData::scheduled_program_index[(MAX_EXT_BOARDS+1)*8];
 
 void ProgramData::init() {
 	reset_runtime();
@@ -27,10 +27,9 @@ void ProgramData::init() {
 
 void ProgramData::reset_runtime() {
   for (byte i=0; i<(MAX_EXT_BOARDS+1)*8; i++) {
-    remaining_time[i] = 0;
+    scheduled_start_time[i] = 0;
     scheduled_stop_time[i] = 0;
     scheduled_program_index[i] = 0;
-    scheduled_duration[i] = 0;
   }
 }
 
@@ -44,11 +43,12 @@ void ProgramData::save_count() {
   eeprom_write_byte((unsigned char *) ADDR_PROGRAMCOUNTER, nprograms);
 }
 
-// reset all program data
+// erase all program data
 void ProgramData::erase() {
-  byte zero = 0;
+  /*byte zero = 0;
   for(unsigned int addr=ADDR_PROGRAMDATA; addr<ADDR_PROGRAMDATA+(nprograms*PROGRAMSTRUCT_SIZE); addr++)
-    eeprom_write_block((const void*)&zero, (void *)addr, 1);
+    eeprom_write_block((const void*)&zero, (void *)addr, 1);*/
+  // no need to wipe data, just set count to 0
   nprograms = 0;
   save_count();
 }
@@ -91,61 +91,51 @@ void ProgramData::del(byte pid) {
   save_count();
 }
 
-// Check if a given station and a given time matches any program
-// Returns the duration and program index of the first program that matches
-unsigned int ProgramData::check_match(byte sid, time_t t, byte *pid) {
-  ProgramStruct prog; 
-  byte i;
-  byte bid = sid>>3;
-  byte s = sid%8;
+// Check if a given time matches program schedule
+byte ProgramStruct::check_match(time_t t) {
+
   unsigned int current_minute = (unsigned int)hour(t)*60+(unsigned int)minute(t);
   
-  // return the duration of the first program that matches the station index,
-  // the start_time, end_time, and interval
-  for(i=0; i<nprograms; i++) {
-    read(i, &prog);
-    // check station index match
-    if (!(prog.stations[bid]&(1<<s)))
-      continue;
-
-    // check day match
-    // if special program bit is set, and interval is larger than 1
-    if ((prog.days[0]&0x80)&&(prog.days[1]>1)) {
-      // this is an inverval program
-      byte dn   =prog.days[1];      // interval
-      byte drem =prog.days[0]&0x7f; // remainder, relative to 1970-01-01
-      if (((t/SECS_PER_DAY)%dn) != drem)  continue;
-    } else {
-      // this is a weekly program
-      byte wd = ((byte)weekday(t)+5)%7;
-      // weekday match
-      if (!(prog.days[0] & (1<<wd)))
-        continue;
-      byte dt=day(t);
-      if ((prog.days[0]&0x80)&&(prog.days[1]==0)) {
-        // even day restriction
-        if((dt%2)!=0)  continue;
-      }
-      if ((prog.days[0]&0x80)&&(prog.days[1]==1)) {
-        // odd day restriction
-        // skip 31st and Feb 29
-        if(dt==31)  continue;
-        else if (dt==29 && month(t)==2)  continue;
-        else if ((dt%2)!=1)  continue;
-      }
+  // check program enable status
+  if (enabled == 0) return 0;
+  
+  // check day match
+  // if special program bit is set, and interval is larger than 1
+  if ((days[0]&0x80)&&(days[1]>1)) {
+    // this is an inverval program
+    byte dn   =days[1];      // interval
+    byte drem =days[0]&0x7f; // remainder, relative to 1970-01-01
+    if (((t/SECS_PER_DAY)%dn) != drem)  return 0;
+  } else {
+    // this is a weekly program
+    byte wd = ((byte)weekday(t)+5)%7;
+    // weekday match
+    if (!(days[0] & (1<<wd)))
+      return 0;
+    byte dt=day(t);
+    if ((days[0]&0x80)&&(days[1]==0)) {
+      // even day restriction
+      if((dt%2)!=0)  return 0;
     }
+    if ((days[0]&0x80)&&(days[1]==1)) {
+      // odd day restriction
+      // skip 31st and Feb 29
+      if(dt==31)  return 0;
+      else if (dt==29 && month(t)==2)  return 0;
+      else if ((dt%2)!=1)  return 0;
+    }
+  }
 
-    // check start and end time
-    if (current_minute < prog.start_time || current_minute > prog.end_time)
-      continue;
+  // check start and end time
+  if (current_minute < start_time || current_minute > end_time)
+    return 0;
       
-    // check interval match
-    if (prog.interval == 0)  continue;
-    if (((current_minute - prog.start_time) / prog.interval) * prog.interval ==
-         (current_minute - prog.start_time)) {
-      if (pid != NULL)  *pid = i;
-      return prog.duration;
-    }
+  // check interval match
+  if (interval == 0)  return 0;
+  if (((current_minute - start_time) / interval) * interval ==
+       (current_minute - start_time)) {
+    // program matched
+    return 1;
   }
   return 0;
 }
