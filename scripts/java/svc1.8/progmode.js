@@ -10,7 +10,6 @@ function rsn() {
   if(!ipas) p=prompt("Please enter your password:","");
   if(p!=null) window.location="/cv?pw="+p+"&rsn=1";
 }
-
 w("<button style=\"height:32\" onclick=linkn(\"/gp?d=0\")>"+imgstr("preview")+"Program Preview</button>");
 w("<button style=\"height:32\" onclick=rsn()>"+imgstr("del")+"Stop All Stations</button>");
 w("<button style=\"height:32\" onclick=link(\"/vr\")>"+imgstr("start")+"Run-Once Program</button><br>");
