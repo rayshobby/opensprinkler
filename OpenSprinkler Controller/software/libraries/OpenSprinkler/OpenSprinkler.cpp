@@ -693,8 +693,8 @@ void OpenSprinkler::ui_set_options(int oid)
     case BUTTON_3:
       if (!(button & BUTTON_FLAG_DOWN)) break; 
       if (button & BUTTON_FLAG_HOLD) {
-        // if OPTION_RESET is set to 1, change it to reset condition value
-        if (options[OPTION_RESET].value == 1) {
+        // if OPTION_RESET is set to nonzero, change it to reset condition value
+        if (options[OPTION_RESET].value) {
           options[OPTION_RESET].value = 0xAA;
         }
         // long press, save options
