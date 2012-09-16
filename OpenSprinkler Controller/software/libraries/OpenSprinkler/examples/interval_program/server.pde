@@ -43,7 +43,7 @@ prog_uchar htmlReturnHome[] PROGMEM =
 ;
 
 prog_uchar htmlReturnOptions[] PROGMEM = 
-  "window.location=\"/vo\";</script>\n"
+  "window.location=\"/\";</script>\n"
 ;
 
 /*prog_uchar htmlFavicon[] PROGMEM = 
@@ -128,7 +128,7 @@ boolean print_webpage_change_stations(char *p)
   }
   svc.masop_save();
   
-  bfill.emit_p(PSTR("$F<script>alert(\"Station changes saved.\");window.location=\"/vs\";</script>\n"), htmlOkHeader);
+  bfill.emit_p(PSTR("$F<script>alert(\"Station changes saved.\");window.location=\"/\";</script>\n"), htmlOkHeader);
   return true;
 }
 

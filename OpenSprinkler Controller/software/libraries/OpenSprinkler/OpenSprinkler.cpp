@@ -48,7 +48,7 @@ prog_char _str_reset[] PROGMEM = "Reset all?";
 
 OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {SVC_FW_VERSION, 0, _str_fwv, OPFLAG_NONE}, // firmware version
-  {32,  108, _str_tz,   OPFLAG_WEB_EDIT},     // default time zone: GMT-4
+  {32,  108, _str_tz,   OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},     // default time zone: GMT-4
   {1,   1,   _str_ntp,  OPFLAG_SETUP_EDIT},   // use NTP sync
   {1,   1,   _str_dhcp, OPFLAG_SETUP_EDIT},   // 0: use static ip, 1: use dhcp
   {192, 255, _str_ip1,  OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static ip
