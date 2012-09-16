@@ -686,7 +686,7 @@ void OpenSprinkler::ui_set_options(int oid)
       break;
 
     case BUTTON_2:
-      if (!(options[i].value&OPFLAG_SETUP_EDIT)) break; // ignore non-editable options
+      if (!(options[i].flag&OPFLAG_SETUP_EDIT)) break; // ignore non-editable options
       if (options[i].value != 0) options[i].value --;
       break;
 
@@ -706,7 +706,7 @@ void OpenSprinkler::ui_set_options(int oid)
         if (i==OPTION_USE_DHCP && options[i].value) i += 9; // if use DHCP, skip static ip set
         else if(i==OPTION_HTTPPORT_0) i+=2; // skip OPTION_HTTPPORT_1
         else if(i==OPTION_USE_RAINSENSOR && options[i].value==0) i+=2; // if not using rain sensor, skip rain sensor type
-        else if(i==OPTION_MASTER_STATION && options[i].value!=0) i+=3; // if not using master station, skip master on/off adjust
+        else if(i==OPTION_MASTER_STATION && options[i].value==0) i+=3; // if not using master station, skip master on/off adjust
         else  i = (i+1) % NUM_OPTIONS;
       }
       break;
