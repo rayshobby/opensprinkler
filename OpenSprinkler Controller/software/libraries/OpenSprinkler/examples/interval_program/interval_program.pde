@@ -398,7 +398,7 @@ void check_network(time_t curr_time) {
     if (svc.status.network_fails>4&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
       svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
       svc.start_network(mymac, myport);
-      svc.status.network_fails=0;
+      //svc.status.network_fails=0;
     }
   } 
 }

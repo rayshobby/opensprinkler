@@ -22,13 +22,13 @@ prog_char _str_tz  [] PROGMEM = "Time zone:";
 prog_char _str_ntp [] PROGMEM = "NTP Sync:";
 prog_char _str_dhcp[] PROGMEM = "Use DHCP:";
 prog_char _str_ip1 [] PROGMEM = "Static.ip1:";
-prog_char _str_ip2 [] PROGMEM = "Static.ip2:";
-prog_char _str_ip3 [] PROGMEM = "Static.ip3:";
-prog_char _str_ip4 [] PROGMEM = "Static.ip4:";
+prog_char _str_ip2 [] PROGMEM = ".ip2:";
+prog_char _str_ip3 [] PROGMEM = ".ip3:";
+prog_char _str_ip4 [] PROGMEM = ".ip4:";
 prog_char _str_gw1 [] PROGMEM = "Gateway.ip1:";
-prog_char _str_gw2 [] PROGMEM = "Gateway.ip2:";
-prog_char _str_gw3 [] PROGMEM = "Gateway.ip3:";
-prog_char _str_gw4 [] PROGMEM = "Gateway.ip4:";
+prog_char _str_gw2 [] PROGMEM = ".ip2:";
+prog_char _str_gw3 [] PROGMEM = ".ip3:";
+prog_char _str_gw4 [] PROGMEM = ".ip4:";
 prog_char _str_hp0 [] PROGMEM = "HTTP port:";
 prog_char _str_hp1 [] PROGMEM = "";
 prog_char _str_ar  [] PROGMEM = "Auto reconnect:";
@@ -36,12 +36,12 @@ prog_char _str_ext [] PROGMEM = "Ext. boards:";
 prog_char _str_seq [] PROGMEM = "Sequential:";
 prog_char _str_sdt [] PROGMEM = "Station delay:";
 prog_char _str_mas [] PROGMEM = "Master station:";
-prog_char _str_mton[] PROGMEM = "Mas. on adjust:";
-prog_char _str_mtof[] PROGMEM = "Mas. off adjust:";
+prog_char _str_mton[] PROGMEM = "Mas. on adj.:";
+prog_char _str_mtof[] PROGMEM = "Mas. off adj.:";
 prog_char _str_urs [] PROGMEM = "Use rain sensor:";
 prog_char _str_rso [] PROGMEM = "Normally open:";
 prog_char _str_wl  [] PROGMEM = "Water level (%):";
-prog_char _str_stt [] PROGMEM = "Self-test time:";
+prog_char _str_stt [] PROGMEM = "Selftest time:";
 prog_char _str_ipas[] PROGMEM = "Ignore password:";
 prog_char _str_reset[] PROGMEM = "Reset all?";
 
@@ -185,6 +185,22 @@ void OpenSprinkler::begin() {
   nstations = 8;
   raindelay_stop_time = 0;
   
+  // define lcd custom characters
+  byte lcd_custom_char[8] = {
+    B00000,
+    B10100,
+    B01000,
+    B10101,
+    B00001,
+    B00101,
+    B00101,
+    B10101
+  };
+  lcd.createChar(1, lcd_custom_char);  
+  lcd_custom_char[1]=0;
+  lcd_custom_char[2]=0;
+  lcd_custom_char[3]=1;    
+  lcd.createChar(0, lcd_custom_char);  
   // begin lcd
   lcd.begin(16, 2);
   
@@ -199,16 +215,15 @@ void OpenSprinkler::self_test() {
 	byte sid;
 	while(1) {
 		for(sid=0; sid<nstations; sid++) {
-			lcd_print_line_clear_pgm(PSTR(""), 1);
-			lcd.setCursor(0, 1);
+			lcd.clear();
+			lcd.setCursor(0, 0);
 			lcd.print((int)sid+1);
+			clear_all_station_bits();
 			set_station_bit(sid, 1);
 			apply_all_station_bits();
 			// run each station for designated amount of time
 			delay((unsigned long)options[OPTION_SELFTEST_TIME].value*1000);
-      clear_all_station_bits();
-      apply_all_station_bits();
-      delay(3000);  // 3 seconds delay between every two stations			
+      //delay(3000);  // 3 seconds delay between every two stations			
 		}
 	}
 }
@@ -361,7 +376,7 @@ void OpenSprinkler::options_setup() {
 	switch(button & BUTTON_MASK) {
 	case BUTTON_1:
   	// if BUTTON_1 is pressed during startup, go to self-test
-	  lcd_print_line_clear_pgm(PSTR("Self test:"), 0);
+	  //lcd_print_line_clear_pgm(PSTR("Self test:"), 0);
 	  self_test();
 		break;
 		
@@ -507,11 +522,15 @@ void OpenSprinkler::lcd_print_ip(const byte *ip, int http_port) {
 }
 
 void OpenSprinkler::lcd_print_status() {
+  lcd.setCursor(15, 1);
+  lcd.write(status.network_fails>0?1:0); 
+  /*
   if(status.network_fails>0) {
-    lcd.setCursor(14, 1);
-    lcd_print_pgm(PSTR("!"));
-    lcd.print((int)(status.network_fails%10));
-  }
+    lcd.setCursor(15, 1);
+    //lcd_print_pgm(PSTR("!"));
+    //lcd.print((int)(status.network_fails%10));
+    lcd.write(0);
+  }*/
 }
 
 // Print station bits

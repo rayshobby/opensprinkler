@@ -39,10 +39,6 @@ prog_uchar htmlUnauthorized[] PROGMEM =
 ;
 
 prog_uchar htmlReturnHome[] PROGMEM = 
-  "<script>window.location=\"/\";</script>\n"
-;
-
-prog_uchar htmlReturnOptions[] PROGMEM = 
   "window.location=\"/\";</script>\n"
 ;
 
@@ -128,7 +124,7 @@ boolean print_webpage_change_stations(char *p)
   }
   svc.masop_save();
   
-  bfill.emit_p(PSTR("$F<script>alert(\"Station changes saved.\");window.location=\"/\";</script>\n"), htmlOkHeader);
+  bfill.emit_p(PSTR("$F<script>alert(\"Station changes saved.\");$F"), htmlOkHeader, htmlReturnHome);
   return true;
 }
 
@@ -244,7 +240,7 @@ boolean print_webpage_change_runonce(char *p) {
   if(match_found) {
     schedule_all_stations(now());
   }
-  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlReturnHome);
+  bfill.emit_p(PSTR("$F<script>$F"), htmlOkHeader, htmlReturnHome);
   return true;
 }
 
@@ -324,7 +320,7 @@ boolean print_webpage_delete_program(char *p) {
     return false;
   }
 
-  bfill.emit_p(PSTR("$F<script>window.location=\"/vp\";</script>"), htmlOkHeader);
+  bfill.emit_p(PSTR("$F<script>window.location=\"/vp\";</script>\n"), htmlOkHeader);
   return true;
 }
 
@@ -580,7 +576,7 @@ boolean print_webpage_change_values(char *p)
     } else  return false;
   }  
  
-  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlReturnHome);
+  bfill.emit_p(PSTR("$F<script>$F"), htmlOkHeader, htmlReturnHome);
   return true;
 }
 
@@ -624,7 +620,7 @@ boolean print_webpage_change_options(char *p)
   }
   
   if (err) {
-    bfill.emit_p(PSTR("$F<script>alert(\"Values out of bound!\");$F"), htmlOkHeader, htmlReturnOptions);
+    bfill.emit_p(PSTR("$F<script>alert(\"Values out of bound!\");window.location=\"/vo\";</script>\n"), htmlOkHeader);
     return true;
   } 
 
@@ -635,15 +631,15 @@ boolean print_webpage_change_options(char *p)
     if (ether.findKeyVal(p, tbuf2, TMP_BUFFER_SIZE, "cpw") && strncmp(tmp_buffer, tbuf2, 16) == 0) {
       //svc.password_set(tmp_buffer);
       svc.eeprom_string_set(ADDR_EEPROM_PASSWORD, tmp_buffer);
-      bfill.emit_p(PSTR("$F<script>alert(\"New password set.\");$F"), htmlOkHeader, htmlReturnOptions);
+      bfill.emit_p(PSTR("$F<script>alert(\"New password set.\");$F"), htmlOkHeader, htmlReturnHome);
       return true;
     } else {
-      bfill.emit_p(PSTR("$F<script>alert(\"New passwords must match!\");$F"), htmlOkHeader, htmlReturnOptions);
+      bfill.emit_p(PSTR("$F<script>alert(\"New passwords must match!\");window.location=\"/vo\";</script>\n"), htmlOkHeader);
       return true;
     }
   }
 
-  bfill.emit_p(PSTR("$F<script>alert(\"Options values saved.\");$F"), htmlOkHeader, htmlReturnOptions);  
+  bfill.emit_p(PSTR("$F<script>alert(\"Options values saved.\");$F"), htmlOkHeader, htmlReturnHome);  
   return true;
 }
 
