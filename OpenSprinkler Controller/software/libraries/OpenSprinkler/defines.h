@@ -79,9 +79,9 @@ typedef enum {
 // =====================================
 
 // ------ Define hardware version here ------
-#define SVC_HW_VERSION 14
+//#define SVC_HW_VERSION 14
 //#define SVC_HW_VERSION 13
-//#define SVC_HW_VERSION 12
+#define SVC_HW_VERSION 12
 //#define SVC_HW_VERSION 11   // OpenSprinkler v1.0 use the same settings as v1.1
 
 #ifndef SVC_HW_VERSION
