@@ -63,20 +63,12 @@ function run_sched(simseconds,st_array,pid_array,et_array) { // run and plot sch
   var sid,endtime=simseconds;
   for(sid=0;sid<nboards*8;sid++) {
     if(pid_array[sid]) {
-      if(seq==1) {  // sequential 
-        plot_bar(sid,st_array[sid],pid_array[sid],et_array[sid]);
-        if((mas>0)&&(mas!=sid+1)&&(masop[sid>>3]&(1<<(sid%8))))
-          plot_master(st_array[sid]+mton, et_array[sid]+mtoff-60);
-        endtime=et_array[sid];
-      } else {  // concurrent
-        plot_bar(sid,simseconds,pid_array[sid],et_array[sid]);
-        // check if this station activates master
-        if((mas>0)&&(mas!=sid+1)&&(masop[sid>>3]&(1<<(sid%8))))
-          endtime=(endtime>et_array[sid])?endtime:et_array[sid];
-      }
+      plot_bar(sid,st_array[sid],pid_array[sid],et_array[sid]);
+      if((mas>0)&&(mas!=sid+1)&&(masop[sid>>3]&(1<<(sid%8))))
+        plot_master(st_array[sid]+mton, et_array[sid]+mtoff-60);
+      endtime=et_array[sid];
     }
   }
-  if(seq==0&&mas>0) plot_master(simseconds,endtime);
   return endtime;
 }
 function draw_title() {
@@ -127,27 +119,17 @@ function draw_program() {
     }//for_pid
     if(match_found) {
       var acctime=simminutes*60;
-      if(seq) {
-        for(sid=0;sid<nboards*8;sid++) {
-          if(et_array[sid]) {
-            st_array[sid]=acctime;acctime+=et_array[sid];
-            et_array[sid]=acctime;acctime+=sdt;
-            busy=1;
-          }//if
-        }//for
-      } else {
-        for(sid=0;sid<nboards*8;sid++) {
-          if(et_array[sid]) {
-            st_array[sid]=simminutes*60;
-            et_array[sid]=simminutes*60+et_array[sid];
-            busy=1;
-          }
-        }//for
-      }//else
-    }//if
+      for(sid=0;sid<nboards*8;sid++) {
+        if(et_array[sid]) {
+          st_array[sid]=acctime;acctime+=et_array[sid];
+          et_array[sid]=acctime;acctime+=sdt;
+          busy=1;
+        }//if
+      }//for
+    } 
     if (busy) {
       var endminutes=run_sched(simminutes*60,st_array,pid_array,et_array)/60>>0;
-      if(seq&&simminutes!=endminutes) simminutes=endminutes;
+      if(simminutes!=endminutes) simminutes=endminutes;
       else simminutes++;
       for(sid=0;sid<nboards*8;sid++)  {st_array[sid]=0;pid_array[sid]=0;et_array[sid]=0;} // clear program data
     } else {

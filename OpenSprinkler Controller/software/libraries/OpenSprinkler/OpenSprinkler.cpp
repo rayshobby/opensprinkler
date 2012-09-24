@@ -22,13 +22,13 @@ prog_char _str_tz  [] PROGMEM = "Time zone:";
 prog_char _str_ntp [] PROGMEM = "NTP Sync:";
 prog_char _str_dhcp[] PROGMEM = "Use DHCP:";
 prog_char _str_ip1 [] PROGMEM = "Static.ip1:";
-prog_char _str_ip2 [] PROGMEM = ".ip2:";
-prog_char _str_ip3 [] PROGMEM = ".ip3:";
-prog_char _str_ip4 [] PROGMEM = ".ip4:";
+prog_char _str_ip2 [] PROGMEM = "ip2:";
+prog_char _str_ip3 [] PROGMEM = "ip3:";
+prog_char _str_ip4 [] PROGMEM = "ip4:";
 prog_char _str_gw1 [] PROGMEM = "Gateway.ip1:";
-prog_char _str_gw2 [] PROGMEM = ".ip2:";
-prog_char _str_gw3 [] PROGMEM = ".ip3:";
-prog_char _str_gw4 [] PROGMEM = ".ip4:";
+prog_char _str_gw2 [] PROGMEM = "ip2:";
+prog_char _str_gw3 [] PROGMEM = "ip3:";
+prog_char _str_gw4 [] PROGMEM = "ip4:";
 prog_char _str_hp0 [] PROGMEM = "HTTP port:";
 prog_char _str_hp1 [] PROGMEM = "";
 prog_char _str_ar  [] PROGMEM = "Auto reconnect:";
@@ -63,7 +63,7 @@ OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {0,   255, _str_hp1,  OPFLAG_WEB_EDIT},
   {1,   1,   _str_ar,   OPFLAG_SETUP_EDIT},   // network auto reconnect
   {0,   MAX_EXT_BOARDS, _str_ext, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // number of extension board. 0: no extension boards
-  {1,   1,   _str_seq,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // sequential mode. 1: stations run sequentially; 0:concurrently
+  {1,   1,   _str_seq,  OPFLAG_NONE}, // sequential mode (obsolete, non-editable)
   {0,   240, _str_sdt,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // station delay time (0 to 240 seconds).
   {0,   8,   _str_mas,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // index of master station. 0: no master station
   {0,   60,  _str_mton, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master on time [0,60] seconds
@@ -535,7 +535,7 @@ void OpenSprinkler::lcd_print_status() {
 
 // Print station bits
 void OpenSprinkler::lcd_print_station(byte line, char c) {
-  lcd_print_line_clear_pgm(PSTR(""), line);
+  //lcd_print_line_clear_pgm(PSTR(""), line);
   lcd.setCursor(0, line);
   if (status.display_board == 0) {
     lcd_print_pgm(PSTR("MC:"));  // Master controller is display as 'MC'
@@ -563,6 +563,7 @@ void OpenSprinkler::lcd_print_station(byte line, char c) {
   	  bitvalue >>= 1;
 	  }
 	}
+	lcd_print_pgm(PSTR("    "));
   lcd_print_status();
 }
 

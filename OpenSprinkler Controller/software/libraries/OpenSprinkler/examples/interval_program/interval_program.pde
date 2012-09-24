@@ -135,13 +135,12 @@ void setup() {
 void loop()
 {
   static unsigned long last_time = 0;
-  static unsigned int last_minute = 0x7fff;
+  static unsigned long last_minute = 0;
   static uint16_t pos;
 
-  byte bid, sid, s, pid, bitvalue, sequential, mas;
+  byte bid, sid, s, pid, bitvalue, mas;
   ProgramStruct prog;
 
-  sequential = svc.options[OPTION_SEQUENTIAL].value;
   mas = svc.options[OPTION_MASTER_STATION].value;
   //wdt_reset();  // reset watchdog timer
 
@@ -180,9 +179,9 @@ void loop()
     // ====== Schedule program data ======
     // Check if we are cleared to schedule a new program. The conditions are:
     // 1) the controller is in program mode (manual_mode == 0), and if
-    // 2) either the cotroller is not busy or is allowing parallel runs
-    if (svc.status.manual_mode==0 && (svc.status.program_busy==0 || sequential==0)) {
-      int curr_minute = minute(curr_time);
+    // 2) the cotroller is not busy
+    if (svc.status.manual_mode==0 && svc.status.program_busy==0) {
+      unsigned long curr_minute = curr_time / 60;
       boolean match_found = false;
       // since the granularity of start time is minute
       // we only need to check once every minute
@@ -199,7 +198,10 @@ void loop()
                 sid=bid*8+s;
                 // ignore master station because it's not scheduled independently
                 if (mas == sid+1)  continue;
+                // if the station is current running, skip it
+                if (svc.station_bits[bid]>>s) continue;
                 
+                // if station bits match
                 if(prog.stations[bid]&(1<<s)) {
                   // initialize schedule data
                   // store duration temporarily in stop_time variable
@@ -259,11 +261,10 @@ void loop()
               // schedule master station here if
               // 1) master station is defined
               // 2) the station is non-master and is set to activate master
-              // 3) program is running in program AND sequential mode
-              if ((mas>0) && (mas!=sid+1) && (svc.masop_bits[bid]&(1<<s)) &&
-                   sequential && svc.status.manual_mode==0) {
+              // 3) program is not running in manual mode
+              if ((mas>0) && (mas!=sid+1) && (svc.masop_bits[bid]&(1<<s)) && svc.status.manual_mode==0) {
                 byte masid=mas-1;
-                // in sequential mode, master will turn on when a station opens,
+                // master will turn on when a station opens,
                 // adjusted by the master on and off time
                 pd.scheduled_start_time[masid] = pd.scheduled_start_time[sid]+svc.options[OPTION_MASTER_ON_ADJ].value;
                 pd.scheduled_stop_time[masid] = pd.scheduled_stop_time[sid]+svc.options[OPTION_MASTER_OFF_ADJ].value-60;
@@ -298,17 +299,13 @@ void loop()
         svc.status.program_busy = 0;
         
         // in case some options have changed while executing the program        
-        sequential = svc.options[OPTION_SEQUENTIAL].value;  // update sequential bit
         mas = svc.options[OPTION_MASTER_STATION].value; // update master station
       }
       
     }//if_some_program_is_running
 
-    // activate/deactivate valves
-    svc.apply_all_station_bits();
-    
     // handle master station for manual or parallel mode
-    if ((mas>0) && (svc.status.manual_mode==1 || sequential==0)) {
+    if ((mas>0) && svc.status.manual_mode==1) {
       // in parallel mode or manual mode
       // master will remain on until the end of program
       byte masbit = 0;
@@ -323,6 +320,9 @@ void loop()
       }
       svc.set_station_bit(mas-1, masbit);
     }    
+    
+    // activate/deactivate valves
+    svc.apply_all_station_bits();
     
     // process LCD display
     svc.lcd_print_station(1, ui_anim_chars[curr_time%3]);
@@ -408,26 +408,15 @@ void schedule_all_stations(unsigned long curr_time)
   unsigned long accumulate_time = curr_time;
   byte sid;
   // calculate start time of each station
-  if (svc.options[OPTION_SEQUENTIAL].value) {
-    // in sequential mode, stations run one after another
-    // separated by station delay time
-    for(sid=0;sid<svc.nstations;sid++) {
-      if(pd.scheduled_stop_time[sid]) {
-        pd.scheduled_start_time[sid] = accumulate_time;
-        accumulate_time += pd.scheduled_stop_time[sid];
-        pd.scheduled_stop_time[sid] = accumulate_time;
-        accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
-        svc.status.program_busy = 1;  // set program busy bit
-      }
-    }
-  } else {
-    // in parallel mode, stations run concurrently
-    for(sid=0;sid<svc.nstations;sid++) {
-      if(pd.scheduled_stop_time[sid]) {
-        pd.scheduled_start_time[sid] = curr_time;
-        pd.scheduled_stop_time[sid] = curr_time + pd.scheduled_stop_time[sid];
-        svc.status.program_busy = 1;  // set program busy bit
-      }
+  // tations run one after another
+  // separated by station delay time
+  for(sid=0;sid<svc.nstations;sid++) {
+    if(pd.scheduled_stop_time[sid]) {
+      pd.scheduled_start_time[sid] = accumulate_time;
+      accumulate_time += pd.scheduled_stop_time[sid];
+      pd.scheduled_stop_time[sid] = accumulate_time;
+      accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
+      svc.status.program_busy = 1;  // set program busy bit
     }
   }
 }

@@ -345,7 +345,7 @@ boolean print_webpage_plot_program(char *p) {
   int yy,mm,dd,devday,devmin;
   time_t t = now();
   yy = year(t);  mm = month(t);  dd = day(t);
-  devday = t/SECS_PER_DAY;  devmin = hour(t)*60+minute();
+  devday = t/SECS_PER_DAY;  devmin = hour(t)*60+minute(t);
   
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "d")) {
     dd=atoi(tmp_buffer);
@@ -358,8 +358,8 @@ boolean print_webpage_plot_program(char *p) {
     yy=atoi(tmp_buffer);
   }
   
-  bfill.emit_p(PSTR("$F<script>var seq=$D,mas=$D,wl=$D,sdt=$D,mton=$D,mtoff=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"),
-               htmlOkHeader, svc.options[OPTION_SEQUENTIAL].value, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_WATER_LEVEL].value,
+  bfill.emit_p(PSTR("$F<script>var mas=$D,wl=$D,sdt=$D,mton=$D,mtoff=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"),
+               htmlOkHeader, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_WATER_LEVEL].value,
                svc.options[OPTION_STATION_DELAY_TIME].value, svc.options[OPTION_MASTER_ON_ADJ].value, svc.options[OPTION_MASTER_OFF_ADJ].value,
                devday, devmin, dd, mm, yy);
   bfill.emit_p(PSTR("var masop=["));

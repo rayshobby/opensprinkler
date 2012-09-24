@@ -1,6 +1,10 @@
-====== Update ======
+Updates
 
 ===============================
+* September 23, 2012
+- Discontinue support for concurrent running mode. Controller will run on sequential mode only.
+- Fixing a bug that causes the algorithm to skip program checking if water duration is in multiples of 60 minutes.
+
 * September 13, 2012
 
 - New features:
