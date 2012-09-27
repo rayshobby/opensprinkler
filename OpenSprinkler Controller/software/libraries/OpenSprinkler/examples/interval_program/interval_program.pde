@@ -25,6 +25,8 @@
 
 // NTP sync interval (in seconds)
 #define NTP_SYNC_INTERVAL       86400L  // 24 hours default
+// RC sync interval (in seconds)
+#define RTC_SYNC_INTERVAL       900     // 15 minutes default
 // Interval for checking network connection (in seconds)
 #define CHECK_NETWORK_INTERVAL  60     // 1 minute default
 // Ping test time out (in milliseconds)
@@ -115,7 +117,7 @@ void setup() {
 
   delay(500);
   
-  setSyncInterval(86400L);  // setup time sync: sync interval: one day
+  setSyncInterval(RTC_SYNC_INTERVAL);  // RTC sync interval: 15 minutes
 
   // if rtc exists, sets it as time sync source
   setSyncProvider(svc.status.has_rtc ? RTC.get : NULL);
