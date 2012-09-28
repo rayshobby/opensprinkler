@@ -9,8 +9,9 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  18  // firmware version. when this is different from the version number
-                            // stored in EEPROM, an EEPROM reset will be automatically triggered
+#define SVC_FW_VERSION  181 // firmware version (e.g. 1.8.1 etc)
+                            // if this number is different from stored in EEPROM,
+                            // an EEPROM reset will be automatically triggered
 
 #define MAX_EXT_BOARDS  3   // maximum number of ext. boards (each consists of 8 stations)
                             // total number of stations: (1+MAX_EXT_BOARDS) * 8

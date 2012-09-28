@@ -2,6 +2,9 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* September 26, 2012
+- Removed support for parallel (concurrent) running mode due to a temporarily unsolvable bug.
+
 * September 13, 2012
 
 - Update OpenSprinkler library. Firmware number changed to 1.8. 

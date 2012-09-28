@@ -332,8 +332,9 @@ void OpenSprinkler::options_setup() {
   delay(500);
   
   // check reset condition: either firmware version has changed, or reset flag is up
-  if (eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_FW_VERSION))!=SVC_FW_VERSION ||
-      eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_RESET))==0xAA) {
+  byte curr_ver = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_FW_VERSION));
+  if (curr_ver<100) curr_ver = curr_ver*10; // adding a default 0 if version number is the old type
+  if (curr_ver != SVC_FW_VERSION || eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_RESET))==0xAA) {
       
     //======== Reset EEPROM data ========
     options_save(); // write default option values
@@ -417,7 +418,8 @@ void OpenSprinkler::options_load() {
 
 // Save options to internal eeprom
 void OpenSprinkler::options_save() {
-  for (byte i=0; i<NUM_OPTIONS; i++) {
+  // save options in reverse order so version number is saved the last
+  for (int i=NUM_OPTIONS-1; i>=0; i--) {
     eeprom_write_byte((unsigned char *) (ADDR_EEPROM_OPTIONS + i), options[i].value);
   }
   nboards = options[OPTION_EXT_BOARDS].value+1;

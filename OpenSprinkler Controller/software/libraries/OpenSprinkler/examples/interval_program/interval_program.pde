@@ -26,7 +26,7 @@
 // NTP sync interval (in seconds)
 #define NTP_SYNC_INTERVAL       86400L  // 24 hours default
 // RC sync interval (in seconds)
-#define RTC_SYNC_INTERVAL       900     // 15 minutes default
+#define RTC_SYNC_INTERVAL       60     // 1 minute default
 // Interval for checking network connection (in seconds)
 #define CHECK_NETWORK_INTERVAL  60     // 1 minute default
 // Ping test time out (in milliseconds)
@@ -347,11 +347,11 @@ void manual_station_off(byte sid) {
 void manual_station_on(byte sid, int ontimer) {
   unsigned long curr_time = now();
   // set station start time (now)
-  pd.scheduled_start_time[sid] = curr_time;
+  pd.scheduled_start_time[sid] = curr_time + 1;
   if (ontimer == 0) {
-    pd.scheduled_stop_time[sid] = curr_time + 43200; // maximum running time is 8 hours
+    pd.scheduled_stop_time[sid] = pd.scheduled_start_time[sid] + 43200; // maximum running time is 8 hours
   } else { 
-    pd.scheduled_stop_time[sid] = curr_time + ontimer;
+    pd.scheduled_stop_time[sid] = pd.scheduled_start_time[sid] + ontimer;
   }
   // set program index
   pd.scheduled_program_index[sid] = 255;
@@ -407,7 +407,7 @@ void check_network(time_t curr_time) {
 
 void schedule_all_stations(unsigned long curr_time)
 {
-  unsigned long accumulate_time = curr_time;
+  unsigned long accumulate_time = curr_time + 1;
   byte sid;
   // calculate start time of each station
   // tations run one after another

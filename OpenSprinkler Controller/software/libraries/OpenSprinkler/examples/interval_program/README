@@ -1,6 +1,13 @@
 Updates
 
 ===============================
+* September 27, 2012
+- Added minor revision number. The current firmware version is 1.8.1.
+- Changed RTC sync time to 1 minute to keep more accurate mcu time.
+- Fixed a bug that causes master station to not activate in manual mode.
+- Fixed a bug that causes the algorithm to skip program checking when water time is in multiples of 60 minutes.
+- Minor change to start time to provide more accurate per-second level water time.
+
 * September 23, 2012
 - Discontinue support for concurrent running mode. Controller will run on sequential mode only.
 - Fixing a bug that causes the algorithm to skip program checking if water duration is in multiples of 60 minutes.
