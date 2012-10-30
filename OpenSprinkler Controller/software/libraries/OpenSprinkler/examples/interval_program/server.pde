@@ -233,7 +233,7 @@ boolean print_webpage_change_runonce(char *p) {
     eeprom_write_byte(addr+1, (dur&0xff));
     if (dur>0) {
       pd.scheduled_stop_time[sid] = dur;
-      pd.scheduled_program_index[sid] = 254;      
+      pd.scheduled_program_index[sid] = 98;      
       match_found = true;
     }
   }
@@ -469,6 +469,7 @@ boolean print_webpage_home(char *p)
     unsigned long rem = 0;
     if (pd.scheduled_program_index[sid] > 0) {
       rem = (curr_time >= pd.scheduled_start_time[sid]) ? (pd.scheduled_stop_time[sid]-curr_time) : (pd.scheduled_stop_time[sid]-pd.scheduled_start_time[sid]);
+      if(pd.scheduled_stop_time[sid]==ULONG_MAX-1)  rem=0;
     }
     bfill.emit_p(PSTR("[$D,$L],"), pd.scheduled_program_index[sid], rem);
   } 

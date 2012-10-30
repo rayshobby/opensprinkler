@@ -89,7 +89,7 @@ function draw_grid() {
   for(t=0;t<=24;t++) {
     w("<div style=\"position:absolute;left:"+(xstart-stwidth/2-15)+";top:"+gety(t*60)+";border:1px solid gray;width:15;height:0;\"></div>");
     w("<div style=\"position:absolute;left:"+(xstart-stwidth/2-8)+";top:"+(gety(t*60)+stheight/2)+";border:1px solid gray;width:8;height:0;\"></div>");
-    w("<div style=\"position:absolute;left:"+(xstart-70)+";top:"+(ystart+t*stheight-7)+";width=70;height:20;border:0;padding:0;\"><font size=2>"+(t/10>>0)+(t%10)+":00</div>");
+    w("<div style=\"position:absolute;left:"+(xstart-70)+";top:"+(ystart+t*stheight-7)+";width=70;height:20;border:0;padding:0;\"><font size=2>"+(t/10>>0)+(t%10)+":00</font></div>");
   }
   if(simday==devday)  plot_currtime();
 }

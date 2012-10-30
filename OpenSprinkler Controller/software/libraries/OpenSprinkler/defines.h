@@ -9,7 +9,7 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  181 // firmware version (e.g. 1.8.1 etc)
+#define SVC_FW_VERSION  182 // firmware version (e.g. 1.8.2 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 

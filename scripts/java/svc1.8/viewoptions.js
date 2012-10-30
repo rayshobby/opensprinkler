@@ -4,7 +4,7 @@
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2012, Rayshobby.net
 
-var str_tooltips=["Example: GMT-4:00, GMT+5:30 (effective after reboot).", "HTTP port (effective after reboot).", "", "Number of extension boards", "Station delay time (in seconds), between 0 and 240.", "Select master station", "Master on delay (in seconds), between +0 and +60.", "Master off delay (in seconds), between -60 and +60.", "Use rain sensor", "Rain sensor type", "Water level, between 0% and 250%.", "Ignore web password", "Obselete"];
+var str_tooltips=["Example: GMT-4:00, GMT+5:30 (effective after reboot).", "HTTP port (effective after reboot).", "HTTP port (effective after reboot).", "Number of extension boards", "Station delay time (in seconds), between 0 and 240.", "Select master station", "Master on delay (in seconds), between +0 and +60.", "Master off delay (in seconds), between -60 and +60.", "Use rain sensor", "Rain sensor type", "Water level, between 0% and 250%.", "Ignore web password", "Obselete"];
 function w(s) {document.writeln(s);}
 function imgstr(s) {return "<img src=\"http://rayshobby.net/images/icons/svc_"+s+".png\" height=20 align=absmiddle>&nbsp;";}
 function submit_form(f) {
@@ -20,8 +20,17 @@ function submit_form(f) {
   f.submit();
 }
 function fcancel() {window.location="/";}
+function fshow() {
+  var oid,tip;
+  for(oid=0;oid<nopts;oid++){
+    tip=document.getElementById("tip"+oid);
+    if(tip!=null) tip.hidden=false;
+  }
+}
 w("<div align=\"center\" style=\"background-color:#EEEEEE;border:2px solid gray;padding:5px 10px;width:240px;border-radius:10px;box-shadow:3px 3px 2px #888888;\">");
 w("<b>Set Options</b>:<br><font size=2>(Hover on each option to see tooltip)</font></div>");
+w("<p></p>");
+w("<button style=\"height:24\" onclick=\"fshow();return false;\">Show Tooltips</button>");
 // print html form
 w("<form name=of action=co method=get>");
 var oid,name,isbool,value,index,pasoid=0;
@@ -55,7 +64,8 @@ for(oid=0;oid<nopts;oid++){
       w("<p title=\""+str_tooltips[oid]+"\"><b>"+name+"</b> <input type=text size=3 maxlength=3 value="+value+" name=o"+index+">");
     }
   }
-  w("</p>");
+  //w("</p>");
+  w(" <span style=\"background-color:#FFF2B8;\" id=tip"+oid+" hidden=\"hidden\"><font size=2>"+str_tooltips[oid]+"</font></span></p>");
 }
 w("<p title=\"City name or zip code. Use comma or + in place of space.\"><b>Location:</b> <input type=text maxlength=31 value=\""+loc+"\" name=loc></p>");
 w("<h4>Password:<input type=password size=10 "+(opts[pasoid*4+2]?"disabled":"")+" name=pw></h4>");

@@ -20,6 +20,11 @@ function fill_time(prefix,idx) {
 	id(prefix+"h").value=""+((t/60>>0)/10>>0)+((t/60>>0)%10);
 	id(prefix+"m").value=""+((t%60)/10>>0)+((t%60)%10);
 }
+// check/uncheck all days
+function seldays(v) {
+  var i;
+  for(i=0;i<7;i++) id("d"+i).checked=(v>0)?true:false;
+}
 // handle form submit
 function fsubmit(f) {
   var errmsg = "",days=[0,0],i,s,sid;
@@ -80,6 +85,7 @@ w("<form name=mf action=cp method=get><input type=hidden name=pw><input type=hid
 w("<div style=\"padding-left:5px;padding-right:5px;\">");
 w("<p><b>This program is: </b><input type=radio name=rad_en id=en_on><b>On</b><input type=radio name=rad_en id=en_off><b>Off</b></p>");
 w("<p><b>Select Days:</b></p><input type=radio name=rad_day id=days_week><b><u>Weekly</u>:</b><input type=checkbox id=d0>Mon<input type=checkbox id=d1>Tue<input type=checkbox id=d2>Wed<input type=checkbox id=d3>Thu<input type=checkbox id=d4>Fri<input type=checkbox id=d5>Sat<input type=checkbox id=d6>Sun<br>")
+w("<div style=\"padding-left:80px;\"><button onclick=\"seldays(1);return false;\">Select All</button><button onclick=\"seldays(0);return false;\">Select None</button></div>");
 w("<div style=\"padding-left:20px;\"><p><b>Select Restrictions:</b><br><input type=radio name=rad_rst id=days_norst>No restriction<br><input type=radio name=rad_rst id=days_odd>Odd days only (except 31st and Feb 29th)<br><input type=radio name=rad_rst id=days_even>Even days only<br></p></div>");
 w("<input type=radio name=rad_day id=days_n><b><u>Interval</u>:</b> Every <input type=text size=2 maxlength=2 id=dn> days, starting in <input type=text size=2 maxlength=2 id=drem> days.<hr>");
 w("<p><b>Select Stations:</b></p>");

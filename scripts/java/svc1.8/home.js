@@ -18,7 +18,8 @@ w("<button style=\"height:44\" onclick=link(\"/vs\")>"+imgstr("edit")+"Stations<
 w("<button style=\"height:44\" onclick=link(\"/vp\")>"+imgstr("cal")+"Programs</button>");
 w("<button style=\"height:44\" onclick=linkn(\"http://igoogle.wunderground.com/cgi-bin/findweather/getForecast?query="+loc+"\")>"+imgstr("weather")+"Weather</button><p></p>");
 // print device information
-w("<b>Firmware version</b>: "+(ver/10>>0)+"."+(ver%10)+"<br>");
+if(ver>=100) w("<b>Firmware version</b>: "+(ver/100>>0)+"."+((ver/10>>0)%10)+"."+(ver%10)+"<br>");
+else w("<b>Firmware version</b>: "+(ver/10>>0)+"."+(ver%10)+"<br>");
 w("<b>Device time</b>: "+datestr(devt*1000)+"<hr>");
 w("<script type=\"text/javascript\" src=\"http://rayshobby.net/scripts/java/svc1.8/"+((mm)?"manualmode.js":"progmode.js")+"\"></script>");
 // print status and other information
@@ -28,8 +29,8 @@ w("<br><b>Rainsense</b>: "+(urs?(rs?("Rain Detected").fontcolor("red"):("no rain
 w("<br><b>Water level</b>: <font color="+((wl==100)?"green":"red")+">"+wl+"\%</font>");
 var lrsid=lrun[0],lrpid=lrun[1],lrdur=lrun[2],lret=lrun[3];
 var pname="P"+lrpid;
-if(lrpid==255) pname="Manual Mode";
-if(lrpid==254) pname="Run-once Program";
+if(lrpid==255||lrpid==99) pname="Manual Mode";
+if(lrpid==254||lrpid==98) pname="Run-once Program";
 dstr=(new Date(lret*1000)).toUTCString().replace(" GMT","");
 if(lrpid!=0) w("<br><b>Log</b>: "+(snames[lrsid]+" ran "+pname+" for "+(lrdur/60>>0)+"m"+(lrdur%60)+"s @ "+dstr).fontcolor("gray"));
 else w("<br><b>Log</b>: <font color=gray>n/a</font>");

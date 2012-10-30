@@ -1,6 +1,12 @@
 Updates
 
 ===============================
+* October 30, 2012
+- A couple of fixes to the manual mode and run-once program index to avoid buffer overflow on 32 stations.
+- Added new features in Javascripts, including 'Select All/None' in program modification page, and 'Show Tooltips' button in options page.
+- Checked in David Gustavson's PHP logging scripts.
+- Current firmware version is 1.8.2
+
 * September 27, 2012
 - Added minor revision number. The current firmware version is 1.8.1.
 - Changed RTC sync time to 1 minute to keep more accurate mcu time.

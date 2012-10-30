@@ -30,8 +30,8 @@ for(bid=0;bid<nbrd;bid++){
     else {
       rem=ps[sid][1];remm=rem/60>>0;rems=rem%60;
       pname="P"+ps[sid][0];
-      if(ps[sid][0]==255) pname="Manual Program";
-      if(ps[sid][0]==254) pname="Run-once Program";
+      if(ps[sid][0]==255||ps[sid][0]==99) pname="Manual Program";
+      if(ps[sid][0]==254||ps[sid][0]==98) pname="Run-once Program";
       if((sbits[bid]>>s)&1) {
         w(("<b>Running "+pname).fontcolor("green")+"</b> ("+(remm/10>>0)+(remm%10)+":"+(rems/10>>0)+(rems%10)+" remaining)");
       } else {

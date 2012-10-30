@@ -349,12 +349,12 @@ void manual_station_on(byte sid, int ontimer) {
   // set station start time (now)
   pd.scheduled_start_time[sid] = curr_time + 1;
   if (ontimer == 0) {
-    pd.scheduled_stop_time[sid] = pd.scheduled_start_time[sid] + 43200; // maximum running time is 8 hours
+    pd.scheduled_stop_time[sid] = ULONG_MAX-1;
   } else { 
     pd.scheduled_stop_time[sid] = pd.scheduled_start_time[sid] + ontimer;
   }
   // set program index
-  pd.scheduled_program_index[sid] = 255;
+  pd.scheduled_program_index[sid] = 99;
   svc.status.program_busy = 1;
 }
 

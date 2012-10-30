@@ -27,7 +27,9 @@ for(bid=0;bid<nbrd;bid++){
     w(snames[sid]+":&nbsp;&nbsp;</td><td>");
     if(sn==mas) {w(((sbits[bid]>>s)&1?("<b>On</b>").fontcolor("green"):("Off").fontcolor("black"))+" (<b>Master</b>)");}
     else {
-      rem=ps[sid][1];remm=rem/60>>0;rems=rem%60;sbit=(sbits[bid]>>s)&1;
+      rem=ps[sid][1];
+      if(rem>65536) rem=0;
+      remm=rem/60>>0;rems=rem%60;sbit=(sbits[bid]>>s)&1;
       var bg=(sbit?"#FFCCCC":"CCFFCC"),tx=(sbit?"off":"on"),dis=(sbit?"disabled":"");
       w("<button style=\"width:100px;height:32px;background-color:"+bg+";border-radius:8px;\" id=bb"+sid+" onclick=\"snf("+sid+","+sbit+")\">Turn "+tx+"</button>");
       w(sbit?" in ":" with timer ");
