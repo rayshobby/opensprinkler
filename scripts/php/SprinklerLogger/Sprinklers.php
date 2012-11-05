@@ -7,7 +7,7 @@ body{font-family:"Courier"}</style>
 <title>Sprinkler Logs</title>
 </head>
 <body>
-<?php
+<?php  
 //Written by David B. Gustavson, 20121021
 $SprinklerValveHistory=file_get_contents("SprinklerChanges.txt");
 date_default_timezone_set('America/Los_Angeles');
@@ -39,15 +39,15 @@ $ValveName=array(
 "V16=Unused"
 );
  for ($i=0;$i<count($Lines);$i++){
-        $ELines[$i]=explode("--",$Lines[$i]);
-        if (count($ELines[$i])>1){// Skip lines that aren't formatted as records, e.g. comments
-                $timeThis=strtotime($ELines[$i][1]);
-                if ($timeThis>$timeEarliest){// Ignore lines that aren't recent
-                        $SprinklerPattern[]=str_split($ELines[$i][0]);
-                        $SprinklerTime[]=$ELines[$i][1];
-                        $SprinklerTimeConverted[]=strtotime($ELines[$i][1]);
-                };
-        };
+	$ELines[$i]=explode("--",$Lines[$i]);
+	if (count($ELines[$i])>1){// Skip lines that aren't formatted as records, e.g. comments
+		$timeThis=strtotime($ELines[$i][1]);
+		if ($timeThis>$timeEarliest){// Ignore lines that aren't recent
+			$SprinklerPattern[]=str_split($ELines[$i][0]);
+			$SprinklerTime[]=$ELines[$i][1];
+			$SprinklerTimeConverted[]=strtotime($ELines[$i][1]);
+		};
+	};
  };
 
 for ($i=0;$i<count($SprinklerPattern);$i++){
@@ -64,46 +64,50 @@ for ($i=0;$i<count($SprinklerPattern);$i++){
 
 $ResultLine.=" ".$ValveName[$j].((($i==count($SprinklerPattern)-1)&&($SprinklerPattern[$i][$j]=="1"))?" has been on for ":" was on for ").
      $TimeElapsed." seconds.  ";
-
+     
      $ValveHistory[$j][]= array($SprinklerTime[$i], $TimeElapsed, ((($i==count($SprinklerPattern)-1)&&($SprinklerPattern[$i][$j]=="1"))?" Running Now":""));
     };
    };
 //  echo $SprinklerPattern[$i][0].$SprinklerPattern[$i][1].$SprinklerPattern[$i][2].$SprinklerPattern[$i][3]. $SprinklerPattern[$i][4].$SprinklerPattern[$i][5].$SprinklerPattern[$i][6].$SprinklerPattern[$i][7]. $SprinklerPattern[$i][8].$SprinklerPattern[$i][9].$SprinklerPattern[$i][10].$SprinklerPattern[$i][11]. $SprinklerPattern[$i][12].$SprinklerPattern[$i][13].$SprinklerPattern[$i][14].$SprinklerPattern[$i][15]. " @ ".$SprinklerTime[$i]."==".$SprinklerTimeConverted[$i].$ResultLine."<br/>";
-};
+};  
 echo "<table><caption><font size=5><b>Valve Operations, Date/Time <br/>(last $timeViewWindow)</b></font></caption>";
 // echo "<tr><th>Valve Operations</th><th>Date/Time (last $timeViewWindow)</th></tr>";
 for ($j=0;$j<16;$j++)
 {
- if (count($ValveHistory[$j])>0) {
- echo "<tr><td><b>".$ValveName[$j].",</b></td><td><b>".count($ValveHistory[$j])." run periods, ending at</b></td></tr>";
+ $ct=count($ValveHistory[$j]);
+ if ($ct>0) {
+ echo "\n<tr><td><b>".$ValveName[$j].",</b></td><td><b>".$ct." run period".($ct>1?"s":"").", ending at</b></td></tr>";
  for ($k=0;$k<count($ValveHistory[$j]);$k++){
 //  $thatDate=getdate(strtotime($ValveHistory[$j][$k][0]));
   $theTime=date_format(date_create($ValveHistory[$j][$k][0]), 'D, M j, Y, g:i A');
-echo "<tr><td>".number_format(($ValveHistory[$j][$k][1]/60), 1, '.', ',')." min</td><td>".$theTime.$ValveHistory[$j][$k][2]."</td></tr>";
+echo "\n<tr><td>".number_format(($ValveHistory[$j][$k][1]/60), 1, '.', ',')." min</td><td>".$theTime.$ValveHistory[$j][$k][2]."</td></tr>";
  };
  };
 };
 echo "</table>";
 
 // Now get the information about near-term FUTURE SCHEDULED WATERING:
-$schedsumm=array();
-$scheddate=array();
+$schedule=file_get_contents("http://192.168.1.18/gp?d=0");
+$schedulex=preg_replace("#.*(mas=\d+),(.*);</script>.*#s", "var $1, $2;\n", $schedule);
+
+$status=file_get_contents("http://192.168.1.18/");
+$statusx=preg_replace("#.*(ver=\d+),(devt=\d+);.*(tz=\d+),.*(en=\d+),(rd=\d+),(rs=\d+),mm=(\d+),(rdst=\d+),.*,(urs=\d+),(wl=\d+),.*,(loc=.+?\");.*#s", "var $1, $2, $3, $4, $5, $6, ManualMode=$7, $8, $9, $10;\n", $status);
+
 $schedsummary="";
 $tdays=7; //  This sets the number of days to look ahead
-for ($t=0;$t<$tdays;$t++){
-        $tsch=Date("Y-m-d, l",strtotime("$t days",time()));
-        $year=substr($tsch,0,4);
-        $month=substr($tsch,5,2);
-        $day=substr($tsch,8,2);
-        $dayname=substr($tsch,12);
-        $schedule=file_get_contents("http://192.168.1.18/gp?d=$day,m=$month,y=$year");
-        $schedulex=explode("script",$schedule);
-        $schedulex=rtrim(substr($schedulex[1],1),"</");
-        $schedsumm[]=$schedulex."\nvar simdate = new Date(yy,mm-1,dd,0,0,0); // Java Date object, assumes month starts from 0\nvar simday = (simdate.getTime()/1000/3600/24)>>0;\n";
-        $scheddate[]=$tsch;
-        $schedsummary.=$tsch."\n".$schedulex."\n";
+for ($t=0;$t<$tdays;$t++){ 
+	$tsch=Date("Y-m-d, l",strtotime("$t days",time()));
+	$year=substr($tsch,0,4);
+	$month=substr($tsch,5,2);
+	$monthm1=$month-1;
+	$day=substr($tsch,8,2);
+	$dayname=substr($tsch,12);
+	$schedsumm[]=$schedulex.$statusx."\nvar simdate = new Date($year,$monthm1,$day,0,0,0); // Java Date object, assumes month starts from 0\nvar simday = (simdate.getTime()/1000/3600/24)>>0;\n";
+	$scheddate[]=$tsch;
+	$schedsummary.=$tsch."\n".$schedulex.$statusx."\n";
 };
-file_put_contents ("/Library/WebServer/Documents/SprinklerSchedule.txt", $schedule."\n\nSchedule Extracted\n".$schedsummary);
+// For debugging
+//file_put_contents ("/Library/WebServer/Documents/SprinklerSchedule.txt", $schedule."\n\nSchedule Extracted\n".$schedulex."\n\n Status=\n".$status."\n\n Statusx=\n".$statusx."\n\nResult:".$schedulex."\n".$statusx."\nvar simdate = new Date($year,$monthm1,$day,0,0,0); // Java Date object, assumes month starts from 0\nvar simday = (simdate.getTime()/1000/3600/24)>>0;\n");
 ?>
 <script>
 // Javascript for printing OpenSprinkler schedule page
@@ -114,6 +118,7 @@ file_put_contents ("/Library/WebServer/Documents/SprinklerSchedule.txt", $schedu
 // Oct 2012, modified for use by David Gustavson in logging polling display
 // colors to draw different programs
 var prog_color=["rgba(0,0,200,0.5)","rgba(0,200,0,0.5)","rgba(200,0,0,0.5)","rgba(0,200,200,0.5)"];
+var rain_color="<font color='black'>";
 var xstart=80,ystart=80,stwidth=40,stheight=180;
 var winwidth=stwidth*nboards*8+xstart, winheight=26*stheight+ystart;
 var sid,sn,t;
@@ -152,9 +157,10 @@ function getrunstr(start,end){ // run time string
   h=end/3600>>0;m=(end/60>>0)%60;s=end%60;
   str+="->"+(h/10>>0)+(h%10)+":"+(m/10>>0)+(m%10)+":"+(s/10>>0)+(s%10);
   return str;
-}
+} 
 function plot_bar(sid,start,pid,end) { // plot program bar
-  w("<tr><td>"+snames[sid]+"</td><td>"+getrunstr(start,end)+"</td><td align='center'>P"+pid+"</td><td align='center'>"+((end-start)/60>>0)+"</td></tr>");
+    if ((rd!==0)&&(simdate.getTime()/1000+start+(tz-48)*900<=rdst)){rain_color="<font color='red'>";rain_skip="Skip";}else{rain_color="<font color='black'>";rain_skip="";};
+  w("<tr><td>"+rain_color+snames[sid]+"</td><td>"+rain_color+getrunstr(start,end)+"</td><td align='center'>"+rain_color+"P"+pid+"</td><td align='center'>"+rain_color+((end-start)/60>>0)+"  "+rain_skip+"</td></tr>");
 }
 function run_sched(simseconds,st_array,pid_array,et_array) { // run and plot schedule stored in array data
   var sid,endtime=simseconds;
@@ -201,7 +207,7 @@ function draw_program() {
           busy=1;
         }//if
       }//for
-    }
+    } 
     if (busy) {
       var endminutes=run_sched(simminutes*60,st_array,pid_array,et_array)/60>>0;
       if(simminutes!=endminutes) simminutes=endminutes;
@@ -213,16 +219,27 @@ function draw_program() {
   } while(simminutes<24*60); // simulation ends
 //  if(simday==devday)  window.scrollTo(0,gety((devmin/60>>0)*60)); // scroll to the hour line cloest to the current time
 }
-<?php
+<?php 
 $varsnames="'";
 for ($k=0;$k<count($ValveName);$k++){$varsnames.=$ValveName[$k]."','";};
-echo "var snames=[$varsnames'];";
-echo "w(\"<p><font size=5><b>Scheduled within the next $tdays days:</b></font><p>\");";
+echo "var snames=[$varsnames'];\n\n\n";
+echo $schedsumm[0];
+echo 'function datestr(t) {var _t=tz-48; return (new Date(t)).toUTCString()+((_t>=0)?"+":"-")+(Math.abs(_t)/4>>0)+":"+((Math.abs(_t)%4)*15/10>>0)+((Math.abs(_t)%4)*15%10);}'."\n";
+echo "w(\"<p><font size=5><b>Scheduled within the next $tdays days:</b></font>\");\n";
+// print status and other information
+echo 'if(ver>=100) w("<br><b>Firmware version</b>: "+(ver/100>>0)+"."+((ver/10>>0)%10)+"."+(ver%10)+"<br>");';
+echo 'else w("<br><b>Firmware version</b>: "+(ver/10>>0)+"."+(ver%10)+"<br>");';
+echo 'w("<b>Device time</b>: "+datestr(devt*1000));';
+echo 'w("<br><b>Operation</b>: "+(en?("on").fontcolor("green"):("OFF").fontcolor("red")));';
+echo 'w("<br><b>Raindelay</b>: "+(rd?("ON").fontcolor("red")+" (blocks watering until "+datestr(rdst*1000)+")":("off").fontcolor("black")));';
+echo 'w("<br><b>Rainsense</b>: "+(urs?(rs?("Rain Detected").fontcolor("red"):("no rain").fontcolor("green")):"<font color=gray>n/a</font>"));';
+echo 'w("<br><b>Water level</b>: <font color="+((wl==100)?"green":"red")+">"+wl+"\%</font><p>");';
+
 for ($t=0;$t<count($schedsumm);$t++) {
 echo $schedsumm[$t];
-echo "w(\"<table><caption><b>Scheduled for $scheddate[$t]:</b></caption><tr><th width=150>Valve</th><th width=150>Time</th><th>Program</th><th>Minutes</th></tr>\");";
+echo "w(\"<table><caption><b>Scheduled for $scheddate[$t]:</b></caption><tr><th width=150>Valve</th><th width=150>Time</th><th>Program</th><th>Minutes</th></tr>\"\n);";
 echo "draw_program();";
-echo "w(\"</table>--------------------------------------------------<p>\");";
+echo "w(\"</table>--------------------------------------------------<p>\");\n\n";
 };
 
 ?>

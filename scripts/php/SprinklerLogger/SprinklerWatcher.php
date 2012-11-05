@@ -1,4 +1,4 @@
-<?php
+<?php 
 // Written by David B. Gustavson, dbg@SCIzzL.com , starting October 2012.
 date_default_timezone_set('America/Los_Angeles');
 $datetime=Date("Y-m-d H:i:s",time());
@@ -26,7 +26,7 @@ file_put_contents ("/Library/WebServer/Documents/SprinklerPrevious.txt", $newSpr
 
 // The files SprinklerChanges.txt and SprinklerPrevious.txt seem to need to be owned by
 // root/wheel for this to work. (This runs even if nobody is logged in, as root.)
-//
+// 
 // <?xml version="1.0" encoding="UTF-8" (end this line with questionmark greater-than instead of this comment)
 // <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" \
 //   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
