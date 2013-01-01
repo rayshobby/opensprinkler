@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
+    <title>Raspberry Pi for OpenSprinkler</title>
+    <meta content="Dan Kimberling" name="author">
+  </head>
+  <body>
+    <p>I purchased a <a href="http://en.wikipedia.org/wiki/Raspberry_pi" target="_blank">Raspberry
+        Pi</a> (Pi for short) credit card size computer a couple of months ago.
+      I&#8217;ve been experimenting with it and having way too much fun. It runs a
+      version of Linux. For a long time I thought about learning Linux but never
+      had a compelling reason until now.
+    </p>
+    <p>OpenSprinkler is an <a href="http://www.arduino.cc/" target="_blank">Arduino</a>
+      based network connected irrigation controller with a web enabled user
+      interface. One user (David B. Gustovson) wrote a couple of php scripts
+      which can log the activity of OpenSprinkler -- a very useful feature.
+      However the logging scripts need to be on a separate computer running a
+      web server connected to the network. This is a perfect job for the
+      Raspberry Pi. It&#8217;s small size, silent operation low power consumption, and
+      network interface make it ideal for this purpose. In addition there are
+      some files used in the OpenSprinkler web interface that need to to be
+      loaded from a web server. The Pi can be a web server!</p>
+    <p>Following is a list of the steps I used to get the Raspberry Pi and
+      OpenSprinkler working together as a team.<strong></strong></p>
+    <ol>
+      <li><a href="http://www.raspberrypi.org/downloads" target="_blank">Download</a>
+        the latest version of the operating system (Raspbian) for the Pi as an
+        SD card image and follow the instructions for flashing it onto an SD
+        card. I used an 8mb card. I used the default username (Pi) and password
+        (raspberry) in my setup. </li>
+      <li><a href="https://github.com/rayshobby/opensprinkler" target="_blank">Download</a>
+        the zip file containing the files I used for making the Pi work with
+        OpenSprinkler. It contain:<br>
+        <ul>
+          <li>The *.png icon files used in the OpenSprinkler web interface with
+            the addition of a "log" icon</li>
+          <li>The JavaScript files for the web interface edited to point to the
+            Pi (192.168.1.50) and including a home.js file which has a "Logger"
+            button in place of the weather button.</li>
+          <li>David Gustovson's Sprinkler.php logger script edited to use the IP
+            address I set for the OpenSprinkler (192.168.1.55) and the
+            directories on the Pi for the text files it uses.</li>
+          <li>A python script I wrote (zonecheck.py). because i couldn't get
+            David's SprinklerWatcher.php to start automatically and run in the
+            background on the Pi. The zonecheck.py script has the same
+            functionality, runs as a "daemon" process in the background and
+            starts automatically when the Pi is powered on.</li>
+          <li>The two text files used by the logger scripts
+            (SprinklerChanges.txt and SprinklerPrevious.txt)</li>
+          <li>a modified version of the OpenSprinkler firmware.<br>
+          </li>
+        </ul>
+        <a href="file:///C:/Users/Dan/AppData/Local/Temp/WindowsLiveWriter1286139640/supfilesF9ACE6/Get-zip2.png"></a></li>
+      <ol>
+      </ol>
+      <ol>
+      </ol>
+      <li>Plug the SD card prepared in step 1 into the PI and connect the Pi to
+        your network. The Pi is equipped with ports for analog and HDMI video
+        output as well as USB ports to which a keyboard and mouse can be
+        attached. For use with OpenSprinkler it is best to access the Pi via
+        SSH. and run it headless (without a monitor, keyboard or mouse). You can
+        find <a href="http://www.makeuseof.com/tag/setting-raspberry-pi-headless-ssh/"
+          target="_blank">instructions</a> for accomplishing this on the
+        internet. </li>
+      <li>In order for the Pi and OpenSprinkler to communicate reliably with
+        each other you should set both the <a href="http://www.penguintutor.com/blog/viewblog.php?blog=6306"
+          target="_blank">Raspberry Pi</a> and <a href="http://rayshobby.net/?page_id=3775#setup"
+          target="_blank">OpenSprinkler</a> to static IP addresses. I set the Pi
+        to 192.168.1.50 and OpenSprinkler to 192.168.1.55 These IP addresses
+        appear in a number of files and if you decide to use different addresses
+        you will also need to edit those files accordingly. The files include
+        the *.js files used in the OpenSprinkler web interface, the
+        Sprinklers.php logger script, the zonecheck.py python script I used in
+        place of David&#8217;s SprinklerWatcher.php script and possibly the
+        OpenSprinkler firmware.</li>
+      <li>Once you have your Pi set up and are able to access it via SSH you
+        need to install a web server and PHP. I also installed mySQL database
+        software for future use. See <a href="http://elinux.org/RPi_webserver"
+          target="_blank">This web site</a> for instructions. </li>
+      <li>Set permissions for the web server directories on the PI. [sudo chmod
+        -R 755 /var/www/]<br>
+      </li>
+      <li>The next steps are to create a few directories on the Pi and copy some
+        files into them:</li>
+    </ol>
+    <ul>
+      <li>If you are installing the logger script you need to create directories
+        for the python deamon program (zonecheck.py) that polls the
+        OpenSprinkler and records irrigation events and the php script
+        (Sprinklers.php) that displays the log as a web page:
+        <ol>
+          <li>In the Pi home directory create a sub-directory named
+            python_scripts [mkdir python_scripts] then copy the python file
+            zonecheck.py into it. </li>
+          <li>Edit the rc.local file on the Pi:
+            <ol>
+              <ul>
+                <li>[sudo nano /etc/rc.local] </li>
+                <li>add the following to the end of the file: python
+                  /home/pi/python_scripts/zoneckeck.py </li>
+                <li>[control o] to save the file </li>
+                <li>[control x] to exit the editor </li>
+              </ul>
+            </ol>
+          </li>
+          <li>Next make a new directory under /var/www/ named &#8220;scripts&#8221;
+            containing a sub directory named &#8220;php&#8221; [mkdir &#8211;p
+            /var/www/scripts/php] then copy the Sprinklers.php fie into the php
+            directory. The Sprinklers.php file needs to be tweaked to find the
+            log file on the Pi and the OpenSprinkler:
+            <ul>
+              <ul>
+                <li>Line 12 should read
+                  $SprinklerValveHistory=file_get_contents("../../irrlog/SprinklerChanges.txt");
+                </li>
+                <li>Line 13 should have the correct time zone for your location
+                </li>
+                <li>Line 16 should read
+                  $newSprinklerValveSettings=file_get_contents('http://192.168.1.55/sn0');</li>
+              </ul>
+            </ul>
+          </li>
+          <li>Make a new directory for the irrigation log text files: [mkdir
+            /var/www/irrlog]. The files will be created automatically by
+            zoncheck.py.</li>
+        </ol>
+      </li>
+      <li>If you are installing the files for OpenSprinkler&#8217;s web interface you
+        need to:
+        <ol>
+          <li>Create a directory under /var/www/ named images with a sub
+            directory named icons [mkdir &#8211;p /var/www/images/icons]. Copy the
+            .png files from the OpenSprinkler zip file into the new icons
+            directory on the Pi. Also copy the file named svc_log.png into that
+            directory. </li>
+          <li>Make a new directory for the javascript files [mkdir
+            /var/www/scripts/java] and copy the .js files that have been
+            modified to point to the PI into it.</li>
+          <li>Follow the instructions on the OpenSprinkler web site to flash the
+            OpenSprinkler with the modified firmware.<br>
+          </li>
+        </ol>
+        When all the files are in place and the modified firmware is installed,
+        be sure the Pi and OpenSprinkler are attached to your network. Turn on
+        OpenSprinkler and then power on the Pi. When you access the
+        OpenSprinkler Web interface you should see a logger button on the upper
+        right of the page. Clicking it will open a new window after a few
+        seconds showing the log. <br>
+      </li>
+    </ul>
+    <p> </p>
+  </body>
+</html>
