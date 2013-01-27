@@ -9,7 +9,7 @@ var prog_color=["rgba(0,0,200,0.5)","rgba(0,200,0,0.5)","rgba(200,0,0,0.5)","rgb
 var xstart=80,ystart=80,stwidth=40,stheight=180;
 var winwidth=stwidth*nboards*8+xstart, winheight=26*stheight+ystart;
 var sid,sn,t;
-var simdate = new Date(yy,mm-1,dd,0,0,0); // Java Date object, assumes month starts from 0
+var simdate = new Date(Date.UTC(yy,mm-1,dd)); // Java Date object, assumes month starts from 0
 var simday = (simdate.getTime()/1000/3600/24)>>0;
 function w(s) {document.writeln(s);}
 function check_match(prog,simminutes,simdate,simday) {
@@ -73,7 +73,7 @@ function run_sched(simseconds,st_array,pid_array,et_array) { // run and plot sch
 }
 function draw_title() {
   w("<div align=\"center\" style=\"background-color:#EEEEEE;position:absolute;left:0px;top:10px;border:2px solid gray;padding:5px 0px;width:"+(winwidth)+";border-radius:10px;box-shadow:3px 3px 2px #888888;\"><b>Program Preview of</b>&nbsp;");
-  w(simday==devday?"Today":simdate.toDateString());
+  w(simdate.toDateString());
   w("<br><font size=2>(Hover over each colored bar to see tooltip)</font>");
   w("</div>");
 }
@@ -91,7 +91,7 @@ function draw_grid() {
     w("<div style=\"position:absolute;left:"+(xstart-stwidth/2-8)+";top:"+(gety(t*60)+stheight/2)+";border:1px solid gray;width:8;height:0;\"></div>");
     w("<div style=\"position:absolute;left:"+(xstart-70)+";top:"+(ystart+t*stheight-7)+";width=70;height:20;border:0;padding:0;\"><font size=2>"+(t/10>>0)+(t%10)+":00</font></div>");
   }
-  if(simday==devday)  plot_currtime();
+  plot_currtime();
 }
 function draw_program() {
   // plot program data by a full simulation
@@ -136,7 +136,7 @@ function draw_program() {
       simminutes++; // increment simulation time
     }
   } while(simminutes<24*60); // simulation ends
-  if(simday==devday)  window.scrollTo(0,gety((devmin/60>>0)*60)); // scroll to the hour line cloest to the current time
+  window.scrollTo(0,gety((devmin/60>>0)*60)); // scroll to the hour line cloest to the current time
 }
 
 draw_title();
