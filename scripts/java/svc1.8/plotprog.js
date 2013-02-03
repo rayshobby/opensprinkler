@@ -6,11 +6,13 @@
 
 // colors to draw different programs
 var prog_color=["rgba(0,0,200,0.5)","rgba(0,200,0,0.5)","rgba(200,0,0,0.5)","rgba(0,200,200,0.5)"];
+var days_str=["Sun","Mon","Tue","Wed","Thur","Fri","Sat"];
 var xstart=80,ystart=80,stwidth=40,stheight=180;
 var winwidth=stwidth*nboards*8+xstart, winheight=26*stheight+ystart;
 var sid,sn,t;
-var simdate = new Date(Date.UTC(yy,mm-1,dd)); // Java Date object, assumes month starts from 0
-var simday = (simdate.getTime()/1000/3600/24)>>0;
+var simt=Date.UTC(yy,mm-1,dd,12,0,0,0);
+var simdate=new Date(simt);
+var simday = (simt/1000/3600/24)>>0;
 function w(s) {document.writeln(s);}
 function check_match(prog,simminutes,simdate,simday) {
   // simdate is Java date object, simday is the #days since 1970 01-01
@@ -20,13 +22,13 @@ function check_match(prog,simminutes,simdate,simday) {
     dn=prog[2];drem=prog[1]&0x7f;
     if((simday%dn)!=((devday+drem)%dn)) return 0; // remainder checking
   } else {
-    wd=(simdate.getDay()+6)%7; // getDay assumes sunday is 0, converts to Monday 0
+    wd=(simdate.getUTCDay()+6)%7; // getDay assumes sunday is 0, converts to Monday 0
     if((prog[1]&(1<<wd))==0)  return 0; // weekday checking
-    dt=simdate.getDate(); // day of the month
+    dt=simdate.getUTCDate(); // day of the month
     if((prog[1]&0x80)&&(prog[2]==0))  {if((dt%2)!=0)  return 0;} // even day checking
     if((prog[1]&0x80)&&(prog[2]==1))  { // odd day checking
       if(dt==31)  return 0;
-      else if (dt==29 && simdate.getMonth()==1) return 0;
+      else if (dt==29 && simdate.getUTCMonth()==1) return 0;
       else if ((dt%2)!=1) return 0;
     }
   }
@@ -73,7 +75,7 @@ function run_sched(simseconds,st_array,pid_array,et_array) { // run and plot sch
 }
 function draw_title() {
   w("<div align=\"center\" style=\"background-color:#EEEEEE;position:absolute;left:0px;top:10px;border:2px solid gray;padding:5px 0px;width:"+(winwidth)+";border-radius:10px;box-shadow:3px 3px 2px #888888;\"><b>Program Preview of</b>&nbsp;");
-  w(simdate.toDateString());
+  w(days_str[simdate.getUTCDay()]+" "+(simdate.getUTCMonth()+1)+"/"+(simdate.getUTCDate())+" "+(simdate.getUTCFullYear()));
   w("<br><font size=2>(Hover over each colored bar to see tooltip)</font>");
   w("</div>");
 }
