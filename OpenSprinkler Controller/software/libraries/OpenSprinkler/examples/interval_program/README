@@ -1,6 +1,9 @@
 Updates
 
 ===============================
+* Feb 9, 2012
+- Added back support for 'sequential' option, which sets the controller to run program schedules in either sequential or concurrent mode.
+
 * October 30, 2012
 - A couple of fixes to the manual mode and run-once program index to avoid buffer overflow on 32 stations.
 - Added new features in Javascripts, including 'Select All/None' in program modification page, and 'Show Tooltips' button in options page.

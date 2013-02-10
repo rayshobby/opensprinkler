@@ -2,14 +2,14 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   Sep 2012 @ Rayshobby.net
+   Feb 2013 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  182 // firmware version (e.g. 1.8.2 etc)
+#define SVC_FW_VERSION  183 // firmware version (e.g. 1.8.3 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
@@ -25,9 +25,7 @@
 #define ADDR_EEPROM_PASSWORD    0x0020	// address where password is stored, 16 bytes reserved
 #define ADDR_EEPROM_LOCATION    0x0030  // address where location is stored, 32 bytes reserved
 #define ADDR_EEPROM_STN_NAMES   0x0050  // address where station names are stored
-#define ADDR_EEPROM_RUNONCE     (ADDR_EEPROM_STN_NAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
-                                        // address where run-once data is stored
-#define ADDR_EEPROM_MAS_OP      (ADDR_EEPROM_RUNONCE+(MAX_EXT_BOARDS+1)*8*2)
+#define ADDR_EEPROM_MAS_OP      (ADDR_EEPROM_STN_NAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
                                         // address where master operation bits are stored
 #define ADDR_EEPROM_USER        (ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1))
                                         // address where program schedule data is stored
@@ -65,6 +63,7 @@ typedef enum {
   OPTION_WATER_LEVEL,
   OPTION_SELFTEST_TIME,
   OPTION_IGNORE_PASSWORD,
+  OPTION_DEVICE_ID,
   OPTION_RESET,
   NUM_OPTIONS	// total number of options
 } OS_OPTION_t;
@@ -176,7 +175,7 @@ typedef enum {
 #define DISPLAY_MSG_MS      2000  // message display time (milliseconds)
 
 // ====== Ethernet Defines ======
-#define ETHER_BUFFER_SIZE     720	// if buffer size is increased, you must check the total RAM consumption
+#define ETHER_BUFFER_SIZE     720 // if buffer size is increased, you must check the total RAM consumption
                                   // otherwise it may cause the program to crash
 #define TMP_BUFFER_SIZE        32 // scratch buffer size
 

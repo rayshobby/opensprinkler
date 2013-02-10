@@ -7,7 +7,7 @@
  The number of programs you can create are subject to EEPROM size.
  
  Creative Commons Attribution-ShareAlike 3.0 license
- Sep 2012 @ Rayshobby.net
+ Feb 2013 @ Rayshobby.net
  */
 
 #include <limits.h>
@@ -19,8 +19,8 @@
 // To create custom Javascripts, you need to make a copy of these scripts
 // and put them to your own server, or github, or any available file hosting service
 
-#define JAVASCRIPT_PATH  "http://rayshobby.net/scripts/java/svc1.8" 
-//"https://github.com/rayshobby/opensprinkler/raw/master/scripts/java/svc1.8"
+#define JAVASCRIPT_PATH  "http://rayshobby.net/scripts/java/svc1.8.3" 
+//"https://github.com/rayshobby/opensprinkler/raw/master/scripts/java/svc1.8.3"
 // ================================================================================
 
 // NTP sync interval (in seconds)
@@ -34,7 +34,7 @@
 
 
 // ====== Ethernet defines ======
-byte mymac[] = { 0x00,0x69,0x69,0x2D,0x30,0x30 }; // mac address
+byte mymac[] = { 0x00,0x69,0x69,0x2D,0x30,0x00 }; // mac address: the last byte will be substituted by device id
 byte ntpip[] = {204,9,54,119};                    // Default NTP server ip
 uint8_t ntpclientportL = 123;                           // Default NTP client port
 int myport;
@@ -140,9 +140,10 @@ void loop()
   static unsigned long last_minute = 0;
   static uint16_t pos;
 
-  byte bid, sid, s, pid, bitvalue, mas;
+  byte bid, sid, s, pid, seq, bitvalue, mas;
   ProgramStruct prog;
 
+	seq = svc.options[OPTION_SEQUENTIAL].value;
   mas = svc.options[OPTION_MASTER_STATION].value;
   //wdt_reset();  // reset watchdog timer
 
@@ -181,8 +182,8 @@ void loop()
     // ====== Schedule program data ======
     // Check if we are cleared to schedule a new program. The conditions are:
     // 1) the controller is in program mode (manual_mode == 0), and if
-    // 2) the cotroller is not busy
-    if (svc.status.manual_mode==0 && svc.status.program_busy==0) {
+    // 2) either the cotroller is not busy or is in concurrent mode
+    if (svc.status.manual_mode==0 && (svc.status.program_busy==0 || seq==0)) {
       unsigned long curr_minute = curr_time / 60;
       boolean match_found = false;
       // since the granularity of start time is minute
@@ -201,7 +202,7 @@ void loop()
                 // ignore master station because it's not scheduled independently
                 if (mas == sid+1)  continue;
                 // if the station is current running, skip it
-                if (svc.station_bits[bid]>>s) continue;
+                if (svc.station_bits[bid]&(1<<s)) continue;
                 
                 // if station bits match
                 if(prog.stations[bid]&(1<<s)) {
@@ -219,7 +220,7 @@ void loop()
         
         // calculate start and end time
         if (match_found) {
-          schedule_all_stations(curr_time);
+          schedule_all_stations(curr_time, seq);
         }
       }//if_check_current_minute
     } //if_cleared_for_scheduling
@@ -263,8 +264,8 @@ void loop()
               // schedule master station here if
               // 1) master station is defined
               // 2) the station is non-master and is set to activate master
-              // 3) program is not running in manual mode
-              if ((mas>0) && (mas!=sid+1) && (svc.masop_bits[bid]&(1<<s)) && svc.status.manual_mode==0) {
+              // 3) controller is not running in manual mode AND sequential is true
+              if ((mas>0) && (mas!=sid+1) && (svc.masop_bits[bid]&(1<<s)) && seq && svc.status.manual_mode==0) {
                 byte masid=mas-1;
                 // master will turn on when a station opens,
                 // adjusted by the master on and off time
@@ -307,7 +308,7 @@ void loop()
     }//if_some_program_is_running
 
     // handle master station for manual or parallel mode
-    if ((mas>0) && svc.status.manual_mode==1) {
+    if ((mas>0) && (svc.status.manual_mode==1 || seq==0)) {
       // in parallel mode or manual mode
       // master will remain on until the end of program
       byte masbit = 0;
@@ -396,31 +397,46 @@ void check_network(time_t curr_time) {
     } while(millis() - start < PING_TIMEOUT);
     if (failed)  svc.status.network_fails++;
     else svc.status.network_fails=0;
-    // if failed more than 4 times in a row, reconnect
-    if (svc.status.network_fails>4&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
-      svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
+    // if failed more than 2 times in a row, reconnect
+    if (svc.status.network_fails>2&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
+      //svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
       svc.start_network(mymac, myport);
       //svc.status.network_fails=0;
     }
   } 
 }
 
-void schedule_all_stations(unsigned long curr_time)
+void schedule_all_stations(unsigned long curr_time, byte seq)
 {
   unsigned long accumulate_time = curr_time + 1;
   byte sid;
   // calculate start time of each station
-  // tations run one after another
-  // separated by station delay time
-  for(sid=0;sid<svc.nstations;sid++) {
-    if(pd.scheduled_stop_time[sid]) {
-      pd.scheduled_start_time[sid] = accumulate_time;
-      accumulate_time += pd.scheduled_stop_time[sid];
-      pd.scheduled_stop_time[sid] = accumulate_time;
-      accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
-      svc.status.program_busy = 1;  // set program busy bit
+	if (seq) {
+		// in sequential mode
+	  // stations run one after another
+  	// separated by station delay time
+
+		for(sid=0;sid<svc.nstations;sid++) {
+		  if(pd.scheduled_stop_time[sid]) {
+		    pd.scheduled_start_time[sid] = accumulate_time;
+		    accumulate_time += pd.scheduled_stop_time[sid];
+		    pd.scheduled_stop_time[sid] = accumulate_time;
+		    accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
+		    svc.status.program_busy = 1;  // set program busy bit
+		  }
+		}
+	} else {
+		// in concurrent mode, stations are allowed to run in parallel
+    for(sid=0;sid<svc.nstations;sid++) {
+			byte bid=sid/8;
+			byte s=sid%8;
+      if(pd.scheduled_stop_time[sid] && !(svc.station_bits[bid]&(1<<s))) {
+        pd.scheduled_start_time[sid] = accumulate_time;
+        pd.scheduled_stop_time[sid] = accumulate_time + pd.scheduled_stop_time[sid];
+        svc.status.program_busy = 1;  // set program busy bit
+      }
     }
-  }
+	}
 }
 
 void reset_all_stations() {

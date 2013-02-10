@@ -2,7 +2,7 @@
 
 /* OpenSprinkler Class Definition
    Creative Commons Attribution-ShareAlike 3.0 license
-   Sep 2012 @ Rayshobby.net
+   Feb 2013 @ Rayshobby.net
 */
 
 #ifndef _OpenSprinkler_h
@@ -100,7 +100,6 @@ public:
   static void lcd_print_time(byte line);                  // print current time
   static void lcd_print_ip(const byte *ip, int http_port);// print ip and port number
   static void lcd_print_station(byte line, char c);       // print station bits of the board selected by display_board
-  static void lcd_print_status(); // print selected status bits
  
   // -- Button and UI functions --
   static byte button_read(byte waitmode); // Read button value. options for 'waitmodes' are:

@@ -2,7 +2,7 @@
 
 /* OpenSprinkler Class Implementation
    Creative Commons Attribution-ShareAlike 3.0 license
-   Sep 2012 @ Rayshobby.net
+   Feb 2013 @ Rayshobby.net
 */
 
 #include "OpenSprinkler.h"
@@ -26,9 +26,6 @@ prog_char _str_ip2 [] PROGMEM = "ip2:";
 prog_char _str_ip3 [] PROGMEM = "ip3:";
 prog_char _str_ip4 [] PROGMEM = "ip4:";
 prog_char _str_gw1 [] PROGMEM = "Gateway.ip1:";
-prog_char _str_gw2 [] PROGMEM = "ip2:";
-prog_char _str_gw3 [] PROGMEM = "ip3:";
-prog_char _str_gw4 [] PROGMEM = "ip4:";
 prog_char _str_hp0 [] PROGMEM = "HTTP port:";
 prog_char _str_hp1 [] PROGMEM = "";
 prog_char _str_ar  [] PROGMEM = "Auto reconnect:";
@@ -43,6 +40,7 @@ prog_char _str_rso [] PROGMEM = "Normally open:";
 prog_char _str_wl  [] PROGMEM = "Water level (%):";
 prog_char _str_stt [] PROGMEM = "Selftest time:";
 prog_char _str_ipas[] PROGMEM = "Ignore password:";
+prog_char _str_devid[] PROGMEM = "Device ID:";
 prog_char _str_reset[] PROGMEM = "Reset all?";
 
 
@@ -56,14 +54,14 @@ OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {1,   255, _str_ip3,  OPFLAG_SETUP_EDIT},
   {22,  255, _str_ip4,  OPFLAG_SETUP_EDIT},
   {192, 255, _str_gw1,  OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static gateway ip
-  {168, 255, _str_gw2,  OPFLAG_SETUP_EDIT},
-  {1,   255, _str_gw3,  OPFLAG_SETUP_EDIT},
-  {1,   255, _str_gw4,  OPFLAG_SETUP_EDIT},
+  {168, 255, _str_ip2,  OPFLAG_SETUP_EDIT},
+  {1,   255, _str_ip3,  OPFLAG_SETUP_EDIT},
+  {1,   255, _str_ip4,  OPFLAG_SETUP_EDIT},
   {80,  255, _str_hp0,  OPFLAG_WEB_EDIT},     // this and next byte define http port number
   {0,   255, _str_hp1,  OPFLAG_WEB_EDIT},
   {1,   1,   _str_ar,   OPFLAG_SETUP_EDIT},   // network auto reconnect
   {0,   MAX_EXT_BOARDS, _str_ext, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // number of extension board. 0: no extension boards
-  {1,   1,   _str_seq,  OPFLAG_NONE}, // sequential mode (obsolete, non-editable)
+  {1,   1,   _str_seq,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // sequential mode. 1: stations run sequentially; 0:concurrently
   {0,   240, _str_sdt,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // station delay time (0 to 240 seconds).
   {0,   8,   _str_mas,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // index of master station. 0: no master station
   {0,   60,  _str_mton, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master on time [0,60] seconds
@@ -73,6 +71,7 @@ OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {100, 250, _str_wl,   OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // water level (default 100%),
   {10,  240, _str_stt,  OPFLAG_SETUP_EDIT},                   // self-test time (in seconds)
   {0,   1,   _str_ipas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // 1: ignore password; 0: use password
+  {0,   255, _str_devid,OPFLAG_SETUP_EDIT},                   // device id
   {0,   1,   _str_reset,OPFLAG_SETUP_EDIT}
 };
 
@@ -105,6 +104,7 @@ void(* resetFunc) (void) = 0;
 // Initialize network with the given mac address and http port
 byte OpenSprinkler::start_network(byte mymac[], int http_port) {
 
+  mymac[5] = options[OPTION_DEVICE_ID].value;
   if(!ether.begin(ETHER_BUFFER_SIZE, mymac))  return 0;
   ether.hisport = http_port;    
   
@@ -172,35 +172,19 @@ void OpenSprinkler::begin() {
   Wire.begin();
   
   // Reset status variables
-	status.enabled = 1;
-	status.rain_delayed = 0;
-	status.rain_sensed = 0;
-	status.program_busy = 0;
-	status.manual_mode = 0;
-	status.has_rtc = 0;
-	status.display_board = 0;
-	status.network_fails = 0;
+  status.enabled = 1;
+  status.rain_delayed = 0;
+  status.rain_sensed = 0;
+  status.program_busy = 0;
+  status.manual_mode = 0;
+  status.has_rtc = 0;
+  status.display_board = 0;
+  status.network_fails = 0;
 
   nboards = 1;
   nstations = 8;
   raindelay_stop_time = 0;
-  
-  // define lcd custom characters
-  byte lcd_custom_char[8] = {
-    B00000,
-    B10100,
-    B01000,
-    B10101,
-    B00001,
-    B00101,
-    B00101,
-    B10101
-  };
-  lcd.createChar(1, lcd_custom_char);  
-  lcd_custom_char[1]=0;
-  lcd_custom_char[2]=0;
-  lcd_custom_char[3]=1;    
-  lcd.createChar(0, lcd_custom_char);  
+
   // begin lcd
   lcd.begin(16, 2);
   
@@ -341,7 +325,7 @@ void OpenSprinkler::options_setup() {
     eeprom_string_set(ADDR_EEPROM_PASSWORD, DEFAULT_PASSWORD);  // write default password
     eeprom_string_set(ADDR_EEPROM_LOCATION, DEFAULT_LOCATION);  // write default location
     
-    lcd_print_line_clear_pgm(PSTR("Resetting EEPROM"), 0);
+    lcd_print_line_clear_pgm(PSTR("Reset EEPROM"), 0);
     lcd_print_line_clear_pgm(PSTR("Please Wait..."), 1);  
       
     int i, sn;
@@ -350,7 +334,7 @@ void OpenSprinkler::options_setup() {
     }
 
     // reset station names
-    for(i=ADDR_EEPROM_STN_NAMES, sn=1; i<ADDR_EEPROM_RUNONCE; i+=STATION_NAME_SIZE, sn++) {
+    for(i=ADDR_EEPROM_STN_NAMES, sn=1; i<ADDR_EEPROM_MAS_OP; i+=STATION_NAME_SIZE, sn++) {
       eeprom_write_byte((unsigned char *)i    ,'S');
       eeprom_write_byte((unsigned char *)(i+1),'0'+(sn/10));
       eeprom_write_byte((unsigned char *)(i+2),'0'+(sn%10)); 
@@ -523,18 +507,6 @@ void OpenSprinkler::lcd_print_ip(const byte *ip, int http_port) {
   lcd.print(http_port);
 }
 
-void OpenSprinkler::lcd_print_status() {
-  lcd.setCursor(15, 1);
-  lcd.write(status.network_fails>0?1:0); 
-  /*
-  if(status.network_fails>0) {
-    lcd.setCursor(15, 1);
-    //lcd_print_pgm(PSTR("!"));
-    //lcd.print((int)(status.network_fails%10));
-    lcd.write(0);
-  }*/
-}
-
 // Print station bits
 void OpenSprinkler::lcd_print_station(byte line, char c) {
   //lcd_print_line_clear_pgm(PSTR(""), line);
@@ -566,7 +538,9 @@ void OpenSprinkler::lcd_print_station(byte line, char c) {
 	  }
 	}
 	lcd_print_pgm(PSTR("    "));
-  lcd_print_status();
+	lcd.setCursor(15, 1);
+	if(status.network_fails>0)
+		lcd.print('?');
 }
 
 // Print an option value

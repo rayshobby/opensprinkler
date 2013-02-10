@@ -2,7 +2,7 @@
 
 /* Server functions
    Creative Commons Attribution-ShareAlike 3.0 license
-   Sep 2012 @ Rayshobby.net
+   Feb 2013 @ Rayshobby.net
 */
 
 #include <OpenSprinkler.h>
@@ -42,12 +42,6 @@ prog_uchar htmlReturnHome[] PROGMEM =
   "window.location=\"/\";</script>\n"
 ;
 
-/*prog_uchar htmlFavicon[] PROGMEM = 
-    "HTTP/1.0 301 Moved Permanently\r\nLocation: "
-    "http://rayshobby.net/rayshobby.ico"
-    "\r\n\r\nContent-Type: text/html\r\n\r\n"
-    "<h1>301 Moved Permanently</h1>\n"
-;*/
 
 // check and verify password
 boolean check_password(char *p)
@@ -124,7 +118,7 @@ boolean print_webpage_change_stations(char *p)
   }
   svc.masop_save();
   
-  bfill.emit_p(PSTR("$F<script>alert(\"Station changes saved.\");$F"), htmlOkHeader, htmlReturnHome);
+  bfill.emit_p(PSTR("$F<script>alert(\"Changes saved.\");$F"), htmlOkHeader, htmlReturnHome);
   return true;
 }
 
@@ -182,18 +176,8 @@ void bfill_programdata()
 
 // webpage for printing run-once program
 boolean print_webpage_view_runonce(char *str) {
-  bfill.emit_p(PSTR("$F$F<script>var nboards=$D,mas=$D,ipas=$D,dur=["), htmlOkHeader, htmlMobileHeader,
+  bfill.emit_p(PSTR("$F$F<script>var nboards=$D,mas=$D,ipas=$D;</script>\n"), htmlOkHeader, htmlMobileHeader,
                svc.nboards, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_IGNORE_PASSWORD].value);
-
-  byte sid;
-  uint16_t dur;
-  unsigned char *addr = (unsigned char*)ADDR_EEPROM_RUNONCE;
-  for(sid=0;sid<svc.nstations;sid++, addr+=2) {
-    dur=eeprom_read_byte(addr);
-    dur=(dur<<8)+eeprom_read_byte(addr+1);
-    bfill.emit_p(PSTR("$D,"),dur);
-  }
-  bfill.emit_p(PSTR("0];</script>\n"));
   bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
   bfill.emit_p(PSTR("<script src=\"$F/viewro.js\"></script>\n"), htmlExtJavascriptPath);
   
@@ -225,24 +209,22 @@ boolean print_webpage_change_runonce(char *p) {
       
   byte sid;
   uint16_t dur;
-  unsigned char *addr = (unsigned char*)ADDR_EEPROM_RUNONCE;
   boolean match_found = false;
-  for(sid=0;sid<svc.nstations;sid++, addr+=2) {
+  for(sid=0;sid<svc.nstations;sid++) {
     dur=parse_listdata(&pv);
-    eeprom_write_byte(addr, (dur>>8));
-    eeprom_write_byte(addr+1, (dur&0xff));
     if (dur>0) {
       pd.scheduled_stop_time[sid] = dur;
-      pd.scheduled_program_index[sid] = 98;      
+      pd.scheduled_program_index[sid] = 254;      
       match_found = true;
     }
   }
   if(match_found) {
-    schedule_all_stations(now());
+    schedule_all_stations(now(), svc.options[OPTION_SEQUENTIAL].value);
   }
   bfill.emit_p(PSTR("$F<script>$F"), htmlOkHeader, htmlReturnHome);
   return true;
 }
+
 
 // webpage for printing program summary page
 boolean print_webpage_view_program(char *str) {
@@ -358,8 +340,8 @@ boolean print_webpage_plot_program(char *p) {
     yy=atoi(tmp_buffer);
   }
   
-  bfill.emit_p(PSTR("$F<script>var mas=$D,wl=$D,sdt=$D,mton=$D,mtoff=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"),
-               htmlOkHeader, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_WATER_LEVEL].value,
+  bfill.emit_p(PSTR("$F<script>var seq=$D,mas=$D,wl=$D,sdt=$D,mton=$D,mtoff=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"),
+               htmlOkHeader, svc.options[OPTION_SEQUENTIAL].value, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_WATER_LEVEL].value,
                svc.options[OPTION_STATION_DELAY_TIME].value, svc.options[OPTION_MASTER_ON_ADJ].value, svc.options[OPTION_MASTER_OFF_ADJ].value,
                devday, devmin, dd, mm, yy);
   bfill.emit_p(PSTR("var masop=["));
@@ -527,10 +509,11 @@ boolean print_webpage_view_options(char *p)
   Change Controller Values
   
   HTTP GET command format:
-  /cv?pw=xxx&rst=x&en=x&mm=x&rd=x
+  /cv?pw=xxx&rsn=x&rbt=x&en=x&mm=x&rd=x
   
   pw:  password
-  rst: reset (0 or 1)
+  rsn: reset all stations (0 or 1)
+  rbt: reboot controller (0 or 1)
   en:  enable (0 or 1)
   mm:  manual mode (0 or 1)
   rd:  rain delay hours (0 turns off rain delay)
@@ -799,8 +782,8 @@ URLStruct urls[] = {
   {_url_ps,print_webpage_programdata_subsection},
   {_url_vs,print_webpage_view_stations},
   {_url_cs,print_webpage_change_stations},
-  {_url_vr,print_webpage_view_runonce},
-  {_url_cr,print_webpage_change_runonce},
+	{_url_vr,print_webpage_view_runonce},
+	{_url_cr,print_webpage_change_runonce},
   {_url_pn,print_webpage_station_names}
 };
 
