@@ -7,9 +7,10 @@ import RPi.GPIO as GPIO
 import atexit
 
 # GPIO PIN DEFINES
+
 pin_sr_clk =  4
 pin_sr_noe = 17
-pin_sr_dat = 21
+pin_sr_dat = 21 # NOTE: if you have a RPi rev.2, need to change this to 27
 pin_sr_lat = 22
 
 # NUMBER OF STATIONS

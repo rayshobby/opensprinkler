@@ -3,6 +3,26 @@ OpenSprinkler Pi (OSPi) Google Calendar Demo
 Feb 2013, http://rayshobby.net
 ============================================
 
+SPECIAL NOTE
+------------
+This was discovered by Ric on the forum:
+
+If you have RPi rev.1, use the following GPIO defines:
+pin_sr_clk =  4
+pin_sr_noe = 17
+pin_sr_dat = 21
+pin_sr_lat = 22
+
+If you have RPi rev.2, change the pin_sr_dat to:
+pin_sr_dat = 27
+
+Please check the following post for details:
+http://rayshobby.net/phpBB3/viewtopic.php?f=28&t=51
+
+Also the pin names listed here:
+http://elinux.org/RPi_Low-level_peripherals#General_Purpose_Input.2FOutput_.28GPIO.29
+
+
 Description
 -----------
 This demo makes use of a public Google calendar to program water events. To do so, you need to first create a public Google calendar, set the calendar ID in the Python program, then the program will periodically queries the calendar to check which stations are scheduled to be on at the current time. Each calendar event is treated as a water program, where the title of the event is the station name.

@@ -3,6 +3,25 @@ OpenSprinkler Pi (OSPi) Manual_Buttons Demo
 Feb 2013, http://rayshobby.net
 ===========================================
 
+SPECIAL NOTE
+------------
+This was discovered by Ric on the forum:
+
+If you have RPi rev.1, use the following GPIO defines:
+pin_sr_clk =  4
+pin_sr_noe = 17
+pin_sr_dat = 21
+pin_sr_lat = 22
+
+If you have RPi rev.2, change the pin_sr_dat to:
+pin_sr_dat = 27
+
+Please check the following post for details:
+http://rayshobby.net/phpBB3/viewtopic.php?f=28&t=51
+
+Also the pin names listed here:
+http://elinux.org/RPi_Low-level_peripherals#General_Purpose_Input.2FOutput_.28GPIO.29
+
 Description
 -----------
 This demo starts a Python HTTP server, which presents a simple webpage with a list of buttons, each corresponding to a stations. Clicking on each button to manually turn on/off a station.

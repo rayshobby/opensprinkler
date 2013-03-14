@@ -57,7 +57,7 @@ MAX_NSTATIONS = 64
 # OSPI PIN DEFINES
 pin_sr_clk =  4
 pin_sr_noe = 17
-pin_sr_dat = 21
+pin_sr_dat = 21 # NOTE: if you have RPi rev.2, change this to 27
 pin_sr_lat = 22
 
 calendar_service = gdata.calendar.service.CalendarService()
