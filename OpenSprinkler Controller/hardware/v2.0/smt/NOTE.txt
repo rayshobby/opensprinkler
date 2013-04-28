@@ -1,0 +1,2 @@
+os20.oldenc is designed for the old OpenSprinkler enclosure (Serpac WM032).
+os20.newenc is designed for the new OpenSprinkler injection molded enclosure.
