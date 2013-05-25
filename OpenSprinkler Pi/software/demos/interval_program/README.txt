@@ -7,7 +7,8 @@ May 2013, http://rayshobby.net
 NOTE
 ----
 This folder contains the interval program demo for OpenSprinkler Pi written by Dan Kimberling. It is compatible with the microcontroller-based OpenSprinkler firmware 1.8, the instructions of which can be found at:
-http://rayshobby.net/?page_id=3775
+  
+  http://rayshobby.net/?page_id=730
 
 The program makes use of web.py (http://webpy.org/) for the web interface. 
 
@@ -57,6 +58,10 @@ Before running this demo, please read the PREPARATION section above. Then follow
    http://x.x.x.x
 
    where x.x.x.x is the ip address of your Raspi.
+
+5. User manual for the full set of program features can be found at:
+
+   http://rayshobby.net/?page_id=730
 
 If you want the RPi to automatically run this program when it starts, please see the following:
 
