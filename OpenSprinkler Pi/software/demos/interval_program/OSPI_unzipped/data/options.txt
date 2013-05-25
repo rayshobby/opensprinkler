@@ -1,0 +1,1 @@
+var opts=["Time zone:",0,48,1,"HTTP port:",0,80,12,"",0,0,13,"Ext. boards:",0,0,15,"Station delay:",0,0,17,"Master station:",0,0,18,"Mas. on adj.:",0,0,19,"Mas. off adj.:",0,0,20,"Use rain sensor:",1,0,21,"Normally open:",1,1,22,"Water level (%):",0,100,23,"Ignore password:",1,0,25,0];var nopts=12,loc="Los Angeles, CA";
