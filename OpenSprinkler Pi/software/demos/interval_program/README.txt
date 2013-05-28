@@ -73,7 +73,8 @@ Use the command "sudo nano /etc/rc.local" and add the following 4 lines just bef
     host=$(hostname -I | sed 's/ *$//g')
     port=:80
     cd /home/pi/OSPi/
-    python ospi.py $host$port
+    ## If you aren't sure that the path to python on your Pi is /usr/bin/, use whereis python to determine the location
+    /usr/bin/python ospi.py $host$port
 
 Then use ctrl + o to save and ctrl x to exit the editor.
 
