@@ -2,7 +2,10 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
-* Feb 09, 2012
+* Jun 18, 2013
+- Check in firmware 2.0.0. This firmware (for hardware v2.0 only) is equivalent to firmware 1.8.3 (for hardware v1.x).
+
+* Feb 09, 2013
 - Check in firmware 1.8.3. This firmware adds back the 'sequential' option (which was available in firmware 1.7 but disabled in 1.8). It sets the controller to run in sequential or concurrent mode. 
 - Added a new 'device_id' option, so that multiple controllers can be used on the same network. This is done by assigning 'device_id' as the last byte of the controller's mac address.
 

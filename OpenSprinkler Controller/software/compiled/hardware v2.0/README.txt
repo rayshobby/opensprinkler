@@ -4,6 +4,13 @@
 
 *DO NOT* download .hex files directly from GitHub page by using 'Save File As...' or 'Save Link As...'. Instead, download the entire package as a zip file, or alternatively download individual files using the 'Raw' link.
 
+**************************************
+**************************************
+This firmware is for hardware 2.0 only
+It will not work on hardware 1.x
+**************************************
+**************************************
+
 -------- This folder contains compilex .hex files for OpenSprinkler v2.0 --------
 
 OpenSprinkler v2.0 has on-board USBtiny programmer. Basic instructions are as follows:
