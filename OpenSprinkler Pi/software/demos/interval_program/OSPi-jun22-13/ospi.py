@@ -1,4 +1,5 @@
 #!/usr/bin/python
+"""Updated 22/06/2013."""
 
 import web, re, os, json, time, base64, thread, gv
 
@@ -46,7 +47,13 @@ def log_run(datetime):
     if gv.lg:
         snames = data('snames')
         zones=re.findall(r"\'(.+?)\'",snames)
-        datastr = (str(gv.lrun[1])+', '+str(zones[gv.lrun[0]])+', '+str(gv.lrun[2]/60)+'m'+str(gv.lrun[2]%60)+
+        if gv.lrun[1] == 98:
+            pgr = 'Run-once'
+        elif gv.lrun[1] == 99:
+            pgr = 'Manual'
+        else:
+            pgr = str(gv.lrun[1])
+        datastr = (pgr +', '+str(zones[gv.lrun[0]])+', '+str(gv.lrun[2]/60)+'m'+str(gv.lrun[2]%60)+
                    's, '+time.strftime("%H:%M:%S, %a. %d %b %Y", time.localtime(datetime))+'\n')
         f = open('./static/log/water_log.csv', 'r')
         log = f.readlines()
@@ -82,20 +89,20 @@ def prog_match(prog):
     return 0
 
 def schedule_stations(curr_time):
-    global rs, sd
-    #print 'scheduling stations' # for testing
+    global sd
     accumulate_time = curr_time #+ 1
     for s in range(sd['nst']):
-        if rs[s][2]: # if station has a duration value
-            rs[s][0] = accumulate_time # set accumulated start time
-            accumulate_time += rs[s][2] # add duration
-            rs[s][1] = accumulate_time # set new stop time
+        if gv.rs[s][2]: # if station has a duration value
+            gv.rs[s][0] = accumulate_time # set accumulated start time
+            accumulate_time += gv.rs[s][2] # add duration
+            gv.rs[s][1] = accumulate_time # set new stop time
             accumulate_time += sd['sdt'] # add station delay
     sd['bsy'] = 1
     #print 'controller buisy' # for testing
+    return 
 
 def main_loop(): # Runs in a seperate thread
-    global rovals, srvals, pd, sd, rs#, lrun, ps, sbits
+    global rovals, pd, sd
     try:
         rpdb2.settrace() # for debugging
     except:
@@ -116,12 +123,12 @@ def main_loop(): # Runs in a seperate thread
                             for s in range(8):
                                 sid = b*8+s # station index
                                 if sd['mas'] == sid+1: continue # skip if this is master valve
-                                if srvals[sid]: continue # skip if currently on ??
+                                if gv.srvals[sid]: continue # skip if currently on ??
                                 if p[7+b]&1<<s: # if this station is scheduled in this program
-                                    rs[sid][2] = p[6]*sd['wl']/100 # duration scaled by water level
-                                    rs[sid][3] = i # store program index
+                                    gv.rs[sid][2] = p[6]*sd['wl']/100 # duration scaled by water level
+                                    gv.rs[sid][3] = i # store program index
                                     gv.ps[sid][0] = i+1 # store program number
-                                    gv.ps[sid][1] = rs[sid][2] # duration
+                                    gv.ps[sid][1] = gv.rs[sid][2] # duration
                                     match = 1
             if match:
                 schedule_stations(now)
@@ -130,35 +137,35 @@ def main_loop(): # Runs in a seperate thread
             for b in range(sd['nbrd']): 
                 for s in range(8):
                     sid = b*8 + s
-                    if srvals[sid]: # if this station is on
-                        if now >= rs[sid][1] and not any(rovals): # check if time is up
-                            srvals[sid] = 0
+                    if gv.srvals[sid]: # if this station is on
+                        if now >= gv.rs[sid][1] and not any(rovals): # check if time is up
+                            gv.srvals[sid] = 0
                             set_output()
                             if sd['mas'] != sid+1: # if not master, fill out log
                                 gv.lrun[0] = sid
-                                gv.lrun[1] = rs[sid][3] + 1
-                                gv.lrun[2] = int(now - rs[sid][0])
-                                gv.lrun[3] = now-(time.timezone-(time.daylight*3600))
+                                gv.lrun[1] = gv.rs[sid][3] + 1
+                                gv.lrun[2] = int(now - gv.rs[sid][0])
+                                gv.lrun[3] = now-(time.timezone)-(time.daylight*3600)
                                 log_run(now)
                             elif sd['mas'] == sid+1:
                                 #print 'stopping master valve' # for testing
                                 gv.sbits[b] -= 2**(sid)
                     else:
-                        if now >= rs[sid][0] and now < rs[sid][1] and not any(rovals):
+                        if now >= gv.rs[sid][0] and now < gv.rs[sid][1] and not any(rovals):
                             if sd['mas'] != sid+1:
-                                srvals[sid] = 1 # station is turned on
+                                gv.srvals[sid] = 1 # station is turned on
                                 set_output()
                                 gv.sbits[b] = 2**sid
-                                gv.ps[sid][0] = rs[sid][3] + 1
-                                gv.ps[sid][1] = rs[sid][2]
+                                gv.ps[sid][0] = gv.rs[sid][3] + 1
+                                gv.ps[sid][1] = gv.rs[sid][2]
                                 if sd['mas'] and sd['mas'] != sid+1 and int(sd['m'+str(b)])&1<<s and sd['mm'] == 0:
                                     masid = sd['mas'] - 1
-                                    rs[masid][0] = rs[sid][0] + sd['mton']
-                                    rs[masid][1] = rs[sid][1] - sd['mtoff']
-                                    rs[masid][3] = rs[sid][3]
+                                    gv.rs[masid][0] = gv.rs[sid][0] + sd['mton']
+                                    gv.rs[masid][1] = gv.rs[sid][1] - sd['mtoff']
+                                    gv.rs[masid][3] = gv.rs[sid][3]
                             elif sd['mas'] == sid+1:
                                 #print 'starting master valve' # for testing
-                                srvals[masid] = 1
+                                gv.srvals[masid] = 1
                                 set_output()
                                 gv.sbits[b] += 2**masid
             
@@ -168,47 +175,57 @@ def main_loop(): # Runs in a seperate thread
                     break              
                 program_running = False
 
-            if program_running == True:
+            if program_running:
                 for idx in range(len(gv.ps)): # loop through program schedule (gv.ps)
-                    if sd['rsn'] == 1:
-        ####                #stop irrigation and clean up
-                        srvals = [0]*(sd['nst'])
-                        set_output()
-                        gv.ps = []
-                        for i in range(sd['nst']):
-                            gv.ps.append([0,0])
-                        rs = []
-                        for i in range(sd['nst']):
-                            rs.append([0,0,0,0])    
-                        gv.sbits = [0] * (sd['nbrd'] +1)
-                        sd['bsy'] = 0
-                        break
                     if gv.ps[idx][1] == 0: # skip stations with no duration
                         continue
-                    if srvals[idx]: # If station is on, decrement time remaining
+                    if gv.srvals[idx]: # If station is on, decrement time remaining
                         gv.ps[idx][1] -= 1
                         if gv.ps[idx][1] == 0:
                             gv.ps[idx][0] = 0
 
-            if program_running == False:
-                srvals = [0]*(sd['nst'])
+            if not program_running:
+                gv.srvals = [0]*(sd['nst'])
                 set_output()
                 gv.sbits = [0] * (sd['nbrd'] +1)
                 gv.ps = []
                 for i in range(sd['nst']):
                     gv.ps.append([0,0])
-                rs = []
+                gv.rs = []
                 for i in range(sd['nst']):
-                    rs.append([0,0,0,0])
+                    gv.rs.append([0,0,0,0])
                 sd['bsy'] = 0
-                #print 'controller free' # for testing
+##                print 'controller free' # for testing
 
-        if sd['rd'] and now-(time.timezone-(time.daylight*3600)) >= sd['rdst']:
+        if sd['rd'] and now+((sd['tz']/4)-12)*3600 >= sd['rdst']:
             sd['rd'] = 0
             sd['rdst'] = 0
             jsave(sd, 'sd')
    
-        time.sleep(1) # End of main loop  
+        time.sleep(1) # End of main loop
+
+def mm_timer():
+    """Threaded timer for manual mode."""
+    global sd
+    while sd['mm'] == 1:
+        for i in range(len(gv.ps)):
+            if gv.ps[i][1] == 1: # iteration just before time = 0
+                gv.srvals[i] = 0
+                gv.ps[i][0]=0
+                sbidx = (i/8)
+                gv.sbits[sbidx] -= 2**(i-(sbidx*8))
+            if gv.ps[i][1] > 0:
+                gv.ps[i][1] -= 1
+##            else:
+##                gv.lrun[0] = gv.ps[i][0]
+##                gv.lrun[1] = 99
+##                gv.lrun[2] = 0
+##                gv.lrun[3] = now+((sd['tz']/4)-12)*3600
+##                log_run(now)
+##        print 'tick'        
+        time.sleep(1)
+        set_output()    
+    return        
 
 def data(dataf):
     """Return contents of requested text file as string."""
@@ -255,7 +272,7 @@ def output_prog():
     #####  GPIO  #####
 def set_output():
         disableShiftRegisterOutput()
-        setShiftRegister(srvals)
+        setShiftRegister(gv.srvals)
         enableShiftRegisterOutput()
 
 def to_sec(d=0, h=0, m=0, s=0):
@@ -278,7 +295,7 @@ gv.lr = int(sd['lr'])
 
 sdref = {'15':'nbrd', '18':'mas', '21':'urs', '23':'wl', '25':'ipas'} #lookup table
 
-srvals = [0]*(sd['nst']) #Shift Register values
+gv.srvals = [0]*(sd['nst']) #Shift Register values
 
 rovals = [0]* sd['nbrd']*7 #Run Once Durations
 
@@ -290,9 +307,9 @@ for i in range(sd['nst']):
 
 gv.sbits = [0] * (sd['nbrd'] +1) # Used to display stations that are on in UI 
 
-rs = [] #run schedule
+gv.rs = [] #run schedule
 for i in range(sd['nst']):
-    rs.append([0,0,0,0]) #scheduled start time, scheduled stop time, duration, program index
+    gv.rs.append([0,0,0,0]) #scheduled start time, scheduled stop time, duration, program index
     
 gv.lrun=[0,0,0,0] #station index, program number, duration, end time (Used in UI)
 
@@ -334,7 +351,7 @@ class home:
         homepg = '<!DOCTYPE html>\n'
         homepg += data('meta')+'\n'
         homepg += '<script>var baseurl=\"'+baseurl()+'\"</script>\n'
-        homepg += '<script>var ver=182,devt='+str(time.time()-(time.timezone-(time.daylight*3600)))+';var nbrd='+str(sd['nbrd'])+',tz='+str(sd['tz'])+';</script>\n'
+        homepg += '<script>var ver=182,devt='+str(time.time()+((sd['tz']/4)-12)*3600)+';var nbrd='+str(sd['nbrd'])+',tz='+str(sd['tz'])+';</script>\n'
         homepg += '<script>var en='+str(sd['en'])+',rd='+str(sd['rd'])+',rs='+str(sd['rs'])+',mm='+str(sd['mm'])+',rdst='+str(sd['rdst'])+',mas='+str(sd['mas'])+',urs='+str(sd['urs'])+',wl='+str(sd['wl'])+',ipas='+str(sd['ipas'])+',loc="";</script>\n'
         homepg += '<script>var sbits='+str(gv.sbits).replace(' ', '')+',ps='+str(gv.ps).replace(' ', '')+';</script>\n'
         homepg += '<script>var lrun='+str(gv.lrun).replace(' ', '')+';</script>\n'
@@ -345,7 +362,7 @@ class home:
 class change_values:
     """Save controller values, return browser to home page."""
     def GET(self):
-        global sd, srvals#, sbits, ps
+        global sd
         qdict = web.input()
         try:
             if sd['ipas'] != 1 and qdict['pw'] != base64.b64decode(sd['pwd']):
@@ -354,28 +371,32 @@ class change_values:
         except KeyError:
             pass
         if qdict.has_key('rsn') and qdict['rsn'] == '1':
-            srvals = [0]*(sd['nst'])
+            print 'stopped in Change_values'
+            gv.srvals = [0]*(sd['nst'])
             set_output()            
             gv.ps = []
             for i in range(sd['nst']):
                 gv.ps.append([0,0])   
             gv.sbits = [0] * (sd['nbrd'] +1)
             sd['bsy'] = 0
+            gv.rs = [] #run schedule
+            for i in range(sd['nst']):
+                gv.rs.append([0,0,0,0])
             raise web.seeother('/')
             return
         if qdict.has_key('en') and qdict['en'] == '':
             qdict['en'] = '1' #default
         elif qdict.has_key('en') and qdict['en'] == '0':
-            srvals = [0]*(sd['nst']) # turn off all stations
+            gv.srvals = [0]*(sd['nst']) # turn off all stations
             set_output()
         if qdict.has_key('mm') and qdict['mm'] == '0': self.clear_mm()
         if qdict.has_key('rd') and qdict['rd'] != '0':
-            sd['rdst'] = ((time.time()-(time.timezone-(time.daylight*3600)))
+            sd['rdst'] = ((time.time()+((sd['tz']/4)-12)*3600)
                           +(int(qdict['rd'])*3600))
-        elif qdict.has_key('rd') and qdict['rd'] == '0': sd['rdst'] = 0    
+        elif qdict.has_key('rd') and qdict['rd'] == '0': sd['rdst'] = 0   
         if qdict.has_key('rbt') and qdict['rbt'] == '1':
             jsave(sd, 'sd')
-            srvals = [0]*(sd['nst'])
+            gv.srvals = [0]*(sd['nst'])
             set_output()
             os.system('reboot')
             raise web.seeother('/')
@@ -386,34 +407,18 @@ class change_values:
                 pass
         jsave(sd, 'sd')
         if sd['mm'] == 1:
-            thread.start_new_thread(self.mm_timer, ())
+##            thread.start_new_thread(self.mm_timer, ())
+            thread.start_new_thread(mm_timer, ())
         raise web.seeother('/')# Send browser back to home page
-        return
-    
-    def mm_timer(self):
-        """Threaded timer for manual mode."""
-        global sd, srvals#, ps, sbits
-        while sd['mm'] == 1:
-            for i in range(len(gv.ps)):
-                if gv.ps[i][1] == 1:
-                    srvals[i] = 0
-                    gv.ps[i][0]=0
-                    sbidx = (i/8)
-                    gv.sbits[sbidx] -= 2**(i-(sbidx*8))
-                if gv.ps[i][1] > 0:
-                    gv.ps[i][1] -= 1
-            time.sleep(1)
-            set_output()
         return
 
     def clear_mm(self):
         """Clear manual mode settings."""
-        global srvals#, sbits, ps 
         gv.sbits = [0] * (sd['nbrd'] +1)
         gv.ps = []
         for i in range(sd['nst']):
             gv.ps.append([0,0])
-        srvals = [0]*(sd['nst'])
+        gv.srvals = [0]*(sd['nst'])
         set_output()     
         return
 
@@ -449,7 +454,7 @@ class change_options:
         try:
             if qdict['cpw'] !='' and qdict['cpw'] == qdict['npw']: sd['pwd'] = base64.b64encode(qdict['npw'])
         except KeyError:
-            pass 
+            pass
         vstr = data('options')
         ops = vstr.index('[')+1
         ope = vstr.index(']')
@@ -495,14 +500,13 @@ class change_options:
         sd['wl'] = int(qdict['o23'])
         if qdict.has_key('o25'): sd['ipas'] = int(qdict['o25'])
         sd['loc'] = qdict['loc'] 
-        srvals = [0]*(sd['nst']) # Shift Register values
+        gv.srvals = [0]*(sd['nst']) # Shift Register values
         rovals = [0]*(sd['nst']) # Run Once Durations
         jsave(sd, 'sd')
         return
 
     def update_scount(self, qdict):
         """Increase or decrease the number of stations shown when expansion boards are added in options."""
-        global srvals#, ps, sbits
         if int(qdict['o15'])+1 > sd['nbrd']: # Lengthen lists
             incr = int(qdict['o15']) - (sd['nbrd']-1)
             snames = data('snames')
@@ -520,7 +524,7 @@ class change_options:
             nlst = re.findall('[\'"].*?[\'"]', snames)
             nstr = '['+','.join(nlst[:8+(int(qdict['o15'])*8)])+','']'
             save('snames', nstr)
-        srvals = [0] * (int(qdict['o15'])+1) * 8
+        gv.srvals = [0] * (int(qdict['o15'])+1) * 8
         gv.ps = []
         for i in range((int(qdict['o15'])+1) * 8):
             gv.ps.append([0,0])
@@ -569,11 +573,11 @@ class get_station:
     def GET(self, sn):
         if sn == '0':
             status = '<!DOCTYPE html>\n'
-            status += ''.join(str(x) for x in srvals)
+            status += ''.join(str(x) for x in gv.srvals)
             return status
         elif int(sn)-1 <= sd['nbrd']*7:
             status = '<!DOCTYPE html>\n'
-            status += str(srvals[int(sn)-1])
+            status += str(gv.srvals[int(sn)-1])
             return status
         else:
             return 'Station '+sn+' not found.'
@@ -582,14 +586,17 @@ class set_station:
     """turn a station (valve/zone) on=1 or off=0."""
     def GET(self, nst, t=None): # nst = number, status, time
         nstlst = re.split('=|&', nst)
-        global sd, srvals#, ps
-        srvals[int(nstlst[0])-1] = int(nstlst[1])
-        sbidx = ((int(nstlst[0])-1)/8)
+        if int(nstlst[1]) == 1:
+            gv.t0 = time.time()
+        print nstlst
+        global sd
+        gv.srvals[int(nstlst[0])-1] = int(nstlst[1]) # Set shift register to turn station on or off
+        sbidx = ((int(nstlst[0])-1)/8) # station board index
         if sbidx:
             snum = int(nstlst[0])-(sbidx*8)
         else:
-            snum = int(nstlst[0])
-        if int(nstlst[1]):
+            snum = int(nstlst[0])   
+        if int(nstlst[1]): # if status is 1
             gv.ps[(int(nstlst[0]))-1][0] = 99
             gv.ps[(int(nstlst[0]))-1][1] = int(nstlst[3])
             gv.sbits[sbidx] += int(2**(snum-1))
@@ -597,7 +604,16 @@ class set_station:
             gv.sbits[sbidx] -= int(2**(snum-1))
         if gv.sbits[sbidx] < 0:
             gv.sbits[sbidx] = 0
-        set_output()   
+        set_output()
+        if int(nstlst[1]) == 0:
+            try:
+                gv.lrun[2] = int(time.time() - gv.t0)
+                gv.lrun[0] = int(nstlst[0])-1
+                gv.lrun[1] = 99
+                gv.lrun[3] = time.time()+((sd['tz']/4)-12)*3600
+                log_run(time.time())
+            except:
+                pass       
         raise web.seeother('/')
         return
 
@@ -616,7 +632,7 @@ class change_runonce:
     """Start a Run Once program."""
     def GET(self):
         qdict = web.input()
-        global rovals, srvals, sd, rs
+        global rovals, sd
         try:
             if sd['ipas'] != 1 and qdict['pw'] != base64.b64decode(sd['pwd']):
                 raise web.unauthorized()
@@ -635,19 +651,20 @@ class change_runonce:
             if t != 0:
                 gv.ps[i][0] = 98
                 gv.ps[i][1] = t
-                rs[i][1] = time.time() + t
+                gv.rs[i][1] = time.time() + t
         thread.start_new_thread(self.run, ())
         raise web.seeother('/')
         return
 
     def run(self):
-        global srvals, sd
+        global sd
         sd['bsy'] = 1
         idx = 0
+        now = time.time()
         while idx < len(gv.ps): # loop through program schedule (gv.ps)
             if sd['rsn'] == 1:
                 #### stop irrigation and clean up ####
-                srvals = [0]*(sd['nst'])
+                gv.srvals = [0]*(sd['nst'])
                 set_output()
                 gv.ps = []
                 for i in range(sd['nst']):
@@ -659,9 +676,10 @@ class change_runonce:
                 idx += 1
                 continue
             #### start irrigation ####
-            srvals[idx]=1
+            gv.srvals[idx]=1
             set_output()
             gv.sbits[idx/8] = 2**(idx%8)
+            gv.lrun[2] = int(gv.ps[idx][1])
             while gv.ps[idx][1] > 0:
                 if sd['rsn'] == 1:
                     break
@@ -670,8 +688,11 @@ class change_runonce:
             gv.ps[idx][0] = 0
             gv.sbits[idx/8] = 0
             #### stop irrigation ####
-    ####  --  Insert UI log code here  --  ####        
-            srvals[idx]=0
+            gv.lrun[0] = idx
+            gv.lrun[1] = 98
+            gv.lrun[3] = now+((sd['tz']/4)-12)*3600
+            log_run(now)
+            gv.srvals[idx]=0
             set_output()
             idx += 1
         sd['bsy'] = 0
@@ -700,7 +721,7 @@ class modify_program:
             mp = pd[int(qdict['pid'])][:]
             if mp[1] >= 128 and mp[2] > 1: # If this is an interval program
                 dse = int((time.time()-time.timezone)/86400)
-                rel_rem = (((mp[1]-128) + mp[2])-(dse%mp[2]))%mp[2] # Convert absolute to relative days remaining for displa
+                rel_rem = (((mp[1]-128) + mp[2])-(dse%mp[2]))%mp[2] # Convert absolute to relative days remaining for display
                 mp[1] = rel_rem + 128
             modprogpg += 'var pid='+qdict['pid']+', prog='+str(mp).replace(' ', '')+';</script>\n'
         else:
@@ -799,7 +820,7 @@ class clear_log:
         except KeyError:
             pass
         f = open('./static/log/water_log.csv', 'w')
-        f.write('Program, Zone, Duration, Compleated, Date'+'\n')
+        f.write('Program, Zone, Duration, Finish Time, Date'+'\n')
         f.close
         raise web.seeother('/vl')
         return
@@ -827,5 +848,7 @@ class log_options:
 
 if __name__ == '__main__':
     app = web.application(urls, globals())
+    if sd['mm']:
+        thread.start_new_thread(mm_timer, ())
     thread.start_new_thread(main_loop, ())
     app.run()
