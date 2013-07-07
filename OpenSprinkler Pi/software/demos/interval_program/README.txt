@@ -5,10 +5,23 @@ May 2013, http://rayshobby.net
 
 
 **********
-**UPDATE**
+**UPDATES**
 **********
 
 -----------------------------------------------------------------------------------------
+* Jun 26 2013
+1. Last run logging is now working for manual mode when an optionsl time value is selected, even if more that one station is started.
+2. Fixed a bug that prevented the home page display from updating when running irrigation programs.
+3. Includes a fix from Samer that allows the program preview time marker to update properly.
+
+* Jun 20, 2013
+This upsate includes:
+1. Changed the way ospi.py handles time. It now uses the time zone setting from the OS options page. It also eliminates the auto daylight savings time adjustment that was causing problems for some users.
+2. Fixes a bug mentioned on the forum that caused Samer's app to not update in program mode.
+3. Fixes a bug that caused a program to re-start after the "Stop all stations" button was clicked.
+4. A partial fix for the "last run" problems. Still need to get manual mode with an optional time setting working.
+5. Added a docstring at the top of the ospi.py file with the date for version tracking.
+
 * Jun 19, 2013
   Applied Samer Albahra's patch so that the program will work with Samer's mobile web app.
   Per forum discussion: http://rayshobby.net/phpBB3/viewtopic.php?f=2&t=154&start=40#p781
