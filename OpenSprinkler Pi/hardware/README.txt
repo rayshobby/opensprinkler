@@ -7,6 +7,9 @@ http://goo.gl/4Nrvb
 
 Release Notes
 =============
+New in v1.2
+* Added PCF8591T 8-bit 4-channel ADC (analog-digital converter)
+* Added pin headers for ADC and also i2C pins.
 
 New in v1.1
 -----------
