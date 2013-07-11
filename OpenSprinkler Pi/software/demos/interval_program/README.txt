@@ -9,8 +9,18 @@ May 2013, http://rayshobby.net
 **********
 
 -----------------------------------------------------------------------------------------
+* July 10 2013
+Bug fixes and additions:
+1. Fixed a bug that prevented zones 9+ from running.
+2. The Run once program was not observing the station delay setting - Fixed
+3. Made the sd variable an attribute of the gv module. All references to sd... are now gv.sd... This should potentially fix several bugs, Specifically the Rain delay seems to be working properly now.
+4. The Graph Programs time marker was not recognizing the time zone setting from the Options page - fixed.
+5. Time displayed on the last run line of the main page was not correct - fixed.
+6. Added a faveicon which will help distinguish the OpenSprinkler tabs on the browser.
+7. Added an import statement and file which provide a stub for adding user written custom functions to the interval program without modifying the program itself.
+
 * Jun 26 2013
-1. Last run logging is now working for manual mode when an optionsl time value is selected, even if more that one station is started.
+1. Last run logging is now working for manual mode when an optional time value is selected, even if more that one station is started.
 2. Fixed a bug that prevented the home page display from updating when running irrigation programs.
 3. Includes a fix from Samer that allows the program preview time marker to update properly.
 
