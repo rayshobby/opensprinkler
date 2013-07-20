@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Updated 10/July/2013."""
+"""Updated 19/July/2013."""
 
 import web, re, os, json, time, base64, thread, gv
 import RPi.GPIO as GPIO
@@ -42,10 +42,25 @@ urls = [
     ]
 
   #### Function Definitions ####
+
 def baseurl():
     """Return URL app is running under.""" 
     baseurl = web.ctx['home']
     return baseurl
+
+def clear_mm():
+    """Clear manual mode settings."""
+    if gv.sd['mm']:
+        gv.sbits = [0] * (gv.sd['nbrd'] +1)
+        gv.ps = []
+        for i in range(gv.sd['nst']):
+            gv.ps.append([0,0])
+        gv.rs = []
+        for i in range(gv.sd['nst']):
+            gv.rs.append([0,0,0,0])    
+        gv.srvals = [0]*(gv.sd['nst'])
+        set_output()
+    return
 
 def log_run(datetime):
     """add run data to csv file - most recent first."""
@@ -99,19 +114,14 @@ def schedule_stations(curr_time):
     accumulate_time = curr_time #+ 1
     for s in range(gv.sd['nst']):
         if gv.rs[s][2]: # if station has a duration value
-            gv.rs[s][0] = accumulate_time # set accumulated start time
+            gv.rs[s][0] = accumulate_time # start at accumulated time
             accumulate_time += gv.rs[s][2] # add duration
             gv.rs[s][1] = accumulate_time # set new stop time
             accumulate_time += gv.sd['sdt'] # add station delay
     gv.sd['bsy'] = 1
-    #print 'controller buisy' # for testing
     return 
 
 def main_loop(): # Runs in a seperate thread
-    try:
-        rpdb2.settrace() # for remote debugging with winpdb
-    except:
-        pass
     print 'Starting main loop \n'
     last_min = 0
     while True: # infinite loop
@@ -131,53 +141,52 @@ def main_loop(): # Runs in a seperate thread
                                 if gv.srvals[sid]: continue # skip if currently on ??
                                 if p[7+b]&1<<s: # if this station is scheduled in this program
                                     gv.rs[sid][2] = p[6]*gv.sd['wl']/100 # duration scaled by water level
-                                    gv.rs[sid][3] = i # store program index
+                                    gv.rs[sid][3] = i+1 # store program number
                                     gv.ps[sid][0] = i+1 # store program number
                                     gv.ps[sid][1] = gv.rs[sid][2] # duration
                                     match = 1
             if match:
-                schedule_stations(now)
+                schedule_stations(now) # turns on gv.sd['bsy']
 
         if gv.sd['bsy']:
             for b in range(gv.sd['nbrd']): 
                 for s in range(8):
-                    sid = b*8 + s
+                    sid = b*8 + s # station index
                     if gv.srvals[sid]: # if this station is on
-                        if now >= gv.rs[sid][1] and not any(rovals): # check if time is up
+                        if now >= gv.rs[sid][1]: # check if time is up
                             gv.srvals[sid] = 0
                             set_output()
-                            if gv.sd['mas'] != sid+1: # if not master, fill out log
-                                gv.sbits[b] -= 2**s#(sid)
+                            if gv.sd['mas']-1 != sid: # if not master, fill out log
+                                gv.sbits[b] = gv.sbits[b]&~2**s
                                 gv.ps[sid] = [0,0]
                                 gv.lrun[0] = sid
-                                gv.lrun[1] = gv.rs[sid][3] + 1
+                                gv.lrun[1] = gv.rs[sid][3]
                                 gv.lrun[2] = int(now - gv.rs[sid][0])
                                 gv.lrun[3] = now+((gv.sd['tz']/4)-12)*3600
-                                log_run(now)
-                            elif gv.sd['mas'] == sid+1:
-                                #print 'stopping master valve' # for testing
-                                gv.sbits[b] -= 2**(sid)
-                    else:
-                        if now >= gv.rs[sid][0] and now < gv.rs[sid][1] and not any(rovals):
-                            if gv.sd['mas'] != sid+1:
+                                log_run(now)                             
+                            elif gv.sd['mas']-1 == sid:
+                                gv.sbits[b] = gv.sbits[b]&~2**s
+                            gv.rs[sid] = [0,0,0,0]     
+                    else: # if this station is not yet on
+                        if now >= gv.rs[sid][0] and now < gv.rs[sid][1]:
+                            if gv.sd['mas']-1 != sid: # if not master
                                 gv.srvals[sid] = 1 # station is turned on
                                 set_output()
-                                gv.sbits[b] = 2**s #sid
-                                gv.ps[sid][0] = gv.rs[sid][3] + 1
+                                gv.sbits[b] = gv.sbits[b]|2**s # Set display to on
+                                gv.ps[sid][0] = gv.rs[sid][3]
                                 gv.ps[sid][1] = gv.rs[sid][2]
-                                if gv.sd['mas'] and gv.sd['mas'] != sid+1 and int(gv.sd['m'+str(b)])&1<<s and gv.sd['mm'] == 0:
-                                    masid = gv.sd['mas'] - 1
+                                if gv.sd['mas'] and gv.sd['m'+str(b)]&1<<s: # Master settings
+                                    masid = gv.sd['mas'] - 1 # master index
                                     gv.rs[masid][0] = gv.rs[sid][0] + gv.sd['mton']
-                                    gv.rs[masid][1] = gv.rs[sid][1] - gv.sd['mtoff']
+                                    gv.rs[masid][1] = gv.rs[sid][1] + gv.sd['mtoff']
                                     gv.rs[masid][3] = gv.rs[sid][3]
                             elif gv.sd['mas'] == sid+1:
-                                #print 'starting master valve' # for testing
-                                gv.srvals[masid] = 1
-                                set_output()
-                                gv.sbits[b] += 2**masid
+                                gv.sbits[b] = gv.sbits[b]|2**sid #(gv.sd['mas'] - 1)
+                                gv.srvals[masid] = 1                              
+                                set_output()                   
             
             for s in range(gv.sd['nst']):
-                if gv.ps[s][1]:
+                if gv.rs[s][1]:
                     program_running = True
                     break              
                 program_running = False
@@ -202,39 +211,12 @@ def main_loop(): # Runs in a seperate thread
                 for i in range(gv.sd['nst']):
                     gv.rs.append([0,0,0,0])
                 gv.sd['bsy'] = 0
-##                print 'controller free' # for testing
 
         if gv.sd['rd'] and now+((gv.sd['tz']/4)-12)*3600 >= gv.sd['rdst']:
             gv.sd['rd'] = 0
             gv.sd['rdst'] = 0
             jsave(gv.sd, 'sd')
-   
-        time.sleep(1) # End of main loop
-
-def mm_timer():
-    """Threaded timer for manual mode."""
-    gv.lrun[1] = 99
-    durs = [0]*len(gv.ps)
-    while gv.sd['mm'] == 1:
-        for i in range(len(gv.ps)):
-            if gv.ps[i][1] and not durs[i]: # Capture new duration first time through loop
-                durs[i] = gv.ps[i][1] 
-            if gv.ps[i][1] == 1: # iteration just before time = 0
-                gv.srvals[i] = 0
-                gv.lrun[0] = i
-                gv.ps[i][0]=0
-                sbidx = (i/8)
-                gv.sbits[sbidx] -= 2**(i-(sbidx*8))
-            if gv.ps[i][1] > 0:
-                gv.ps[i][1] -= 1
-                if gv.ps[i][1] == 0: # if time has just become 0
-                    gv.lrun[2] = durs[i]
-                    gv.lrun[3] = time.time()+((gv.sd['tz']/4)-12)*3600
-                    durs[i] = 0
-                    log_run(time.time())
-                    set_output()        
-        time.sleep(1)
-    return        
+        time.sleep(1) # End of main loop       
 
 def data(dataf):
     """Return contents of requested text file as string."""
@@ -281,7 +263,7 @@ def output_prog():
     #####  GPIO  #####
 def set_output():
         disableShiftRegisterOutput()
-        setShiftRegister(gv.srvals)
+        setShiftRegister(gv.srvals) # gv.srvals stores shift register state
         enableShiftRegisterOutput()
 
 def to_sec(d=0, h=0, m=0, s=0):
@@ -306,7 +288,7 @@ sdref = {'15':'nbrd', '18':'mas', '21':'urs', '23':'wl', '25':'ipas'} #lookup ta
 
 gv.srvals = [0]*(gv.sd['nst']) #Shift Register values
 
-rovals = [0]* gv.sd['nbrd']*7 #Run Once Durations
+gv.rovals = [0]* gv.sd['nbrd']*7 #Run Once Durations
 
 pd = load_programs() # Load program data from file
 
@@ -321,6 +303,8 @@ for i in range(gv.sd['nst']):
     gv.rs.append([0,0,0,0]) #scheduled start time, scheduled stop time, duration, program index
     
 gv.lrun=[0,0,0,0] #station index, program number, duration, end time (Used in UI)
+
+gv.scount = 0 # Station count, used in set station to track on stations with master association.
 
   ####  GPIO  #####
 
@@ -360,9 +344,10 @@ class home:
         homepg = '<!DOCTYPE html>\n'
         homepg += data('meta')+'\n'
         homepg += '<link href="./static/images/icons/favicon.ico" rel="icon" type="image/x-icon" />\n'
+        homepg += '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\n'
         homepg += '<script>var baseurl=\"'+baseurl()+'\"</script>\n'
         homepg += '<script>var ver=182,devt='+str(time.time()+((gv.sd['tz']/4)-12)*3600)+';var nbrd='+str(gv.sd['nbrd'])+',tz='+str(gv.sd['tz'])+';</script>\n'
-        homepg += '<script>var en='+str(gv.sd['en'])+',rd='+str(gv.sd['rd'])+',rs='+str(gv.sd['rs'])+',mm='+str(gv.sd['mm'])+',rdst='+str(gv.sd['rdst'])+',mas='+str(gv.sd['mas'])+',urs='+str(gv.sd['urs'])+',wl='+str(gv.sd['wl'])+',ipas='+str(gv.sd['ipas'])+',loc="";</script>\n'
+        homepg += '<script>var en='+str(gv.sd['en'])+',rd='+str(gv.sd['rd'])+',rs='+str(gv.sd['rs'])+',mm='+str(gv.sd['mm'])+',rdst='+str(gv.sd['rdst'])+',mas='+str(gv.sd['mas'])+',urs='+str(gv.sd['urs'])+',wl='+str(gv.sd['wl'])+',ipas='+str(gv.sd['ipas'])+',loc="'+str(gv.sd['loc'])+'";</script>\n'
         homepg += '<script>var sbits='+str(gv.sbits).replace(' ', '')+',ps='+str(gv.ps).replace(' ', '')+';</script>\n'
         homepg += '<script>var lrun='+str(gv.lrun).replace(' ', '')+';</script>\n'
         homepg += '<script>var snames='+data('snames')+';</script>\n'
@@ -397,7 +382,7 @@ class change_values:
         elif qdict.has_key('en') and qdict['en'] == '0':
             gv.srvals = [0]*(gv.sd['nst']) # turn off all stations
             set_output()
-        if qdict.has_key('mm') and qdict['mm'] == '0': self.clear_mm()
+        if qdict.has_key('mm') and qdict['mm'] == '0': clear_mm() #self.clear_mm()
         if qdict.has_key('rd') and qdict['rd'] != '0':
             gv.sd['rdst'] = ((time.time()+((gv.sd['tz']/4)-12)*3600)
                           +(int(qdict['rd'])*3600))
@@ -414,19 +399,7 @@ class change_values:
             except:
                 pass
         jsave(gv.sd, 'sd')
-        if gv.sd['mm'] == 1:
-            thread.start_new_thread(mm_timer, ())
         raise web.seeother('/')# Send browser back to home page
-        return
-
-    def clear_mm(self):
-        """Clear manual mode settings."""
-        gv.sbits = [0] * (gv.sd['nbrd'] +1)
-        gv.ps = []
-        for i in range(gv.sd['nst']):
-            gv.ps.append([0,0])
-        gv.srvals = [0]*(gv.sd['nst'])
-        set_output()     
         return
 
 class view_options:
@@ -434,6 +407,8 @@ class view_options:
     def GET(self):
         optpg = '<!DOCTYPE html>\n'
         optpg += data('meta')+'\n'
+        optpg += '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\n'
+        optpg += '<link href="./static/images/icons/favicon.ico" rel="icon" type="image/x-icon" />\n'
         optpg += '<script>var baseurl=\"'+baseurl()+'\"</script>\n'
         optpg += '<script>var opts=["Time zone:",0,'+str(gv.sd['tz'])+',1,"HTTP port:",0,'+str(gv.sd['htp'])+',12,"",0,0,13,"Ext. boards:",\
 0,'+str(gv.sd['nbrd']-1)+',15,"Station delay:",0,'+str(gv.sd['sdt'])+',17,"Master station:",0,'+str(gv.sd['mas'])+',18,"Mas. on adj.:",0,'+str(gv.sd['mton'])+',19,"Mas. off adj.:",0,'+str(gv.sd['mtoff'])+',20,\
@@ -491,6 +466,8 @@ class change_options:
         vstr = vstr.replace(vstr[ops:ope], optstr)
         save('options', vstr)
         if int(qdict['o15'])+1 != gv.sd['nbrd']: self.update_scount(qdict)
+        if int(qdict['o18']) != gv.sd['mas']:
+            clear_mm()
         self.update_sd(qdict)
         raise web.seeother('/')
         #alert = '<script>alert("Options values saved.");window.location="/";</script>'
@@ -509,7 +486,7 @@ class change_options:
         if qdict.has_key('o25'): gv.sd['ipas'] = int(qdict['o25'])
         gv.sd['loc'] = qdict['loc'] 
         gv.srvals = [0]*(gv.sd['nst']) # Shift Register values
-        rovals = [0]*(gv.sd['nst']) # Run Once Durations
+        gv.rovals = [0]*(gv.sd['nst']) # Run Once Durations
         jsave(gv.sd, 'sd')
         return
 
@@ -544,6 +521,8 @@ class view_stations:
     def GET(self):
         stationpg = '<!DOCTYPE html>\n'
         stationpg += data('meta')+'\n'
+        stationpg += '<link href="./static/images/icons/favicon.ico" rel="icon" type="image/x-icon" />\n'
+        stationpg += '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\n'
         stationpg += '<script>var baseurl=\"'+baseurl()+'\"</script>\n'
         stationpg += '<script>var nboards='+str(gv.sd['nbrd'])+',maxlen=12,mas='+str(gv.sd['mas'])+',ipas='+str(gv.sd['ipas'])+';</script>\n'
         mo = ''
@@ -566,12 +545,15 @@ class change_stations:
             pass
         for i in range(4): # capture master associations
             if qdict.has_key('m'+str(i)):
-                gv.sd['m'+str(i)] = qdict['m'+str(i)]  
+                try:
+                    gv.sd['m'+str(i)] = int(qdict['m'+str(i)])
+                except ValueError:
+                    gv.sd['m'+str(i)] = 0
         names = '['
         for i in range(gv.sd['nst']):
             names += "'" + qdict['s'+str(i)] + "',"
         names += ']'
-        save('snames', names)
+        save('snames', names.encode('ascii', 'backslashreplace'))
         jsave(gv.sd, 'sd')
         raise web.seeother('/')
         return
@@ -591,54 +573,45 @@ class get_station:
             return 'Station '+sn+' not found.'
 
 class set_station:
-    """turn a station (valve/zone) on=1 or off=0."""
-    def GET(self, nst, t=None): # nst = number, status, time
-        nstlst = re.split('=|&', nst)
-        if int(nstlst[1]) == 1:
-            gv.t0 = time.time()
-        gv.srvals[int(nstlst[0])-1] = int(nstlst[1]) # Set shift register to turn station on or off
-        sbidx = ((int(nstlst[0])-1)/8) # station board index
-        if sbidx:
-            snum = int(nstlst[0])-(sbidx*8)
-        else:
-            snum = int(nstlst[0])   
-        if int(nstlst[1]): # if status is 1
-            gv.ps[(int(nstlst[0]))-1][0] = 99
-            gv.ps[(int(nstlst[0]))-1][1] = int(nstlst[3])
-            gv.sbits[sbidx] += int(2**(snum-1))
-        else:
-            gv.sbits[sbidx] -= int(2**(snum-1))
-        if gv.sbits[sbidx] < 0:
-            gv.sbits[sbidx] = 0
-        set_output()
-        if int(nstlst[1]) == 0:
-            try:
-                gv.lrun[2] = int(time.time() - gv.t0)
-                gv.lrun[0] = int(nstlst[0])-1
-                gv.lrun[1] = 99
-                gv.lrun[3] = time.time()+((gv.sd['tz']/4)-12)*3600
-                log_run(time.time())
-            except:
-                pass       
-        raise web.seeother('/')
-        return
+    """turn a station (valve/zone) on=1 or off=0 in manual mode."""
+    def GET(self, nst, t=None): # nst = station number, status, optional duration
+        nstlst = [int(i) for i in re.split('=|&t=', nst)]
+        sid = nstlst[0]-1 # station index
+        b = nstlst[0]/8 #board
+        if nstlst[1] == 1: # if status is on
+            gv.rs[sid][0] = time.time() # set start time to current time
+            if nstlst[2]: # if an optional duration time is given
+                gv.rs[sid][2] = nstlst[2]
+                gv.rs[sid][1] = gv.rs[sid][0] + nstlst[2] # stop time = start time + duration
+            else:
+                gv.rs[sid][1] = float('inf') # stop time = infinity
+            gv.rs[sid][3] = 99 # set program index
+            gv.sbits[b] = gv.sbits[b]|2**sid
+            gv.ps[sid][1] = nstlst[2]
+            gv.sd['bsy']=1
+        if nstlst[1] == 0: # If status is off
+            gv.rs[sid][1] = time.time()
+            gv.sbits[b] = gv.sbits[b]&~2**sid
+            time.sleep(1)
+        raise web.seeother('/')        
 
 class view_runonce:
     """Open a page to view and edit a run once program."""
     def GET(self):
         ropg = '<!DOCTYPE html>\n'
         ropg += data('meta')+'\n'
+        ropg += '<link href="./static/images/icons/favicon.ico" rel="icon" type="image/x-icon" />\n'
+        ropg += '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\n'
         ropg += '<script >var baseurl=\"'+baseurl()+'\"</script>\n'
-        ropg += '<script >var nboards='+str(gv.sd['nbrd'])+',mas='+str(gv.sd['mas'])+',ipas='+str(gv.sd['ipas'])+',dur='+str(rovals).replace(' ', '')+';</script>\n'
+        ropg += '<script >var nboards='+str(gv.sd['nbrd'])+',mas='+str(gv.sd['mas'])+',ipas='+str(gv.sd['ipas'])+',dur='+str(gv.rovals).replace(' ', '')+';</script>\n'
         ropg += '<script >snames='+data('snames')+';</script>\n'
         ropg += '<script src=\"'+baseurl()+'/static/scripts/java/svc1.8/viewro.js\"></script>'
         return ropg
 
 class change_runonce:
-    """Start a Run Once program."""
+    """Start a Run Once program. This wil. override any running program."""
     def GET(self):
         qdict = web.input()
-        global rovals
         try:
             if gv.sd['ipas'] != 1 and qdict['pw'] != base64.b64decode(gv.sd['pwd']):
                 raise web.unauthorized()
@@ -646,69 +619,32 @@ class change_runonce:
         except KeyError:
             pass
         if not gv.sd['en']: return # check operation status
-        gv.sd['rsn'] = 0
-        gv.sd['bsy'] = 1
-        rovals = json.loads(qdict['t'])
-        rovals.pop()
+        gv.rovals = json.loads(qdict['t'])
+        gv.rovals.pop()
         gv.ps = []
         for i in range(gv.sd['nst']):
             gv.ps.append([0,0])
-        for i, t in enumerate(rovals):
-            if t != 0:
+        gv.rs = [] #run schedule
+        for i in range(gv.sd['nst']): # clear run schedule
+            gv.rs.append([0,0,0,0])
+        ro_now = time.time()    
+        for i, v in enumerate(gv.rovals):
+            if v: # if this element has a value
+                gv.rs[i][0] = ro_now
+                gv.rs[i][2] = v
+                gv.rs[i][3] = 98
                 gv.ps[i][0] = 98
-                gv.ps[i][1] = t
-                gv.rs[i][1] = time.time() + t
-        thread.start_new_thread(self.run, ())
+                gv.ps[i][1] = v
+        schedule_stations(ro_now)
         raise web.seeother('/')
-        return
-
-    def run(self):
-        gv.sd['bsy'] = 1
-        idx = 0
-        now = time.time()
-        while idx < len(gv.ps): # loop through program schedule (gv.ps)
-            if gv.sd['rsn'] == 1:
-                #### stop irrigation and clean up ####
-                gv.srvals = [0]*(gv.sd['nst'])
-                set_output()
-                gv.ps = []
-                for i in range(gv.sd['nst']):
-                    gv.ps.append([0,0])   
-                gv.sbits = [0] * (gv.sd['nbrd'] +1)
-                gv.sd['bsy'] = 0
-                break
-            if gv.ps[idx][1] == 0: # skip stations with no duration
-                idx += 1
-                continue
-            #### start irrigation ####
-            time.sleep(gv.sd['sdt'])
-            gv.srvals[idx]=1
-            set_output()
-            gv.sbits[idx/8] = 2**(idx%8)
-            gv.lrun[2] = int(gv.ps[idx][1])
-            while gv.ps[idx][1] > 0:
-                if gv.sd['rsn'] == 1:
-                    break
-                time.sleep(1)               
-                #gv.ps[idx][1] -= 1 # This decrement is also done in the main loop
-            gv.ps[idx][0] = 0
-            gv.sbits[idx/8] = 0
-            #### stop irrigation ####
-            gv.lrun[0] = idx
-            gv.lrun[1] = 98
-            gv.lrun[3] = now+((gv.sd['tz']/4)-12)*3600
-            log_run(now)
-            gv.srvals[idx]=0
-            set_output()
-            idx += 1
-        gv.sd['bsy'] = 0
-        return
 
 class view_programs:
     """Open programs page."""
     def GET(self):
         programpg = '<!DOCTYPE html>\n'
         programpg += data('meta')+'\n'
+        programpg += '<link href="./static/images/icons/favicon.ico" rel="icon" type="image/x-icon" />\n'
+        programpg += '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\n'
         programpg += '<script >var baseurl=\"'+baseurl()+'\"</script>\n'       
         programpg += '<script >'+output_prog()+'</script>\n'
         programpg += '<script >snames='+data('snames')+';</script>\n'
@@ -721,6 +657,8 @@ class modify_program:
         qdict = web.input()
         modprogpg = '<!DOCTYPE html>\n'
         modprogpg += data('meta')+'\n'
+        modprogpg += '<link href="./static/images/icons/favicon.ico" rel="icon" type="image/x-icon" />\n'
+        modprogpg += '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\n'
         modprogpg += '<script >var baseurl=\"'+baseurl()+'\"</script>\n'
         modprogpg += '<script >var nboards='+str(gv.sd['nbrd'])+',ipas='+str(gv.sd['ipas'])+';\n'
         if qdict['pid'] != '-1':
@@ -797,6 +735,8 @@ class graph_programs:
         if qdict.has_key('y'): yy = str(qdict['y'])
         else: yy = str(lt.tm_year)
         graphpg = '<script >var baseurl=\"'+baseurl()+'\"</script>\n'
+        graphpg += '<link href="./static/images/icons/favicon.ico" rel="icon" type="image/x-icon" />\n'
+        graphpg += '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\n'
         graphpg += '<script >var mas='+str(gv.sd['mas'])+',wl='+str(gv.sd['wl'])+',sdt='+str(gv.sd['sdt'])+',mton='+str(gv.sd['mton'])+',mtoff='+str(gv.sd['mtoff'])+',devday='+str(int(t/86400))+',devmin='+str((lt.tm_hour*60)+lt.tm_min)+',dd='+dd+',mm='+mm+',yy='+yy+';var masop=['+str(gv.sd['m0'])+',0];'+output_prog()+'</script>\n'
         graphpg += '<script >var snames='+data('snames').replace(' ', '')+';</script>\n'
         graphpg += '<script src=\"'+baseurl()+'/static/scripts/java/svc1.8/plotprog.js\"></script>'
@@ -813,6 +753,7 @@ class view_log:
         data = []
         for r in records:
             t = r.split(', ')
+            t[1] = t[1].decode('unicode-escape')
             data.append(t)    
         return self.render.log(data)
 
@@ -854,7 +795,5 @@ class log_options:
 
 if __name__ == '__main__':
     app = web.application(urls, globals())
-    if gv.sd['mm']:
-        thread.start_new_thread(mm_timer, ())
     thread.start_new_thread(main_loop, ())
     app.run()

@@ -9,7 +9,18 @@ May 2013, http://rayshobby.net
 **********
 
 -----------------------------------------------------------------------------------------
-* July 10 2013
+* July 19 2013
+Code re-factored:
+1. Eliminated over 100 lines of redundant code. The code is now much closer to the micro-controller version. Manual Mode and Run-once now rely on the main loop algorithm. This eliminates potential conflicts and makes the code easier to maintain. The program should now be more stable and have fewer bugs although the UI is a little slower.
+2. Changed bit-wise operations to make them more reliable.
+3. Station names now accept Unicode characters allowing names to be entered in any language.
+4. Faveicon now appears on all pages.
+5. A small bug in the display of Master valve off time in the program preview has been fixed. The off time was 1 minute short.
+6. A file named 'sd_reference.txt' has been added to the OSPi directory. It contains a list with descriptions of the values contained in the global settings dictionary variable (gv.sd) which holds most settings for the program. These values are kept in memory and also stored in the file OSPi/data/sd.json to persist across system restarts. This is for the benefit of anyone who wishes to tinker with the code.
+
+It is recommended to re-install the entire OSPi directory from GitHub. You can keep your current settings by saving the contents of the OSPi/data directory to another location before installation, then replace the contents of the newly installed directory with your saved files.
+
+* july 10 2013
 Bug fixes and additions:
 1. Fixed a bug that prevented zones 9+ from running.
 2. The Run once program was not observing the station delay setting - Fixed
