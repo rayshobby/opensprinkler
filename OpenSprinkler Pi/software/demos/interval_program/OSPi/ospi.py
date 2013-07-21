@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Updated 19/July/2013."""
+"""Updated 21/July/2013."""
 
 import web, re, os, json, time, base64, thread, gv
 import RPi.GPIO as GPIO
@@ -163,10 +163,11 @@ def main_loop(): # Runs in a seperate thread
                                 gv.lrun[1] = gv.rs[sid][3]
                                 gv.lrun[2] = int(now - gv.rs[sid][0])
                                 gv.lrun[3] = now+((gv.sd['tz']/4)-12)*3600
-                                log_run(now)                             
+                                log_run(now)
+                                gv.pon = None # Program has ended
                             elif gv.sd['mas']-1 == sid:
                                 gv.sbits[b] = gv.sbits[b]&~2**s
-                            gv.rs[sid] = [0,0,0,0]     
+                            gv.rs[sid] = [0,0,0,0]
                     else: # if this station is not yet on
                         if now >= gv.rs[sid][0] and now < gv.rs[sid][1]:
                             if gv.sd['mas']-1 != sid: # if not master
@@ -175,7 +176,7 @@ def main_loop(): # Runs in a seperate thread
                                 gv.sbits[b] = gv.sbits[b]|2**s # Set display to on
                                 gv.ps[sid][0] = gv.rs[sid][3]
                                 gv.ps[sid][1] = gv.rs[sid][2]
-                                if gv.sd['mas'] and gv.sd['m'+str(b)]&1<<s: # Master settings
+                                if gv.sd['mas'] and gv.sd['m'+str(b)]&1<<s-(s/8)*8: # Master settings
                                     masid = gv.sd['mas'] - 1 # master index
                                     gv.rs[masid][0] = gv.rs[sid][0] + gv.sd['mton']
                                     gv.rs[masid][1] = gv.rs[sid][1] + gv.sd['mtoff']
@@ -186,7 +187,7 @@ def main_loop(): # Runs in a seperate thread
                                 set_output()                   
             
             for s in range(gv.sd['nst']):
-                if gv.rs[s][1]:
+                if gv.rs[s][1]: # if any program is running
                     program_running = True
                     break              
                 program_running = False
@@ -197,6 +198,7 @@ def main_loop(): # Runs in a seperate thread
                         continue
                     if gv.srvals[idx]: # If station is on, decrement time remaining
                         gv.ps[idx][1] -= 1
+                        gv.pon = gv.ps[idx][0] # Program that is currently running
                         if gv.ps[idx][1] == 0:
                             gv.ps[idx][0] = 0
 
@@ -281,8 +283,14 @@ sdf = open('./data/sd.json', 'r')
 gv.sd = json.load(sdf) #Settings Dictionary. A set of vars kept in memory
 sdf.close()
 
-gv.lg = gv.sd['lg'] # Controlls logging
-gv.lr = int(gv.sd['lr'])
+try:
+    gv.lg = gv.sd['lg'] # Controlls logging
+except KeyError:
+    pass
+try:
+    gv.lr = int(gv.sd['lr'])
+except KeyError:
+    pass
 
 sdref = {'15':'nbrd', '18':'mas', '21':'urs', '23':'wl', '25':'ipas'} #lookup table
 
@@ -294,7 +302,9 @@ pd = load_programs() # Load program data from file
 
 gv.ps = [] #Program schedule (used for UI diaplay)
 for i in range(gv.sd['nst']):
-    gv.ps.append([0,0]) # station, duration
+    gv.ps.append([0,0]) # program, duration
+
+gv.pon = None
 
 gv.sbits = [0] * (gv.sd['nbrd'] +1) # Used to display stations that are on in UI 
 
@@ -386,6 +396,8 @@ class change_values:
         if qdict.has_key('rd') and qdict['rd'] != '0':
             gv.sd['rdst'] = ((time.time()+((gv.sd['tz']/4)-12)*3600)
                           +(int(qdict['rd'])*3600))
+            gv.srvals = [0]*(gv.sd['nst']) # turn off all stations
+            set_output()
         elif qdict.has_key('rd') and qdict['rd'] == '0': gv.sd['rdst'] = 0   
         if qdict.has_key('rbt') and qdict['rbt'] == '1':
             jsave(gv.sd, 'sd')
@@ -513,6 +525,9 @@ class change_options:
         gv.ps = []
         for i in range((int(qdict['o15'])+1) * 8):
             gv.ps.append([0,0])
+        gv.rs = []
+        for i in range((int(qdict['o15'])+1) * 8):
+            gv.rs.append([0,0,0,0])    
         gv.sbits = [0] * (int(qdict['o15'])+2)
         return
 
@@ -576,8 +591,8 @@ class set_station:
     """turn a station (valve/zone) on=1 or off=0 in manual mode."""
     def GET(self, nst, t=None): # nst = station number, status, optional duration
         nstlst = [int(i) for i in re.split('=|&t=', nst)]
-        sid = nstlst[0]-1 # station index
-        b = nstlst[0]/8 #board
+        sid = int(nstlst[0])-1 # station index
+        b = sid/8 #board index
         if nstlst[1] == 1: # if status is on
             gv.rs[sid][0] = time.time() # set start time to current time
             if nstlst[2]: # if an optional duration time is given
@@ -586,13 +601,17 @@ class set_station:
             else:
                 gv.rs[sid][1] = float('inf') # stop time = infinity
             gv.rs[sid][3] = 99 # set program index
-            gv.sbits[b] = gv.sbits[b]|2**sid
             gv.ps[sid][1] = nstlst[2]
             gv.sd['bsy']=1
+            time.sleep(1.5)
         if nstlst[1] == 0: # If status is off
             gv.rs[sid][1] = time.time()
-            gv.sbits[b] = gv.sbits[b]&~2**sid
-            time.sleep(1)
+            try:
+                if int(gv.sd['m'+str(b)])&1<<sid -(sid/8)*8: # If this has a master association
+                    gv.rs[gv.sd['mas']-1][1] = time.time()
+            except ValueError:
+                pass
+            time.sleep(1.5)
         raise web.seeother('/')        
 
 class view_runonce:
@@ -678,13 +697,25 @@ class change_program:
     """Add a program or modify an existing one."""
     def GET(self):
         qdict = web.input()
+        #print qdict
         try:
             if gv.sd['ipas'] != 1 and qdict['pw'] != base64.b64decode(gv.sd['pwd']):
                 raise web.unauthorized()
                 return
         except KeyError:
             pass
-        cp = json.loads(qdict['v'])
+        pnum = int(qdict['pid'])+1 # program number
+        cp = json.loads(qdict['v'])      
+        if cp[0] == 0 and pnum == gv.pon: # if disabled and program is running
+            for i in range(len(gv.ps)):
+                print i
+                if gv.ps[i][0] == pnum:
+                    gv.ps[i] = [0,0]
+                if gv.srvals[i]:
+                    gv.srvals[i] = 0
+            for i in range(len(gv.rs)):
+                if gv.rs[i][3] == pnum:
+                    gv.rs[i] = [0,0,0,0]
         if cp[1] >= 128 and cp[2] > 1:
             dse = int((time.time()-time.timezone)/86400)
             ref = dse + cp[1]-128
@@ -693,7 +724,7 @@ class change_program:
             alert = '<script>alert("Maximum number of programs\n has been reached.");window.location="/";</script>'
             return alert
         elif qdict['pid'] == '-1': #add new program
-            pd.insert(0, cp)
+            pd.append(cp)
         else:
             pd[int(qdict['pid'])] = cp #replace program
         jsave(pd, 'programs')

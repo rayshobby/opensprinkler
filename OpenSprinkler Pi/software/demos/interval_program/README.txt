@@ -9,6 +9,14 @@ May 2013, http://rayshobby.net
 **********
 
 -----------------------------------------------------------------------------------------
+* July 21 2013
+Bug fixes:
+1. Fixed a bug that kept an in progress program running after it was disabled.
+2. Added error checking to prevent an 'lg' KeyError
+3. When a new program was added, it became program 1 instead of being added at the end of the list. - fixed.
+4. When Rain Delay was set, running stations did not stop. - Fixed.
+5. Added a 1.5s delay in the screen refresh of manual Mode to allow active stations and last run log time to update.
+
 * July 19 2013
 Code re-factored:
 1. Eliminated over 100 lines of redundant code. The code is now much closer to the micro-controller version. Manual Mode and Run-once now rely on the main loop algorithm. This eliminates potential conflicts and makes the code easier to maintain. The program should now be more stable and have fewer bugs although the UI is a little slower.

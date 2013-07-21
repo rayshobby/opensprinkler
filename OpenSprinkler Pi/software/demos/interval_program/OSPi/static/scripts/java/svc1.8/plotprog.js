@@ -6,11 +6,13 @@
 
 // colors to draw different programs
 var prog_color=["rgba(0,0,200,0.5)","rgba(0,200,0,0.5)","rgba(200,0,0,0.5)","rgba(0,200,200,0.5)"];
+var days_str=["Sun","Mon","Tue","Wed","Thur","Fri","Sat"];
 var xstart=80,ystart=80,stwidth=40,stheight=180;
 var winwidth=stwidth*nboards*8+xstart, winheight=26*stheight+ystart;
 var sid,sn,t;
-var simdate = new Date(yy,mm-1,dd,0,0,0); // Java Date object, assumes month starts from 0
-var simday = (simdate.getTime()/1000/3600/24)>>0;
+var simt=Date.UTC(yy,mm-1,dd,12,0,0,0);
+var simdate=new Date(simt);
+var simday = (simt/1000/3600/24)>>0;
 function w(s) {document.writeln(s);}
 function check_match(prog,simminutes,simdate,simday) {
   // simdate is Java date object, simday is the #days since 1970 01-01
@@ -20,13 +22,13 @@ function check_match(prog,simminutes,simdate,simday) {
     dn=prog[2];drem=prog[1]&0x7f;
     if((simday%dn)!=((devday+drem)%dn)) return 0; // remainder checking
   } else {
-    wd=(simdate.getDay()+6)%7; // getDay assumes sunday is 0, converts to Monday 0
+    wd=(simdate.getUTCDay()+6)%7; // getDay assumes sunday is 0, converts to Monday 0
     if((prog[1]&(1<<wd))==0)  return 0; // weekday checking
-    dt=simdate.getDate(); // day of the month
+    dt=simdate.getUTCDate(); // day of the month
     if((prog[1]&0x80)&&(prog[2]==0))  {if((dt%2)!=0)  return 0;} // even day checking
     if((prog[1]&0x80)&&(prog[2]==1))  { // odd day checking
       if(dt==31)  return 0;
-      else if (dt==29 && simdate.getMonth()==1) return 0;
+      else if (dt==29 && simdate.getUTCMonth()==1) return 0;
       else if ((dt%2)!=1) return 0;
     }
   }
@@ -65,7 +67,7 @@ function run_sched(simseconds,st_array,pid_array,et_array) { // run and plot sch
     if(pid_array[sid]) {
       plot_bar(sid,st_array[sid],pid_array[sid],et_array[sid]);
       if((mas>0)&&(mas!=sid+1)&&(masop[sid>>3]&(1<<(sid%8))))
-        plot_master(st_array[sid]+mton, et_array[sid]+mtoff-60);
+        plot_master(st_array[sid]+mton, et_array[sid]+mtoff);
       endtime=et_array[sid];
     }
   }
@@ -73,7 +75,7 @@ function run_sched(simseconds,st_array,pid_array,et_array) { // run and plot sch
 }
 function draw_title() {
   w("<div align=\"center\" style=\"background-color:#EEEEEE;position:absolute;left:0px;top:10px;border:2px solid gray;padding:5px 0px;width:"+(winwidth)+";border-radius:10px;box-shadow:3px 3px 2px #888888;\"><b>Program Preview of</b>&nbsp;");
-  w(simday==devday?"Today":simdate.toDateString());
+  w(days_str[simdate.getUTCDay()]+" "+(simdate.getUTCMonth()+1)+"/"+(simdate.getUTCDate())+" "+(simdate.getUTCFullYear()));
   w("<br><font size=2>(Hover over each colored bar to see tooltip)</font>");
   w("</div>");
 }
@@ -91,7 +93,7 @@ function draw_grid() {
     w("<div style=\"position:absolute;left:"+(xstart-stwidth/2-8)+";top:"+(gety(t*60)+stheight/2)+";border:1px solid gray;width:8;height:0;\"></div>");
     w("<div style=\"position:absolute;left:"+(xstart-70)+";top:"+(ystart+t*stheight-7)+";width=70;height:20;border:0;padding:0;\"><font size=2>"+(t/10>>0)+(t%10)+":00</font></div>");
   }
-  if(simday==devday)  plot_currtime();
+  plot_currtime();
 }
 function draw_program() {
   // plot program data by a full simulation
@@ -136,7 +138,7 @@ function draw_program() {
       simminutes++; // increment simulation time
     }
   } while(simminutes<24*60); // simulation ends
-  if(simday==devday)  window.scrollTo(0,gety((devmin/60>>0)*60)); // scroll to the hour line cloest to the current time
+  window.scrollTo(0,gety((devmin/60>>0)*60)); // scroll to the hour line cloest to the current time
 }
 
 draw_title();
