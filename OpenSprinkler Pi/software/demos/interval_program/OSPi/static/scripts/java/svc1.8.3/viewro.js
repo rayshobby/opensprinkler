@@ -41,8 +41,8 @@ for(sid=0;sid<nboards*8;sid++) {
   w("<tr><td bgcolor=\"#E4E4E4\">");
   w(snames[sid]+":&nbsp;&nbsp;</td><td>");
   if (sid+1==mas) {w("(<b>Master</b>)<br>");continue;}
-  w("<input type=text size=3 maxlength=3 value="+(dur[sid]/60>>0)+" name=mm"+sid+">:");
-  w("<input type=text size=2 maxlength=2 value="+(dur[sid]%60>>0)+" name=ss"+sid+"> (mm:ss)<br>");
+  w("<input type=text size=3 maxlength=3 value=0 name=mm"+sid+">:");
+  w("<input type=text size=2 maxlength=2 value=0 name=ss"+sid+"> (mm:ss)<br>");
   w("</td>");
 }
 w("</table>");

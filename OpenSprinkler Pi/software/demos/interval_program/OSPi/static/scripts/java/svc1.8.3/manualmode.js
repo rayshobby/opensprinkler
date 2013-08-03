@@ -20,7 +20,7 @@ w("<table border=1>");
 var bid,s,sid,sn,rem,remm,rems,sbit;
 for(bid=0;bid<nbrd;bid++){
   for(s=0;s<8;s++){
-    w("<tr><td bgcolor=\"#E4E4E4\">");
+    w("<tr><td bgcolor='#E4E4E4'>");
     sid=bid*8+s;
     sn=sid+1;
     //w("Station "+(sn/10>>0)+(sn%10)+": ");

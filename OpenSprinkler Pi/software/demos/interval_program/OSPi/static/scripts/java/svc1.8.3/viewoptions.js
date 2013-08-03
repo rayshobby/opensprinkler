@@ -4,7 +4,7 @@
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2012, Rayshobby.net
 
-var str_tooltips=["Example: GMT-4:00, GMT+5:30 (effective after reboot).", "HTTP port (effective after reboot).", "HTTP port (effective after reboot).", "Number of extension boards", "Station delay time (in seconds), between 0 and 240.", "Select master station", "Master on delay (in seconds), between +0 and +60.", "Master off delay (in seconds), between -60 and +60.", "Use rain sensor", "Rain sensor type", "Water level, between 0% and 250%.", "Ignore web password", "Obselete"];
+var str_tooltips=["Example: GMT-4:00, GMT+5:30 (effective after reboot).", "HTTP port (effective after reboot).", "HTTP port (effective after reboot).", "Number of extension boards", "Sequential running or concurrent running", "Station delay time (in seconds), between 0 and 240.", "Select master station", "Master on delay (in seconds), between +0 and +60.", "Master off delay (in seconds), between -60 and +60.", "Use rain sensor", "Rain sensor type", "Water level, between 0% and 250%.", "Ignore web password"];
 function w(s) {document.writeln(s);}
 function imgstr(s) {return "<img src=\""+baseurl+"/static/images/icons/svc_"+s+".png\" height=20 align=absmiddle>&nbsp;";}
 function submit_form(f) {
@@ -40,7 +40,6 @@ for(oid=0;oid<nopts;oid++){
   value=opts[oid*4+2];
   index=opts[oid*4+3];
   if(name=="Ignore password:") pasoid=oid;
-  if(name=="Sequential:" && value==0) alert("Sequential mode option is obsolete.\nIt must be set to on.");
   if(isbool)  w("<p title=\""+str_tooltips[oid]+"\"><b>"+name+"</b> <input type=checkbox "+(value>0?"checked":"")+" name=o"+index+">");
   else {
     // hack

@@ -4,11 +4,21 @@ May 2013, http://rayshobby.net
 =============================================
 
 
-**********
+***********
 **UPDATES**
-**********
+***********
 
 -----------------------------------------------------------------------------------------
+* August 1 2013 Reved to firmware V 1.8.3
+
+Now supports concurrent operation.
+
+Additions, bug fixes:
+1. Added Sequential/Concurrent option.
+2. Added a function to detect Pi board rev and auto-configure GPIO pins for rev 1 boards.
+3. Fixed a bug in manual mode that would cause any zone with a master association to stop the master when turned off, even if another station with a master association was still running.
+4. Changed how ospi.py handles master zone associations. The program should now work with more than 3 expansion boards (untested in hardware but at least 5 expansion boards, 64 stations work in software).
+
 * July 21 2013
 Bug fixes:
 1. Fixed a bug that kept an in progress program running after it was disabled.
@@ -44,7 +54,7 @@ Bug fixes and additions:
 3. Includes a fix from Samer that allows the program preview time marker to update properly.
 
 * Jun 20, 2013
-This upsate includes:
+This update includes:
 1. Changed the way ospi.py handles time. It now uses the time zone setting from the OS options page. It also eliminates the auto daylight savings time adjustment that was causing problems for some users.
 2. Fixes a bug mentioned on the forum that caused Samer's app to not update in program mode.
 3. Fixes a bug that caused a program to re-start after the "Stop all stations" button was clicked.

@@ -16,12 +16,13 @@ w("<button style=\"height:44\" onclick=link(\"/\")>"+imgstr("reset")+"Refresh</b
 w("<button style=\"height:44\" onclick=link(\"/vo\")>"+imgstr("options")+"Options</button>");
 w("<button style=\"height:44\" onclick=link(\"/vs\")>"+imgstr("edit")+"Stations</button>");
 w("<button style=\"height:44\" onclick=link(\"/vp\")>"+imgstr("cal")+"Programs</button>");
+//w("<button style=\"height:44\" onclick=linkn(\"http://igoogle.wunderground.com/cgi-bin/findweather/getForecast?query="+loc+"\")>"+imgstr("weather")+"Weather</button><p></p>");
 w("<button style=\"height:44\" onclick=link(\"/vl\")>"+imgstr("log")+"Log</button><p></p>");
 // print device information
 if(ver>=100) w("<b>Firmware version</b>: "+(ver/100>>0)+"."+((ver/10>>0)%10)+"."+(ver%10)+"<br>");
 else w("<b>Firmware version</b>: "+(ver/10>>0)+"."+(ver%10)+"<br>");
 w("<b>Device time</b>: "+datestr(devt*1000)+"<hr>");
-w("<script type=\"text/javascript\" src=\""+baseurl+"/static/scripts/java/svc1.8/"+((mm)?"manualmode.js":"progmode.js")+"\"></script>");
+w("<script type=\"text/javascript\" src=\""+baseurl+"/static/scripts/java/svc1.8.3/"+((mm)?"manualmode.js":"progmode.js")+"\"></script>");
 // print status and other information
 w("<br><b>Operation</b>: "+(en?("on").fontcolor("green"):("OFF").fontcolor("red")));
 w("<br><b>Raindelay</b>: "+(rd?("ON").fontcolor("red")+" (till "+datestr(rdst*1000)+")":("off").fontcolor("black")));
