@@ -7,7 +7,7 @@
 // print station status
 function rsn() {
   var p="";
-  if(!ipas) p=prompt("Please enter your password:","");
+  if(!sd['ipas']) p=prompt("Please enter your password:","");
   if(p!=null) window.location="/cv?pw="+p+"&rsn=1";
 }
 
@@ -17,8 +17,8 @@ w("<button style=\"height:32\" onclick=link(\"/vr\")>"+imgstr("start")+"Run-Once
 w("<p><b>Station Status</b>:</p>");
 w("<table border=1>");
 var bid,s,sid,sn,rem,remm,rems,off,pname;
-off=((en==0||rd!=0||(urs!=0&&rs!=0))?1:0);
-for(bid=0;bid<nbrd;bid++){
+off=((sd['en']==0||sd['rd']!=0||(sd['urs']!=0&&sd['rs']!=0))?1:0);
+for(bid=0;bid<sd['nbrd'];bid++){
   for(s=0;s<8;s++){
     w("<tr><td bgcolor=\"#E4E4E4\">");
     sid=bid*8+s;
@@ -26,7 +26,7 @@ for(bid=0;bid<nbrd;bid++){
     w(snames[sid]+':&nbsp;&nbsp;');
     w("</td><td>");
     if(off) w("<strike>");
-    if(sn==mas) {w(((sbits[bid]>>s)&1?("<b>On</b>").fontcolor("green"):("Off").fontcolor("black"))+" (<b>Master</b>)");}
+    if(sn==['mas']) {w(((sbits[bid]>>s)&1?("<b>On</b>").fontcolor("green"):("Off").fontcolor("black"))+" (<b>Master</b>)");}
     else {
       rem=ps[sid][1];remm=rem/60>>0;rems=rem%60;
       pname="P"+ps[sid][0];
