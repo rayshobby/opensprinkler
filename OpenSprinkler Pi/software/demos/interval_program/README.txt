@@ -8,7 +8,28 @@ May 2013, http://rayshobby.net
 **UPDATES**
 ***********
 
+=======================================
+NOTE: the most recent version of OSPi's
+interval program is now hosted at Dan's
+GitHub page and is no longer maintained
+at Rayshobby Github. Please follow the
+Wikipage below for instructions:
+http://rayshobby.net/mediawiki/index.php?title=Python_Interval_Program_for_OSPi
+
+The previous version up to August 24 2013
+is moved to the 'archive' subfolder'.
+=======================================
+
 -----------------------------------------------------------------------------------------
+* August 24 2013 Jonathan Marsh (jonathan@central-park-studio.com, http://jonathanmarsh.net)
+Generalized options handling:
+1. New format for options.txt that consolidates editing metadata (label, name, datatype, tooltip), removes runtime data
+2. Generalized passing of options into Javascript, as an "sd" object. Helper function for populating this object in ospi.py
+3. Converted "loc" into a standard, editable option, added "station_name_length" option (non-editable).
+4. Added "name" as an editable option, displayed on home page.
+5. Misc related code simplifications (esp in options save logic)
+6. Misc unrelated minor improvements.
+
 * August 1 2013 Reved to firmware V 1.8.3
 
 Now supports concurrent operation.

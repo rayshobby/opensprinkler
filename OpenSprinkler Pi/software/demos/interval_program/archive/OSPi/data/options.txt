@@ -1,0 +1,16 @@
+var opts=[
+	["Time zone","int","tz", "Example: GMT-4:00, GMT+5:30 (effective after reboot)."],
+	["HTTP port (currently disabled)","int","htp", "HTTP port (effective after reboot)."],
+	["Sequential","boolean","seq", "Sequential or concurrent running mode"],
+	["Extension boards","int","nbrd", "Number of extension boards"],
+	["Station delay","int","sdt", "Station delay time (in seconds), between 0 and 240."],
+	["Master station","int","mas", "Select master station"],
+	["Master on adjust","int","mton", "Master on delay (in seconds), between +0 and +60."],
+	["Master off adjust","int","mtoff", "Master off delay (in seconds), between -60 and +60."],
+	["Use rain sensor","boolean","urs", "Use rain sensor"],
+	["Normally open","boolean","rst", "Rain sensor type"],
+	["Water level (%)","int","wl", "Water level, between 0% and 250%."],
+	["Ignore password","boolean","ipas", "Ignore web password"],
+	["Location","string","loc", "City name or zip code. Use comma or + in place of space."],
+	["System name","string","name","Unique name of this OpenSprinkler system."]
+];
