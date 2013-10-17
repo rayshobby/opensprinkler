@@ -14,11 +14,18 @@
 #include "WProgram.h"
 #endif
 
+#define USE_TINYFAT
+
 #include <avr/eeprom.h>
-#include "Wire.h"
+#include "../Wire/Wire.h"
+#include "../LiquidCrystal/LiquidCrystal.h"
+#ifdef USE_TINYFAT
+  #include "tinyFAT.h"
+#else
+  #include "../SD/SD.h"
+#endif
 #include "Time.h"
 #include "DS1307RTC.h"
-#include "LiquidCrystal.h"
 #include "EtherCard.h"
 #include "defines.h"
 
@@ -34,11 +41,11 @@ struct StatusBits {
   byte enabled:1;           // operation enable (when set, controller operation is enabled)
   byte rain_delayed:1;      // rain delay bit (when set, rain delay is applied)
   byte rain_sensed:1;       // rain sensor bit (when set, it indicates that rain is detected)
-  byte program_busy:1;      // when set, a program is being executed currently
-  byte manual_mode:1;       // when set, the controller is in manual mode
-  byte has_rtc:1;           // when set, the controller has a DS1307 RTC
-  byte dummy:2;             // unused, filler for the first 8-bit
-  
+  byte program_busy:1;      // HIGH means a program is being executed currently
+  byte manual_mode:1;       // HIGH means the controller is in manual mode
+  byte has_rtc:1;           // HIGH means the controller has a DS1307 RTC
+  byte has_sd:1;            // HIGH means a microSD card is detected
+  byte dummy:1;
   byte display_board:4;     // the board that is being displayed onto the lcd
   byte network_fails:4;     // number of network fails
 }; 

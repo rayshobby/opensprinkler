@@ -11,7 +11,7 @@
 #if ARDUINO >= 100
 #include <Arduino.h> // Arduino 1.0
 #else
-#include <WProgram.h> // Arduino 0022
+#include <Wprogram.h> // Arduino 0022
 #endif
 #include "enc28j60.h"
 
@@ -251,30 +251,18 @@ word ENC28J60::bufferSize;
 
 static byte Enc28j60Bank;
 static int gNextPacketPtr;
-static byte selectBit;  // 0 = B0 = pin 8, 1 = B1 = pin 9, 2 = B2 = pin 10
+static byte selectPin;
 
 void ENC28J60::initSPI () {
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    const byte SPI_SS   = 53;
-    const byte SPI_MOSI = 51;
-    const byte SPI_MISO = 50;
-    const byte SPI_SCK  = 52;
-#else
-    const byte SPI_SS = SS;
-    const byte SPI_MOSI = MOSI;
-    const byte SPI_MISO = MISO;
-    const byte SPI_SCK = SCK;
-#endif
+    pinMode(SS, OUTPUT);
+    digitalWrite(SS, HIGH);
+    pinMode(MOSI, OUTPUT);
+    pinMode(SCK, OUTPUT);   
+    pinMode(MISO, INPUT);
     
-    pinMode(SPI_SS, OUTPUT);
-    pinMode(SPI_MOSI, OUTPUT);
-    pinMode(SPI_SCK, OUTPUT);   
-    pinMode(SPI_MISO, INPUT);
-    
-    digitalWrite(SPI_SS, HIGH);
-    digitalWrite(SPI_MOSI, HIGH);
-    digitalWrite(SPI_MOSI, LOW);
-    digitalWrite(SPI_SCK, LOW);
+    digitalWrite(MOSI, HIGH);
+    digitalWrite(MOSI, LOW);
+    digitalWrite(SCK, LOW);
 
     SPCR = bit(SPE) | bit(MSTR); // 8 MHz @ 16
     bitSet(SPSR, SPI2X);
@@ -282,11 +270,11 @@ void ENC28J60::initSPI () {
 
 static void enableChip () {
     cli();
-    bitClear(PORTB, selectBit);
+    digitalWrite(selectPin, LOW);
 }
 
 static void disableChip () {
-    bitSet(PORTB, selectBit);
+    digitalWrite(selectPin, HIGH);
     sei();
 }
 
@@ -379,9 +367,8 @@ byte ENC28J60::initialize (word size, const byte* macaddr, byte csPin) {
     bufferSize = size;
     if (bitRead(SPCR, SPE) == 0)
       initSPI();
-    //selectBit = csPin - 8;  
-    selectBit = 4;
-    bitSet(DDRB, selectBit);
+    selectPin = csPin;  
+    pinMode(selectPin, OUTPUT);
     disableChip();
     
     writeOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);
@@ -525,6 +512,10 @@ void ENC28J60::disableBroadcast () {
     writeRegByte(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN);
 }
 
+void ENC28J60::disableMulticast () { // disable multicast filter , enable multicast reception
+    writeRegByte(ERXFCON, ERXFCON_CRCEN);
+}
+
 uint8_t ENC28J60::doBIST ( byte csPin) {
 	#define RANDOM_FILL		0b0000
 	#define ADDRESS_FILL	0b0100
@@ -534,9 +525,8 @@ uint8_t ENC28J60::doBIST ( byte csPin) {
 // init	
     if (bitRead(SPCR, SPE) == 0)
       initSPI();
-    //selectBit = csPin - 8;  
-    selectBit = 4;
-    bitSet(DDRB, selectBit);
+    selectPin = csPin;  
+    pinMode(selectPin, OUTPUT);
     disableChip();
     
     writeOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);

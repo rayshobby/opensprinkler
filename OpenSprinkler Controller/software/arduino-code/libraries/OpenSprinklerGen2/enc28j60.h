@@ -12,7 +12,7 @@
 
 #ifndef ENC28J60_H
 #define ENC28J60_H
-
+    
 class ENC28J60 {
 public:
   static uint8_t buffer[];
@@ -37,7 +37,7 @@ public:
   
   static void enableBroadcast();
   static void disableBroadcast();
-
+  static void disableMulticast ();
   static uint8_t doBIST(uint8_t csPin =8);
 };
 

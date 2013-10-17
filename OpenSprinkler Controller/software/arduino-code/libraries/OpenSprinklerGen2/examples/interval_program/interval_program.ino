@@ -9,17 +9,18 @@
  Creative Commons Attribution-ShareAlike 3.0 license
  Apr 2013 @ Rayshobby.net
  */
-
 #include <limits.h>
 #include <OpenSprinklerGen2.h>
+//#include <SD.h>
+#include <Wire.h>
+#include <LiquidCrystal.h>
 #include "program.h"
-
 // ================================================================================
 // This is the path to which external Javascripst are stored
 // To create custom Javascripts, you need to make a copy of these scripts
 // and put them to your own server, or github, or any available file hosting service
 
-#define JAVASCRIPT_PATH  "http://rayshobby.net/scripts/java/svc2.0" 
+//#define JAVASCRIPT_PATH  "http://rayshobby.net/scripts/java/svc2.0" 
 //"https://github.com/rayshobby/opensprinkler/raw/master/scripts/java/svc1.8"
 // ================================================================================
 
@@ -35,13 +36,13 @@
 
 // ====== Ethernet defines ======
 byte mymac[] = { 0x00,0x69,0x69,0x2D,0x30,0x00 }; // mac address
-byte ntpip[] = {204,9,54,119};                    // Default NTP server ip
-uint8_t ntpclientportL = 123;                           // Default NTP client port
+uint8_t ntpclientportL = 123; // Default NTP client port
 int myport;
 
 byte Ethernet::buffer[ETHER_BUFFER_SIZE]; // Ethernet packet buffer
 char tmp_buffer[TMP_BUFFER_SIZE+1];       // scratch buffer
 BufferFiller bfill;                       // buffer filler
+unsigned long last_sync_time = 0;
 
 // ====== Object defines ======
 OpenSprinkler svc;    // OpenSprinkler object
@@ -101,7 +102,8 @@ void button_poll() {
 // Arduino Setup Function
 // ======================
 void setup() { 
-
+  //Serial.begin(9600);
+  //Serial.println("start");
   svc.begin();          // OpenSprinkler init
   svc.options_setup();  // Setup options
 
@@ -114,6 +116,20 @@ void setup() {
   setSyncProvider(svc.status.has_rtc ? RTC.get : NULL);
   delay(500);
   svc.lcd_print_time(0);  // display time to LCD
+  
+  svc.lcd_print_line_clear_pgm(PSTR("Detecting uSD..."), 1);
+
+#ifdef USE_TINYFAT
+  byte res=file.initFAT(0);  // initialize with highest SPI speed
+  if (res==NO_ERROR) {
+    svc.status.has_sd = 1;
+  }  
+#else
+  if(SD.begin(0)) {
+    svc.status.has_sd = 1;
+  }
+#endif
+
   svc.lcd_print_line_clear_pgm(PSTR("Connecting..."), 1);
     
   if (svc.start_network(mymac, myport)) {  // initialize network
@@ -124,9 +140,10 @@ void setup() {
 
   svc.apply_all_station_bits(); // reset station bits
   
-  perform_ntp_sync(now());
+  //perform_ntp_sync(now());
+  last_sync_time = 0;
   
-  svc.lcd_print_time(0);  // display time to LCD
+  //svc.lcd_print_time(0);  // display time to LCD
   //wdt_enable(WDTO_4S);  // enabled watchdog timer
 }
 
@@ -147,13 +164,10 @@ void loop()
   //wdt_reset();  // reset watchdog timer
 
   // ====== Process Ethernet packets ======
-  int plen=0;
   pos=ether.packetLoop(ether.packetReceive());
   if (pos>0) {  // packet received
     bfill = ether.tcpOffset();
     analyze_get_url((char*)Ethernet::buffer+pos);
-
-    ether.httpServerReply(bfill.position());   
   }
   // ======================================
  
@@ -334,6 +348,7 @@ void loop()
     
     // perform ntp sync
     perform_ntp_sync(curr_time);
+    
   }
 }
 
@@ -359,10 +374,9 @@ void manual_station_on(byte sid, int ontimer) {
 }
 
 void perform_ntp_sync(time_t curr_time) {
-  static unsigned long last_sync_time = 0;
   // do not perform sync if this option is disabled, or if network is not available
   if (svc.options[OPTION_USE_NTP].value==0 || svc.status.network_fails>0) return;   
-  // sync every 1 hour
+  // sync every 24 hour
   if (last_sync_time == 0 || (curr_time - last_sync_time > NTP_SYNC_INTERVAL)) {
     last_sync_time = curr_time;
     unsigned long t = getNtpTime();   
@@ -420,7 +434,7 @@ void schedule_all_stations(unsigned long curr_time, byte seq)
 		    pd.scheduled_start_time[sid] = accumulate_time;
 		    accumulate_time += pd.scheduled_stop_time[sid];
 		    pd.scheduled_stop_time[sid] = accumulate_time;
-		    accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
+		    accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value * 60; // add station delay time
 		    svc.status.program_busy = 1;  // set program busy bit
 		  }
 		}

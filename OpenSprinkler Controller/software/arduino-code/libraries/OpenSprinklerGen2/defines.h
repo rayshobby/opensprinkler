@@ -9,7 +9,7 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  200 // firmware version (e.g. 2.0.0 etc)
+#define SVC_FW_VERSION  201 // firmware version (e.g. 2.0.1 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
@@ -68,6 +68,10 @@ typedef enum {
   OPTION_DEVICE_ID,
   OPTION_LCD_CONTRAST,
   OPTION_LCD_BACKLIGHT,
+  OPTION_NTP_IP1,
+  OPTION_NTP_IP2,
+  OPTION_NTP_IP3,
+  OPTION_NTP_IP4,
   OPTION_RESET,
   NUM_OPTIONS	// total number of options
 } OS_OPTION_t;
@@ -139,7 +143,7 @@ typedef enum {
 #define DISPLAY_MSG_MS      2000  // message display time (milliseconds)
 
 // ====== Ethernet Defines ======
-#define ETHER_BUFFER_SIZE   1100  // if buffer size is increased, you must check the total RAM consumption
+#define ETHER_BUFFER_SIZE   900  // if buffer size is increased, you must check the total RAM consumption
                                   // otherwise it may cause the program to crash
 #define TMP_BUFFER_SIZE       48  // scratch buffer size
 

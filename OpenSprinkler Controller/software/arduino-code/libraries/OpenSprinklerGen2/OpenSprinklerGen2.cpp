@@ -40,12 +40,16 @@ prog_char _str_mton[] PROGMEM = "Mas. on adj.:";
 prog_char _str_mtof[] PROGMEM = "Mas. off adj.:";
 prog_char _str_urs [] PROGMEM = "Use rain sensor:";
 prog_char _str_rso [] PROGMEM = "Normally open:";
-prog_char _str_wl  [] PROGMEM = "Watering level:";
+prog_char _str_wl  [] PROGMEM = "% Water time:";
 prog_char _str_stt [] PROGMEM = "Selftest time:";
 prog_char _str_ipas[] PROGMEM = "Ignore password:";
 prog_char _str_devid[]PROGMEM = "Device ID:";
 prog_char _str_con [] PROGMEM = "LCD Contrast:";
 prog_char _str_lit [] PROGMEM = "LCD Backlight:";
+prog_char _str_ntp1[] PROGMEM = "NTP server.ip1:";
+prog_char _str_ntp2[] PROGMEM = "ip2:";
+prog_char _str_ntp3[] PROGMEM = "ip3:";
+prog_char _str_ntp4[] PROGMEM = "ip4:";
 prog_char _str_reset[] PROGMEM = "Reset all?";
 
 
@@ -77,8 +81,12 @@ OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {10,  240, _str_stt,  OPFLAG_SETUP_EDIT},                   // self-test time (in seconds)
   {0,   1,   _str_ipas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // 1: ignore password; 0: use password
   {0,   255, _str_devid,OPFLAG_SETUP_EDIT},                   // device id
-  {110,  255,  _str_con,  OPFLAG_SETUP_EDIT},                   // lcd contrast
-  {200,  255,  _str_lit,  OPFLAG_SETUP_EDIT},                   // lcd backlight
+  {110, 255, _str_con,  OPFLAG_SETUP_EDIT},                   // lcd contrast
+  {200, 255, _str_lit,  OPFLAG_SETUP_EDIT},                   // lcd backlight
+  {204, 255, _str_ntp1, OPFLAG_SETUP_EDIT}, // this and the next three bytes define the ntp server ip
+  {9,   255, _str_ntp2, OPFLAG_SETUP_EDIT}, 
+  {54,  255, _str_ntp3, OPFLAG_SETUP_EDIT},
+  {119, 255, _str_ntp4, OPFLAG_SETUP_EDIT},
   {0,   1,   _str_reset,OPFLAG_SETUP_EDIT}
 };
 
@@ -117,7 +125,7 @@ byte OpenSprinkler::start_network(byte mymac[], int http_port) {
   
   if (options[OPTION_USE_DHCP].value) {
     // register with domain name "opensprinkler"
-    if (!ether.dhcpSetup("opensprinkler")) return 0;
+    if (!ether.dhcpSetup()) return 0;
   } else {
     byte staticip[] = {
       options[OPTION_STATIC_IP1].value,
@@ -159,7 +167,15 @@ void OpenSprinkler::begin() {
   
   // pull shift register OE low to enable output
   digitalWrite(PIN_SR_OE, LOW);
- 
+
+  // set sd cs pin high
+  pinMode(PIN_SD_CS, OUTPUT);
+  digitalWrite(PIN_SD_CS, HIGH);
+  
+#ifdef USE_TINYFAT
+  file.setSSpin(PIN_SD_CS);
+#endif
+  
   // set PWM frequency for LCD
   TCCR1B = 0x01;
   // turn on LCD backlight and contrast
@@ -174,7 +190,7 @@ void OpenSprinkler::begin() {
   // Rain sensor port set up
   pinMode(PIN_RAINSENSOR, INPUT);
   digitalWrite(PIN_RAINSENSOR, HIGH); // enabled internal pullup
-  
+
   // Init I2C
   Wire.begin();
   
@@ -185,6 +201,7 @@ void OpenSprinkler::begin() {
   status.program_busy = 0;
   status.manual_mode = 0;
   status.has_rtc = 0;
+  status.has_sd = 0;
   status.display_board = 0;
   status.network_fails = 0;
 
@@ -193,7 +210,7 @@ void OpenSprinkler::begin() {
   raindelay_stop_time = 0;
   
   // define lcd custom characters
-  byte lcd_custom_char[8] = {
+  byte lcd_wifi_char[8] = {
     B00000,
     B10100,
     B01000,
@@ -203,11 +220,22 @@ void OpenSprinkler::begin() {
     B00101,
     B10101
   };
-  lcd.createChar(1, lcd_custom_char);  
-  lcd_custom_char[1]=0;
-  lcd_custom_char[2]=0;
-  lcd_custom_char[3]=1;    
-  lcd.createChar(0, lcd_custom_char);  
+  byte lcd_sd_char[8] = {
+    B00000,
+    B00000,
+    B11111,
+    B10001,
+    B11111,
+    B10001,
+    B10011,
+    B11110
+  };
+  lcd.createChar(1, lcd_wifi_char);  
+  lcd_wifi_char[1]=0;
+  lcd_wifi_char[2]=0;
+  lcd_wifi_char[3]=1;    
+  lcd.createChar(0, lcd_wifi_char);  
+  lcd.createChar(2, lcd_sd_char);
 
   // set rf data pin
   pinMode(PIN_RF_DATA, OUTPUT);
@@ -582,8 +610,11 @@ void OpenSprinkler::lcd_print_station(byte line, char c) {
 	  }
 	}
 	lcd_print_pgm(PSTR("    "));
-  lcd.setCursor(15, 1);
+  lcd.setCursor(14, 1);
   lcd.write(status.network_fails>0?1:0); 
+	lcd.setCursor(15, 1);
+  if (status.has_sd)  lcd.write(2);
+
 }
 
 // Print an option value
@@ -637,8 +668,10 @@ void OpenSprinkler::lcd_print_option(int i) {
   }
   if (i==OPTION_WATER_LEVEL)  lcd_print_pgm(PSTR("%"));
   else if (i==OPTION_MASTER_ON_ADJ || i==OPTION_MASTER_OFF_ADJ ||
-      i==OPTION_SELFTEST_TIME || i==OPTION_STATION_DELAY_TIME)
+      i==OPTION_SELFTEST_TIME)
     lcd_print_pgm(PSTR(" sec"));
+  else if (i==OPTION_STATION_DELAY_TIME)
+    lcd_print_pgm(PSTR(" min"));
 }
 
 

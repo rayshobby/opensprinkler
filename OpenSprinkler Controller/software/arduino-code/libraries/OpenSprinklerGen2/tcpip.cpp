@@ -21,10 +21,10 @@
 
 // Avoid spurious pgmspace warnings - http://forum.jeelabs.net/node/327
 // See also http://gcc.gnu.org/bugzilla/show_bug.cgi?id=34734
-#undef PROGMEM 
-#define PROGMEM __attribute__(( section(".progmem.data") )) 
-#undef PSTR 
-#define PSTR(s) (__extension__({static prog_char c[] PROGMEM = (s); &c[0];}))
+//#undef PROGMEM 
+//#define PROGMEM __attribute__(( section(".progmem.data") )) 
+//#undef PSTR 
+//#define PSTR(s) (__extension__({static prog_char c[] PROGMEM = (s); &c[0];}))
 
 static byte tcpclient_src_port_l=1; 
 static byte tcp_fd; // a file descriptor, will be encoded into the port
@@ -53,6 +53,7 @@ static word info_data_len;
 static byte seqnum = 0xa; // my initial tcp sequence number
 static byte result_fd = 123; // session id of last reply
 static const char* result_ptr;
+static unsigned long SEQ; 
 
 #define CLIENTMSS 550
 #define TCP_DATA_START ((word)TCP_SRC_PORT_H_P+(gPB[TCP_HEADER_LEN_P]>>4)*4)
@@ -257,6 +258,29 @@ void EtherCard::httpServerReply (word dlen) {
   make_tcp_ack_with_data_noflags(dlen); // send data
 }
 
+static void get_seq() { //get the sequence number of packets after an ack from GET
+  SEQ =(((unsigned long)gPB[TCP_SEQ_H_P]*256+gPB[TCP_SEQ_H_P+1])*256+gPB[TCP_SEQ_H_P+2])*256+gPB[TCP_SEQ_H_P+3];
+} //thanks to mstuetz for the missing (unsigned long)
+
+static void set_seq() { //set the correct sequence number and calculate the next with the lenght of current packet
+gPB[TCP_SEQ_H_P]= (SEQ & 0xff000000 ) >> 24;
+gPB[TCP_SEQ_H_P+1]= (SEQ & 0xff0000 ) >> 16;
+gPB[TCP_SEQ_H_P+2]= (SEQ & 0xff00 ) >> 8;
+gPB[TCP_SEQ_H_P+3]= (SEQ & 0xff );
+}
+
+void EtherCard::httpServerReplyAck () {
+make_tcp_ack_from_any(info_data_len,0); // send ack for http get
+get_seq(); //get the sequence number of packets after an ack from GET
+}
+
+void EtherCard::httpServerReply_with_flags (word dlen , byte flags) {
+set_seq();
+gPB[TCP_FLAGS_P] = flags; // final packet
+make_tcp_ack_with_data_noflags(dlen); // send data
+SEQ=SEQ+dlen;
+}
+
 void EtherCard::clientIcmpRequest(const byte *destip) {
   setMACandIPs(gwmacaddr, destip);
   gPB[ETH_TYPE_H_P] = ETHTYPE_IP_H_V;
@@ -314,7 +338,8 @@ byte EtherCard::ntpProcessAnswer (uint32_t *time,byte dstport_l) {
 void EtherCard::udpPrepare (word sport, byte *dip, word dport) {
   setMACandIPs(gwmacaddr, dip);
   // see http://tldp.org/HOWTO/Multicast-HOWTO-2.html
-  if ((dip[0] & 0xF0) == 0xE0) // multicast address
+  // multicast or broadcast address, https://github.com/jcw/ethercard/issues/59
+  if ((dip[0] & 0xF0) == 0xE0 || *((long*) dip) == 0xFFFFFFFF)
     EtherCard::copyMac(gPB + ETH_DST_MAC, allOnes);
   gPB[ETH_TYPE_H_P] = ETHTYPE_IP_H_V;
   gPB[ETH_TYPE_L_P] = ETHTYPE_IP_L_V;
@@ -456,26 +481,24 @@ static word www_client_internal_datafill_cb(byte fd) {
   BufferFiller bfill = EtherCard::tcpOffset();
   if (fd==www_fd) {
     if (client_postval == 0) {
-      bfill.emit_p(PSTR("GET $F$S HTTP/1.1\r\n"
+      bfill.emit_p(PSTR("GET $F$S HTTP/1.0\r\n"
                         "Host: $F\r\n"
-                        "Accept: text/html\r\n"
-                        "Connection: close\r\n"
+                        "$F\r\n"
                         "\r\n"), client_urlbuf,
                                  client_urlbuf_var,
-                                 client_hoststr);
+                                 client_hoststr, client_additionalheaderline);
     } else {
       prog_char* ahl = client_additionalheaderline;
-      bfill.emit_p(PSTR("POST $F HTTP/1.1\r\n"
+      bfill.emit_p(PSTR("POST $F HTTP/1.0\r\n"
                         "Host: $F\r\n"
                         "$F$S"
                         "Accept: */*\r\n"
-                        "Connection: close\r\n"
                         "Content-Length: $D\r\n"
                         "Content-Type: application/x-www-form-urlencoded\r\n"
                         "\r\n"
                         "$S"), client_urlbuf,
                                  client_hoststr,
-                                 ahl != 0 ? ahl : "",
+                                 ahl != 0 ? ahl : PSTR(""),
                                  ahl != 0 ? "\r\n" : "",
                                  strlen(client_postval),
                                  client_postval);
@@ -494,10 +517,15 @@ static byte www_client_internal_result_cb(byte fd, byte statuscode, word datapos
   return 0;
 }
 
-void EtherCard::browseUrl (prog_char *urlbuf, const char *urlbuf_varpart, prog_char *hoststr,void (*callback)(byte,word,word)) {
+void EtherCard::browseUrl (prog_char *urlbuf, const char *urlbuf_varpart, prog_char *hoststr, void (*callback)(byte,word,word)) {
+  browseUrl(urlbuf, urlbuf_varpart, hoststr, PSTR("Accept: text/html"), callback);
+}
+
+void EtherCard::browseUrl (prog_char *urlbuf, const char *urlbuf_varpart, prog_char *hoststr, prog_char *additionalheaderline, void (*callback)(byte,word,word)) {
   client_urlbuf = urlbuf;
   client_urlbuf_var = urlbuf_varpart;
   client_hoststr = hoststr;
+  client_additionalheaderline = additionalheaderline;
   client_postval = 0;
   client_browser_cb = callback;
   www_fd = clientTcpReq(&www_client_internal_result_cb,&www_client_internal_datafill_cb,hisport);
@@ -558,8 +586,34 @@ byte EtherCard::packetLoopIcmpCheckReply (const byte *ip_monitoredhost) {
             check_ip_message_is_from(ip_monitoredhost);
 }
 
+word EtherCard::accept(const word port, word plen) {
+  word len;
+  len = get_tcp_data_len();
+  
+  if (gPB[TCP_DST_PORT_H_P] == (port >> 8) &&
+      gPB[TCP_DST_PORT_L_P] == ((byte) port)) {
+    if (gPB[TCP_FLAGS_P] & TCP_FLAGS_SYN_V)
+      make_tcp_synack_from_syn();
+    else if (gPB[TCP_FLAGS_P] & TCP_FLAGS_ACK_V) {
+      info_data_len = get_tcp_data_len();
+      if (info_data_len > 0) {
+        len = TCP_DATA_START; // TCP_DATA_START is a formula
+        if (len <= plen - 8)
+          return len;
+      } else if (gPB[TCP_FLAGS_P] & TCP_FLAGS_FIN_V)
+        make_tcp_ack_from_any(0,0);
+    }
+  }
+  return 0;
+}
+
 word EtherCard::packetLoop (word plen) {
   word len;
+
+  if(using_dhcp){
+    ether.DhcpStateMachine(plen);
+  }
+
   if (plen==0) {
     if ((waitgwmac & WGW_INITIAL_ARP || waitgwmac & WGW_REFRESHING) &&
                                           delaycnt==0 && isLinkUp())
@@ -572,6 +626,10 @@ word EtherCard::packetLoop (word plen) {
     }
     return 0;
   }
+  if ((gPB[30]==239)&&(gPB[31]==255)&&(gPB[32]==255)&&(gPB[33]==250)) { //multicast packets
+  	return UDP_DATA_P; //mark as udp structured packet
+  }
+  
   if (eth_type_is_arp_and_my_ip(plen)) {
     if (gPB[ETH_ARP_OPCODE_L_P]==ETH_ARP_OPCODE_REQ_L_V)
         make_arp_answer_from_request();
@@ -579,13 +637,18 @@ word EtherCard::packetLoop (word plen) {
       waitgwmac = WGW_HAVE_GW_MAC;
     return 0;
   }
-  if (eth_type_is_ip_and_my_ip(plen)==0)
+  if (eth_type_is_ip_and_my_ip(plen)==0) {
     return 0;
+  }
   if (gPB[IP_PROTO_P]==IP_PROTO_ICMP_V && gPB[ICMP_TYPE_P]==ICMP_TYPE_ECHOREQUEST_V) {
     if (icmp_cb)
       (*icmp_cb)(&(gPB[IP_SRC_P]));
     make_echo_reply_from_request(plen);
     return 0;
+  }
+  if (ether.udpServerListening() && gPB[IP_PROTO_P]==IP_PROTO_UDP_V) {
+  	if(ether.udpServerHasProcessedPacket(plen))
+	  	return 0;
   }
   if (plen<54 && gPB[IP_PROTO_P]!=IP_PROTO_TCP_V )
     return 0;
@@ -595,7 +658,7 @@ word EtherCard::packetLoop (word plen) {
     if (gPB[TCP_FLAGS_P] & TCP_FLAGS_RST_V) {
       if (client_tcp_result_cb)
         (*client_tcp_result_cb)((gPB[TCP_DST_PORT_L_P]>>5)&0x7,3,0,0);
-      tcp_client_state = 5;
+	  tcp_client_state = 5;
       return 0;
     }
     len = get_tcp_data_len();
@@ -619,45 +682,42 @@ word EtherCard::packetLoop (word plen) {
       return 0;
     }
     if (tcp_client_state==3 && len>0) { 
-      // Comment out to enable large files, e.g. mp3 streams to be downloaded
-//      tcp_client_statete = 4;
-      if (client_tcp_result_cb) {
+	  if (client_tcp_result_cb) {
         word tcpstart = TCP_DATA_START; // TCP_DATA_START is a formula
         if (tcpstart>plen-8)
           tcpstart = plen-8; // dummy but save
         word save_len = len;
         if (tcpstart+len>plen)
           save_len = plen-tcpstart;
-        byte send_fin = (*client_tcp_result_cb)((gPB[TCP_DST_PORT_L_P]>>5)&0x7,0,tcpstart,save_len);
-        if (send_fin) {
-          make_tcp_ack_from_any(len,TCP_FLAGS_PUSH_V|TCP_FLAGS_FIN_V);
-          tcp_client_state = 5;
-          return 0;
+        (*client_tcp_result_cb)((gPB[TCP_DST_PORT_L_P]>>5)&0x7,0,tcpstart,save_len);
+
+        if(persist_tcp_connection){
+            make_tcp_ack_from_any(len,TCP_FLAGS_PUSH_V);
         }
+        else{
+		    make_tcp_ack_from_any(len,TCP_FLAGS_PUSH_V|TCP_FLAGS_FIN_V);
+            tcp_client_state = 6;
+        }
+        return 0;
       }
     }
     if (tcp_client_state != 5) {
       if (gPB[TCP_FLAGS_P] & TCP_FLAGS_FIN_V) {
+	    if(tcp_client_state == 3) {
+			return 0; // In some instances FIN is received *before* DATA.  If that is the case, we just return here and keep looking for the data packet
+		}
         make_tcp_ack_from_any(len+1,TCP_FLAGS_PUSH_V|TCP_FLAGS_FIN_V);
-        tcp_client_state = 5; // connection terminated
-      } else if (len>0)
+        tcp_client_state = 6; // connection terminated
+      } else if (len>0) {
         make_tcp_ack_from_any(len,0);
+	  }
     }
     return 0;
   }
-  if (gPB[TCP_DST_PORT_H_P] == (hisport >> 8) &&
-      gPB[TCP_DST_PORT_L_P] == ((byte) hisport)) {
-    if (gPB[TCP_FLAGS_P] & TCP_FLAGS_SYN_V)
-      make_tcp_synack_from_syn();
-    else if (gPB[TCP_FLAGS_P] & TCP_FLAGS_ACK_V) {
-      info_data_len = get_tcp_data_len();
-      if (info_data_len > 0) {
-        len = TCP_DATA_START; // TCP_DATA_START is a formula
-        if (len <= plen - 8)
-          return len;
-      } else if (gPB[TCP_FLAGS_P] & TCP_FLAGS_FIN_V)
-        make_tcp_ack_from_any(0,0);
-    }
-  }
-  return 0;
+
+  return accept(hisport, plen);
+}
+
+void EtherCard::persistTcpConnection(bool persist){
+  persist_tcp_connection = persist;
 }

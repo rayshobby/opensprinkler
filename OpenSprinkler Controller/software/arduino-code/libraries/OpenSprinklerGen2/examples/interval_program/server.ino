@@ -9,7 +9,6 @@
 
 // External variables defined in main pde file
 extern uint8_t ntpclientportL;
-extern byte ntpip[];
 extern BufferFiller bfill;
 extern char tmp_buffer[];
 extern OpenSprinkler svc;
@@ -18,7 +17,7 @@ extern ProgramData pd;
 // ==================
 // JavaScript Strings
 // ==================
-prog_uchar htmlExtJavascriptPath[] PROGMEM = JAVASCRIPT_PATH;
+//prog_uchar htmlExtJavascriptPath[] PROGMEM = JAVASCRIPT_PATH;
 
 prog_uchar htmlOkHeader[] PROGMEM = 
     "HTTP/1.0 200 OK\r\n"
@@ -83,7 +82,7 @@ boolean print_webpage_view_stations(char *p)
   for(byte i=0;i<svc.nboards;i++) {
     bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
   }
-  bfill.emit_p(PSTR("0];</script>\n<script src=\"$F/viewstations.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("0];</script>\n<script src=\"viewsn.js\"></script>\n"));
   return true;
 }
 
@@ -195,7 +194,7 @@ boolean print_webpage_view_runonce(char *str) {
   }
   bfill.emit_p(PSTR("0];</script>\n"));
   bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
-  bfill.emit_p(PSTR("<script src=\"$F/viewro.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"viewro.js\"></script>\n"));
   
   return true;
 }
@@ -254,7 +253,7 @@ boolean print_webpage_view_program(char *str) {
   // print station names
   bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
   
-  bfill.emit_p(PSTR("<script src=\"$F/viewprog.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"viewprog.js\"></script>\n"));
 
   return true;
 }
@@ -287,7 +286,7 @@ boolean print_webpage_modify_program(char *p) {
   }
   // print station names
   bfill.emit_p(PSTR("</script>\n<script src=\"pn.js\"></script>\n"));  
-  bfill.emit_p(PSTR("<script src=\"$F/modprog.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"modprog.js\"></script>\n"));
   return true;
 }
 
@@ -369,7 +368,7 @@ boolean print_webpage_plot_program(char *p) {
   bfill.emit_p(PSTR("0];"));
   bfill_programdata();
   bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));    
-  bfill.emit_p(PSTR("<script src=\"$F/plotprog.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"plotprog.js\"></script>\n"));
   return true;
 }
 
@@ -492,7 +491,7 @@ boolean print_webpage_home(char *p)
   // print station names
   bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
   // include remote javascript
-  bfill.emit_p(PSTR("<script src=\"$F/home.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"home.js\"></script>\n"));
   return true;
 }
 
@@ -519,7 +518,7 @@ boolean print_webpage_view_options(char *p)
   bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$S\";"), noptions, tmp_buffer);
   bfill.emit_p(PSTR("</script>\n"));
   // include remote javascript
-  bfill.emit_p(PSTR("<script src=\"$F/viewoptions.js\"></script>\n"), htmlExtJavascriptPath);
+  bfill.emit_p(PSTR("<script src=\"viewop.js\"></script>\n"));
   return true;
 }
 
@@ -642,6 +641,7 @@ boolean print_webpage_change_options(char *p)
   }
 
   bfill.emit_p(PSTR("$F<script>alert(\"Options values saved.\");$F"), htmlOkHeader, htmlReturnHome);  
+  last_sync_time = 0;
   return true;
 }
 
@@ -750,6 +750,11 @@ unsigned long ntp_wait_response()
 }
 unsigned long getNtpTime()
 {
+  byte ntpip[4] = {
+    svc.options[OPTION_NTP_IP1].value, 
+    svc.options[OPTION_NTP_IP2].value, 
+    svc.options[OPTION_NTP_IP3].value,
+    svc.options[OPTION_NTP_IP4].value};
   unsigned long ans;
   byte tick = 0;
   do
@@ -759,7 +764,7 @@ unsigned long getNtpTime()
     ans = ntp_wait_response();
     tick ++;
   } 
-  while( ans == 0 && tick < 5 );  
+  while( ans == 0 && tick < 10 );  
   return ans;
 }
 
@@ -810,11 +815,13 @@ void analyze_get_url(char *p)
 {
   // the tcp packet usually starts with 'GET /' -> 5 chars    
   char *str = p+5;
- 
   if(str[0]==' ') {
     print_webpage_home(str);  // home page handler
+    ether.httpServerReply(bfill.position());    
   } else {
-    for(byte i=0;i<15;i++) {
+    // server funtion handlers
+    byte i;
+    for(i=0;i<sizeof(urls)/sizeof(URLStruct);i++) {
       if(pgm_read_byte(urls[i].url)==str[0]
        &&pgm_read_byte(urls[i].url+1)==str[1]) {
         if ((urls[i].handler)(str) == false) {
@@ -823,7 +830,67 @@ void analyze_get_url(char *p)
         break;
       }
     }
+    
+    if(i==sizeof(urls)/sizeof(URLStruct)) {
+      // no server funtion found, file handler
+      byte k=0;  
+      while (str[k]!=' ' && k<32) {tmp_buffer[k]=str[k];k++;}//search the end, indicated by space
+      tmp_buffer[k]=0;
+      //Serial.println(tmp_buffer);
+      ether.httpServerReplyAck();
+      if (streamfile ((char *)tmp_buffer,TCP_FLAGS_FIN_V)==0) {
+        // file not found
+      }
+    } else {
+      ether.httpServerReply(bfill.position());    
+    }
   }
-  delay(50); // add a bit of delay here
+  //delay(50); // add a bit of delay here
 }
 
+
+#ifdef USE_TINYFAT
+byte streamfile (char* name , byte lastflag) { //send a file to the buffer 
+  unsigned long cur=0;
+  if (!file.exists(name)) {return 0;}
+  file.openFile(name, FILEMODE_BINARY);
+  int  car=512;
+  while (car==512) {
+    car=file.readBinary();
+    for(int i=0;i<car;i++) {
+      cur++;
+      Ethernet::buffer[cur+53]=file.buffer[i];
+    }
+    if (cur>=512) {
+      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V);
+      cur=0;
+    } else {
+      if(lastflag==TCP_FLAGS_FIN_V) {
+        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V);
+      }
+    }
+  }
+  file.closeFile();
+  return 1;
+}
+#else
+byte streamfile (char* name , byte lastflag) { //send a file to the buffer 
+  unsigned long cur=0;
+  if(!SD.exists(name))  {return 0;}
+  File myfile = SD.open(name);
+  while(myfile.available()) {
+    int nbytes = myfile.read(Ethernet::buffer+54, 512);
+    cur = nbytes;
+    if (cur>=512) {
+      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V);
+      cur=0;
+    } else {
+      if(lastflag==TCP_FLAGS_FIN_V) {
+        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V);
+      }
+    }
+  }
+  myfile.close();
+  return 1;
+}
+#endif
