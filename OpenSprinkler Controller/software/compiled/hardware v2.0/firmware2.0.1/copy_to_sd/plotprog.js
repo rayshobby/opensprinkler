@@ -1,8 +1,8 @@
-// Javascript for printing OpenSprinkler schedule page
-// Firmware v1.8
-// All content is published under:
+// JS for plotting OpenSprinkler program page
+// Firmware v2.1
+// All content published under:
 // Creative Commons Attribution ShareAlike 3.0 License
-// Sep 2012, Rayshobby.net
+// Sep 2013, Rayshobby.net
 
 // colors to draw different programs
 var prog_color=["rgba(0,0,200,0.5)","rgba(0,200,0,0.5)","rgba(200,0,0,0.5)","rgba(0,200,200,0.5)"];
@@ -68,7 +68,7 @@ function run_sched(simseconds,st_array,pid_array,et_array) { // run and plot sch
       if(seq==1) { // sequential
         plot_bar(sid,st_array[sid],pid_array[sid],et_array[sid]);
         if((mas>0)&&(mas!=sid+1)&&(masop[sid>>3]&(1<<(sid%8))))
-          plot_master(st_array[sid]+mton, et_array[sid]+mtoff);
+          plot_master(st_array[sid]+mton, et_array[sid]+mtoff-60);
         endtime=et_array[sid];
       } else { // concurrent
         plot_bar(sid,simseconds,pid_array[sid],et_array[sid]);
