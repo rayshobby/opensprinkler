@@ -13,14 +13,14 @@
 #include <OpenSprinklerGen2.h>
 //#include <SD.h>
 #include <Wire.h>
-#include <LiquidCrystal.h>
 #include "program.h"
 // ================================================================================
 // This is the path to which external Javascripst are stored
 // To create custom Javascripts, you need to make a copy of these scripts
 // and put them to your own server, or github, or any available file hosting service
 
-//#define JAVASCRIPT_PATH  "http://rayshobby.net/scripts/java/svc2.0" 
+//#define JAVASCRIPT_PATH  "http://192.168.1.103" 
+#define JAVASCRIPT_PATH "."
 //"https://github.com/rayshobby/opensprinkler/raw/master/scripts/java/svc1.8"
 // ================================================================================
 
@@ -106,7 +106,7 @@ void setup() {
   //Serial.println("start");
   svc.begin();          // OpenSprinkler init
   svc.options_setup();  // Setup options
-
+ 
   pd.init();            // ProgramData init
   // calculate http port number
   myport = (int)(svc.options[OPTION_HTTPPORT_1].value<<8) + (int)svc.options[OPTION_HTTPPORT_0].value;
@@ -120,13 +120,21 @@ void setup() {
   svc.lcd_print_line_clear_pgm(PSTR("Detecting uSD..."), 1);
 
 #ifdef USE_TINYFAT
-  byte res=file.initFAT(0);  // initialize with highest SPI speed
+  byte res=file.initFAT(0);  // initialize wipriceth highest SPI speed
   if (res==NO_ERROR) {
     svc.status.has_sd = 1;
-  }  
+  } else {
+    svc.lcd_print_line_clear_pgm(PSTR("A microSD card"), 0);
+    svc.lcd_print_line_clear_pgm(PSTR("is required."), 1);
+    while(1);
+  }
 #else
   if(SD.begin(0)) {
     svc.status.has_sd = 1;
+  } else {
+    svc.lcd_print_line_clear_pgm(PSTR("A microSD card"), 0);
+    svc.lcd_print_line_clear_pgm(PSTR("is required."), 1);
+    while(1);
   }
 #endif
 
@@ -143,7 +151,7 @@ void setup() {
   //perform_ntp_sync(now());
   last_sync_time = 0;
   
-  //svc.lcd_print_time(0);  // display time to LCD
+  svc.lcd_print_time(0);  // display time to priceLCD
   //wdt_enable(WDTO_4S);  // enabled watchdog timer
 }
 
@@ -166,7 +174,6 @@ void loop()
   // ====== Process Ethernet packets ======
   pos=ether.packetLoop(ether.packetReceive());
   if (pos>0) {  // packet received
-    bfill = ether.tcpOffset();
     analyze_get_url((char*)Ethernet::buffer+pos);
   }
   // ======================================
@@ -186,6 +193,10 @@ void loop()
       if (curr_time >= svc.raindelay_stop_time) {
         // raindelay time is over      
         svc.raindelay_stop();
+      }
+    } else {
+      if (svc.raindelay_stop_time > curr_time) {
+        svc.raindelay_start();
       }
     }
     
@@ -222,7 +233,7 @@ void loop()
                   // initialize schedule data
                   // store duration temporarily in stop_time variable
                   // duration is scaled by water level
-                  pd.scheduled_stop_time[sid] = (unsigned long)prog.duration * svc.options[OPTION_WATER_LEVEL].value / 100;
+                  pd.scheduled_stop_time[sid] = (unsigned long)prog.duration * svc.options[OPTION_WATER_PERCENTAGE].value / 100;
                   pd.scheduled_program_index[sid] = pid+1;
                   match_found = true;
                 }
@@ -348,7 +359,6 @@ void loop()
     
     // perform ntp sync
     perform_ntp_sync(curr_time);
-    
   }
 }
 
@@ -379,6 +389,7 @@ void perform_ntp_sync(time_t curr_time) {
   // sync every 24 hour
   if (last_sync_time == 0 || (curr_time - last_sync_time > NTP_SYNC_INTERVAL)) {
     last_sync_time = curr_time;
+    svc.lcd_print_line_clear_pgm(PSTR("NTP Syncing..."),1);
     unsigned long t = getNtpTime();   
     if (t>0) {    
       setTime(t);
@@ -410,8 +421,8 @@ void check_network(time_t curr_time) {
     } while(millis() - start < PING_TIMEOUT);
     if (failed)  svc.status.network_fails++;
     else svc.status.network_fails=0;
-    // if failed more than 2 times in a row, reconnect
-    if (svc.status.network_fails>2&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
+    // if failed more than 3 times in a row, reconnect
+    if (svc.status.network_fails>3&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
       //svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
       svc.start_network(mymac, myport);
       //svc.status.network_fails=0;

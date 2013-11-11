@@ -13,16 +13,25 @@ extern BufferFiller bfill;
 extern char tmp_buffer[];
 extern OpenSprinkler svc;
 extern ProgramData pd;
+extern byte mymac[];
+extern int myport;
 
 // ==================
 // JavaScript Strings
 // ==================
-//prog_uchar htmlExtJavascriptPath[] PROGMEM = JAVASCRIPT_PATH;
+prog_uchar htmlExtJavascriptPath[] PROGMEM = JAVASCRIPT_PATH;
 
 prog_uchar htmlOkHeader[] PROGMEM = 
     "HTTP/1.0 200 OK\r\n"
     "Content-Type: text/html\r\n"
     "Pragma: no-cache\r\n"
+    "\r\n"
+;
+
+prog_uchar htmlJSONHeader[] PROGMEM =
+    "HTTP/1.0 200 OK\r\n"
+    "Content-Type: application/json\r\n"
+    "Connnection: close\r\n"
     "\r\n"
 ;
 
@@ -57,7 +66,51 @@ boolean check_password(char *p)
   }
   return true;
 }
+
+// printing station names in json
+boolean print_webpage_json_stations(char *p)
+{
+  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
+  bfill.emit_p(PSTR("{\"snames\":["));
+  byte sid;
+  for(sid=0;sid<svc.nstations;sid++) {
+    svc.get_station_name(sid, tmp_buffer);
+    bfill.emit_p(PSTR("\"$S\","), tmp_buffer);
+  }
+  bfill.emit_p(PSTR("\"dummy\"],\"masop\":["));
+  for(byte i=0;i<svc.nboards;i++) {
+    bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
+  }  
+  bfill.emit_p(PSTR("0],\"maxlen\":$D}"), STATION_NAME_SIZE);
+   
+  return true;
+}
+
+// webpage for printing station names
+boolean print_webpage_view_stations(char *p)
+{
+  bfill.emit_p(PSTR("$F<script>"), htmlOkHeader);
+
+  // send station data packets
+  sendpacket_stationdata();
   
+  // send the server variable and javascript packets
+  bfill=ether.tcpOffset();
+  bfill.emit_p(PSTR("var nboards=$D,maxlen=$D,mas=$D,ipas=$D;"), 
+               svc.nboards, STATION_NAME_SIZE, svc.options[OPTION_MASTER_STATION].value,
+               svc.options[OPTION_IGNORE_PASSWORD].value);
+  // fill master operation bits
+  bfill.emit_p(PSTR("var masop=["));
+  for(byte i=0;i<svc.nboards;i++) {
+    bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
+  }
+  bfill.emit_p(PSTR("0];</script>\n<script src=\"$F/viewsn.js\"></script>\n"), htmlExtJavascriptPath);
+  //ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
+  
+  return true;
+}
+
+/*
 // fill buffer with station names
 void bfill_station_names()
 {
@@ -70,28 +123,24 @@ void bfill_station_names()
   bfill.emit_p(PSTR("\'\'];\n"));
 }
 
-// webpage for printing station names
-boolean print_webpage_view_stations(char *p)
-{
-  bfill.emit_p(PSTR("$F<script>var nboards=$D,maxlen=$D,mas=$D,ipas=$D,"), htmlOkHeader,
-               svc.nboards, STATION_NAME_SIZE, svc.options[OPTION_MASTER_STATION].value,
-               svc.options[OPTION_IGNORE_PASSWORD].value);
-  bfill_station_names();
-  // fill master operation bits
-  bfill.emit_p(PSTR("var masop=["));
-  for(byte i=0;i<svc.nboards;i++) {
-    bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
-  }
-  bfill.emit_p(PSTR("0];</script>\n<script src=\"viewsn.js\"></script>\n"));
-  return true;
-}
-
 // This is part of javascript for printing station names
 boolean print_webpage_station_names(char *p) {
 
   bfill.emit_p(PSTR("$Fvar "), htmlOkHeader);
   bfill_station_names();
   return true;
+}*/
+
+void sendpacket_stationdata()
+{
+  byte sid;
+  bfill.emit_p(PSTR("var snames=["));
+  for(sid=0;sid<svc.nstations;sid++) {
+    svc.get_station_name(sid, tmp_buffer);
+    bfill.emit_p(PSTR("\'$S\',"), tmp_buffer);
+  }
+  bfill.emit_p(PSTR("\'\'];"));
+  ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
 }
 
 // server function for accepting station name changes
@@ -129,9 +178,21 @@ boolean print_webpage_change_stations(char *p)
 
 // split program data to subsections in order
 // to fit each subsection in a single http buffer
-#define PROGRAMDATA_SUBSECTION_SIZE  8
+//#define PROGRAMDATA_SUBSECTION_SIZE  8
+// Javascript for printing program data subsection page
+/*
+boolean print_webpage_programdata_subsection(char *p) {
+  p+=2;
+  ether.urlDecode(p);
+  
+  byte ssid = ((*p)-'0')*PROGRAMDATA_SUBSECTION_SIZE;
+  bfill.emit_p(PSTR("$F"), htmlOkHeader);
+  bfill_programdata_sub(ssid);
+  return true;
+}*/
 
 // fill program data subsection
+/*
 void bfill_programdata_sub(byte start_index)
 {
   byte pid, bid;
@@ -150,38 +211,77 @@ void bfill_programdata_sub(byte start_index)
     bfill.emit_p(PSTR("];"));
   }
 }
-
-// Javascript for printing program data subsection page
-boolean print_webpage_programdata_subsection(char *p) {
-  p+=2;
-  ether.urlDecode(p);
-  
-  byte ssid = ((*p)-'0')*PROGRAMDATA_SUBSECTION_SIZE;
-  bfill.emit_p(PSTR("$F"), htmlOkHeader);
-  bfill_programdata_sub(ssid);
-  return true;
-}
-
+*/
 // fill buffer with program data
 void bfill_programdata()
 {
-  byte ssid;
-  
-  bfill.emit_p(PSTR("var nprogs=$D,nboards=$D,ipas=$D,mnp=$D,pd=[];"),
-                    pd.nprograms, svc.nboards,svc.options[OPTION_IGNORE_PASSWORD].value, MAX_NUMBER_PROGRAMS);
-  bfill_programdata_sub(0);
+  bfill.emit_p(PSTR("var nprogs=$D,nboards=$D,ipas=$D,mnp=$D,pd=[];"), pd.nprograms, 
+                    svc.nboards,svc.options[OPTION_IGNORE_PASSWORD].value, MAX_NUMBER_PROGRAMS);
+  //bfill_programdata_sub(0);
+  byte pid, bid;
+  ProgramStruct prog;
+  for(pid=0;pid<pd.nprograms;pid++) {
+    pd.read(pid, &prog);
+    // convert interval remainder (absolute->relative)
+    if (prog.days[1] > 1)  pd.drem_to_relative(prog.days);
+    
+    bfill.emit_p(PSTR("pd[$D]=[$D,$D,$D,$D,$D,$D,$D"), pid, prog.enabled, 
+      prog.days[0], prog.days[1], prog.start_time, prog.end_time, prog.interval, prog.duration);
+    for (bid=0; bid<svc.nboards; bid++) {
+      bfill.emit_p(PSTR(",$D"),prog.stations[bid]);
+    }
+    bfill.emit_p(PSTR("];"));
+    if (pid%4==3) { // push out a packet every 4 programs
+      ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
+      bfill=ether.tcpOffset();
+    } 
+  }
   bfill.emit_p(PSTR("</script>\n"));
-  if (pd.nprograms > PROGRAMDATA_SUBSECTION_SIZE) {
+  /*if (pd.nprograms > PROGRAMDATA_SUBSECTION_SIZE) {
     // create subsection pages
     for (ssid=1; ssid<=((pd.nprograms-1)/PROGRAMDATA_SUBSECTION_SIZE); ssid++) {
       bfill.emit_p(PSTR("<script src=ps$D.js></script>\n"), ssid);
     }
+  }*/
+}
+
+
+// print program data in json
+boolean print_webpage_json_programs(char *p) {
+  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
+  bfill.emit_p(PSTR("{\"nprogs\":$D,\"nboards\":$D,\"mnp\":$D,\"pd\":["),
+               pd.nprograms, svc.nboards, MAX_NUMBER_PROGRAMS);
+  byte pid, bid;
+  ProgramStruct prog;
+  for(pid=0;pid<pd.nprograms;pid++) {
+    pd.read(pid, &prog);
+    // convert interval remainder (absolute->relative)
+    if (prog.days[1] > 1)  pd.drem_to_relative(prog.days);
+    
+    bfill.emit_p(PSTR("[$D,$D,$D,$D,$D,$D,$D"), pid, prog.enabled, 
+      prog.days[0], prog.days[1], prog.start_time, prog.end_time, prog.interval, prog.duration);
+    for (bid=0; bid<svc.nboards; bid++) {
+      bfill.emit_p(PSTR(",$D"),prog.stations[bid]);
+    }
+    bfill.emit_p(PSTR("],"));
+    if (pid%4==3) { // push out a packet every 4 programs
+      ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
+      bfill=ether.tcpOffset();
+    } 
   }
+  bfill.emit_p(PSTR("[0,0,0,0,0,0,0,0]]}"));   
+  return true; 
 }
 
 // webpage for printing run-once program
 boolean print_webpage_view_runonce(char *str) {
-  bfill.emit_p(PSTR("$F$F<script>var nboards=$D,mas=$D,ipas=$D,dur=["), htmlOkHeader, htmlMobileHeader,
+  bfill.emit_p(PSTR("$F$F<script>"), htmlOkHeader, htmlMobileHeader);
+  // send station data packet
+  sendpacket_stationdata();  
+  bfill=ether.tcpOffset();
+  
+  // send server variables with javascript
+  bfill.emit_p(PSTR("var nboards=$D,mas=$D,ipas=$D,dur=["), 
                svc.nboards, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_IGNORE_PASSWORD].value);
 
   byte sid;
@@ -193,9 +293,9 @@ boolean print_webpage_view_runonce(char *str) {
     bfill.emit_p(PSTR("$D,"),dur);
   }
   bfill.emit_p(PSTR("0];</script>\n"));
-  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
-  bfill.emit_p(PSTR("<script src=\"viewro.js\"></script>\n"));
-  
+  bfill.emit_p(PSTR("<script src=\"$F/viewro.js\"></script>\n"), htmlExtJavascriptPath);
+  //ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
+    
   return true;
 }
 
@@ -243,17 +343,19 @@ boolean print_webpage_change_runonce(char *p) {
   return true;
 }
 
+
 // webpage for printing program summary page
 boolean print_webpage_view_program(char *str) {
 
   bfill.emit_p(PSTR("$F$F<script>"), htmlOkHeader, htmlMobileHeader);
+
+  // send station data packet
+  sendpacket_stationdata();  
+  bfill=ether.tcpOffset();
   
+  // send program data
   bfill_programdata();
-  
-  // print station names
-  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
-  
-  bfill.emit_p(PSTR("<script src=\"viewprog.js\"></script>\n"));
+  bfill.emit_p(PSTR("<script src=\"$F/viewprog.js\"></script>\n"), htmlExtJavascriptPath);
 
   return true;
 }
@@ -268,8 +370,15 @@ boolean print_webpage_modify_program(char *p) {
   }
   int pid=atoi(tmp_buffer);
   if (!(pid>=-1 && pid< pd.nprograms)) return false;
-  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
-  bfill.emit_p(PSTR("<script>var nboards=$D,pid=$D,ipas=$D;"), svc.nboards, pid, svc.options[OPTION_IGNORE_PASSWORD].value);
+  
+  bfill.emit_p(PSTR("$F$F<script>"), htmlOkHeader, htmlMobileHeader);
+  
+  // send station data packet
+  sendpacket_stationdata();  
+  bfill=ether.tcpOffset();
+    
+  // send service variables and javascript
+  bfill.emit_p(PSTR("var nboards=$D,pid=$D,ipas=$D;"), svc.nboards, pid, svc.options[OPTION_IGNORE_PASSWORD].value);
   if(pid>-1) {
     ProgramStruct prog;
     pd.read(pid, &prog);
@@ -284,9 +393,7 @@ boolean print_webpage_modify_program(char *p) {
     }
     bfill.emit_p(PSTR("];"));
   }
-  // print station names
-  bfill.emit_p(PSTR("</script>\n<script src=\"pn.js\"></script>\n"));  
-  bfill.emit_p(PSTR("<script src=\"modprog.js\"></script>\n"));
+  bfill.emit_p(PSTR("</script>\n<script src=\"$F/modprog.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
 }
 
@@ -356,9 +463,15 @@ boolean print_webpage_plot_program(char *p) {
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "y")) {
     yy=atoi(tmp_buffer);
   }
-  
-  bfill.emit_p(PSTR("$F<script>var seq=$D,mas=$D,wl=$D,sdt=$D,mton=$D,mtoff=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"),
-               htmlOkHeader, svc.options[OPTION_SEQUENTIAL].value, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_WATER_LEVEL].value,
+
+  bfill.emit_p(PSTR("$F<script>"), htmlOkHeader);
+  // send station data packet
+  sendpacket_stationdata();  
+  bfill=ether.tcpOffset();
+ 
+  // send server variables and javascript
+  bfill.emit_p(PSTR("var seq=$D,mas=$D,wl=$D,sdt=$D,mton=$D,mtoff=$D,devday=$D,devmin=$D,dd=$D,mm=$D,yy=$D;"),
+               svc.options[OPTION_SEQUENTIAL].value, svc.options[OPTION_MASTER_STATION].value, svc.options[OPTION_WATER_PERCENTAGE].value,
                svc.options[OPTION_STATION_DELAY_TIME].value, svc.options[OPTION_MASTER_ON_ADJ].value, svc.options[OPTION_MASTER_OFF_ADJ].value,
                devday, devmin, dd, mm, yy);
   bfill.emit_p(PSTR("var masop=["));
@@ -367,8 +480,8 @@ boolean print_webpage_plot_program(char *p) {
   }
   bfill.emit_p(PSTR("0];"));
   bfill_programdata();
-  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));    
-  bfill.emit_p(PSTR("<script src=\"plotprog.js\"></script>\n"));
+
+  bfill.emit_p(PSTR("<script src=\"$F/plotprog.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
 }
 
@@ -452,13 +565,53 @@ boolean print_webpage_change_program(char *p) {
   return true;
 }
 
+// print controller variables in json
+boolean print_webpage_json_controller(char *p)
+{
+  byte bid, sid;
+  unsigned long curr_time = now();  
+  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
+  svc.eeprom_string_get(ADDR_EEPROM_LOCATION, tmp_buffer);
+  bfill.emit_p(PSTR("{\"devt\":$L,\"nbrd\":$D,\"en\":$D,\"rd\":$D,\"rs\":$D,\"mm\":$D,\"rdst\":$L,\"loc\":\"$S\",\"sbits\":["),
+              curr_time,
+              svc.nboards,
+              svc.status.enabled,
+              svc.status.rain_delayed,
+              svc.status.rain_sensed,
+              svc.status.manual_mode,
+              svc.raindelay_stop_time,
+              tmp_buffer);
+  // print sbits
+  for(bid=0;bid<svc.nboards;bid++)
+    bfill.emit_p(PSTR("$D,"), svc.station_bits[bid]);  
+  bfill.emit_p(PSTR("0],\"ps\":["));
+  // print ps
+  for(sid=0;sid<svc.nstations;sid++) {
+    unsigned long rem = 0;
+    if (pd.scheduled_program_index[sid] > 0) {
+      rem = (curr_time >= pd.scheduled_start_time[sid]) ? (pd.scheduled_stop_time[sid]-curr_time) : (pd.scheduled_stop_time[sid]-pd.scheduled_start_time[sid]);
+      if(pd.scheduled_stop_time[sid]==ULONG_MAX-1)  rem=0;
+    }
+    bfill.emit_p(PSTR("$D,$L,"), pd.scheduled_program_index[sid], rem);
+  }
+  bfill.emit_p(PSTR("0,0]}"));
+  
+  return true;
+}
+
 // print home page
 boolean print_webpage_home(char *p)
 {
   byte bid, sid;
   unsigned long curr_time = now();
-  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
-  bfill.emit_p(PSTR("<script>var ver=$D,devt=$L;\n"),
+
+  bfill.emit_p(PSTR("$F$F<script>"), htmlOkHeader, htmlMobileHeader);
+  // send station data packet
+  sendpacket_stationdata();
+  bfill=ether.tcpOffset();
+
+  // send server variables and javascript packets
+  bfill.emit_p(PSTR("var ver=$D,devt=$L;\n"),
                SVC_FW_VERSION, curr_time);
   bfill.emit_p(PSTR("var nbrd=$D,tz=$D,sbits=["), (int)svc.nboards, (int)svc.options[OPTION_TIMEZONE].value);
   for(bid=0;bid<svc.nboards;bid++)
@@ -482,16 +635,31 @@ boolean print_webpage_home(char *p)
     svc.raindelay_stop_time,
     svc.options[OPTION_MASTER_STATION].value,
     svc.options[OPTION_USE_RAINSENSOR].value,
-    svc.options[OPTION_WATER_LEVEL].value,
+    svc.options[OPTION_WATER_PERCENTAGE].value,
     svc.options[OPTION_IGNORE_PASSWORD].value,
     tmp_buffer
   );
   bfill.emit_p(PSTR("\nvar lrun=[$D,$D,$D,$L]</script>\n"),
                pd.lastrun.station, pd.lastrun.program,pd.lastrun.duration,pd.lastrun.endtime);
-  // print station names
-  bfill.emit_p(PSTR("<script src=\"pn.js\"></script>\n"));
-  // include remote javascript
-  bfill.emit_p(PSTR("<script src=\"home.js\"></script>\n"));
+
+  bfill.emit_p(PSTR("<script src=\"$F/home.js\"></script>\n"), htmlExtJavascriptPath);
+  //ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
+  return true;
+}
+
+// printing options in json
+boolean print_webpage_json_options(char *p)
+{
+  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
+  bfill.emit_p(PSTR("{"));
+  byte oid;
+  for(oid=0;oid<NUM_OPTIONS;oid++) {
+    bfill.emit_p(PSTR("\"$F\":$D,"),
+                 svc.options[oid].json_str,
+                 (oid==OPTION_MASTER_OFF_ADJ)?(int)svc.options[oid].value-60:(int)svc.options[oid].value
+                );
+  }
+  bfill.emit_p(PSTR("\"dummy\":0}"));
   return true;
 }
 
@@ -507,18 +675,18 @@ boolean print_webpage_view_options(char *p)
   for (oid=0; oid<NUM_OPTIONS; oid++) {
     if ((svc.options[oid].flag&OPFLAG_WEB_EDIT)==0) continue;  
     bfill.emit_p(PSTR("\"$F\",$D,$D,$D,"),
-                 svc.options[oid].str,
-                 (svc.options[oid].max==1)?1:0,
+                 svc.options[oid].json_str,
+                 svc.options[oid].max,
                  (oid==OPTION_MASTER_OFF_ADJ)?(int)svc.options[oid].value-60:(int)svc.options[oid].value,
                  oid);
     noptions ++;
   }
   //svc.location_get(tmp_buffer);
   svc.eeprom_string_get(ADDR_EEPROM_LOCATION, tmp_buffer);
-  bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$S\";"), noptions, tmp_buffer);
+  bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$S\",devt=$L,tz=$D;"), noptions, tmp_buffer,now(),(int)svc.options[OPTION_TIMEZONE].value);
   bfill.emit_p(PSTR("</script>\n"));
   // include remote javascript
-  bfill.emit_p(PSTR("<script src=\"viewop.js\"></script>\n"));
+  bfill.emit_p(PSTR("<script src=\"$F/viewop.js\"></script>\n"), htmlExtJavascriptPath);
   return true;
 }
 
@@ -562,16 +730,19 @@ boolean print_webpage_change_values(char *p)
     if (tmp_buffer[0]=='1' && !svc.status.manual_mode) {
       reset_all_stations();
       svc.status.manual_mode = 1;
+      svc.constatus_save();
       
     } else if (tmp_buffer[0]=='0' &&  svc.status.manual_mode) {
       reset_all_stations();
       svc.status.manual_mode = 0;
+      svc.constatus_save();
     }
   }
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rd")) {
     int rd = atoi(tmp_buffer);
     if (rd>0) {
-      svc.raindelay_start(rd);
+      svc.raindelay_stop_time = now() + (unsigned long) rd * 3600;    
+      svc.raindelay_start();
     } else if (rd==0){
       svc.raindelay_stop();
     } else  return false;
@@ -589,6 +760,9 @@ boolean print_webpage_change_options(char *p)
   // if no password is attached, or password is incorrect
   if(check_password(p)==false)  return false;
 
+  // temporarily save some old options values
+  byte old_tz =  svc.options[OPTION_TIMEZONE].value;
+  byte old_ntp = svc.options[OPTION_USE_NTP].value;
   // !!! p and bfill share the same buffer, so don't write
   // to bfill before you are done analyzing the buffer !!!
   
@@ -619,7 +793,13 @@ boolean print_webpage_change_options(char *p)
     //svc.location_set(tmp_buffer);    
     svc.eeprom_string_set(ADDR_EEPROM_LOCATION, tmp_buffer);
   }
-  
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "ttt")) {
+    unsigned long t;
+    ether.urlDecode(tmp_buffer);
+    t = atol(tmp_buffer);
+    setTime(t);  
+    if (svc.status.has_rtc) RTC.set(t); // if rtc exists, update rtc
+  }
   if (err) {
     bfill.emit_p(PSTR("$F<script>alert(\"Values out of bound!\");window.location=\"/vo\";</script>\n"), htmlOkHeader);
     return true;
@@ -641,7 +821,10 @@ boolean print_webpage_change_options(char *p)
   }
 
   bfill.emit_p(PSTR("$F<script>alert(\"Options values saved.\");$F"), htmlOkHeader, htmlReturnHome);  
-  last_sync_time = 0;
+  if(svc.options[OPTION_TIMEZONE].value != old_tz ||
+     (!old_ntp && svc.options[OPTION_USE_NTP].value)) {
+    last_sync_time = 0;
+  }
   return true;
 }
 
@@ -789,7 +972,10 @@ prog_char _url_vs [] PROGMEM = "vs";
 prog_char _url_cs [] PROGMEM = "cs";
 prog_char _url_vr [] PROGMEM = "vr";
 prog_char _url_cr [] PROGMEM = "cr";
-prog_char _url_pn [] PROGMEM = "pn";
+prog_char _url_jo [] PROGMEM = "jo";
+prog_char _url_jn [] PROGMEM = "jn";
+prog_char _url_jp [] PROGMEM = "jp";
+prog_char _url_jc [] PROGMEM = "jc";
 
 // Server function handlers
 URLStruct urls[] = {
@@ -802,22 +988,28 @@ URLStruct urls[] = {
   {_url_vo,print_webpage_view_options},
   {_url_co,print_webpage_change_options},
   {_url_sn,print_webpage_station_bits},
-  {_url_ps,print_webpage_programdata_subsection},
+  //{_url_ps,print_webpage_programdata_subsection},
   {_url_vs,print_webpage_view_stations},
   {_url_cs,print_webpage_change_stations},
   {_url_vr,print_webpage_view_runonce},
   {_url_cr,print_webpage_change_runonce},
-  {_url_pn,print_webpage_station_names}
+  {_url_jo,print_webpage_json_options},
+  {_url_jn,print_webpage_json_stations},
+  {_url_jp,print_webpage_json_programs},
+  {_url_jc,print_webpage_json_controller},
 };
 
 // analyze the current url
 void analyze_get_url(char *p)
 {
+  ether.httpServerReplyAck();
+  bfill = ether.tcpOffset();
+
   // the tcp packet usually starts with 'GET /' -> 5 chars    
   char *str = p+5;
   if(str[0]==' ') {
     print_webpage_home(str);  // home page handler
-    ether.httpServerReply(bfill.position());    
+    ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
   } else {
     // server funtion handlers
     byte i;
@@ -837,12 +1029,12 @@ void analyze_get_url(char *p)
       while (str[k]!=' ' && k<32) {tmp_buffer[k]=str[k];k++;}//search the end, indicated by space
       tmp_buffer[k]=0;
       //Serial.println(tmp_buffer);
-      ether.httpServerReplyAck();
+      //ether.httpServerReplyAck();
       if (streamfile ((char *)tmp_buffer,TCP_FLAGS_FIN_V)==0) {
         // file not found
       }
     } else {
-      ether.httpServerReply(bfill.position());    
+      ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
     }
   }
   //delay(50); // add a bit of delay here

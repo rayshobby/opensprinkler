@@ -8,86 +8,123 @@
 #include "OpenSprinklerGen2.h"
 
 // Declare static data members
-LiquidCrystal OpenSprinkler::lcd(PIN_LCD_RS, PIN_LCD_EN, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
+LiquidCrystal OpenSprinkler::lcd;
 StatusBits OpenSprinkler::status;
 byte OpenSprinkler::nboards;
 byte OpenSprinkler::nstations;
 byte OpenSprinkler::station_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::masop_bits[MAX_EXT_BOARDS+1];
 unsigned long OpenSprinkler::raindelay_stop_time;
+extern char tmp_buffer[];
+
+// Option json names
+prog_char _json_fwv [] PROGMEM = "fwv";
+prog_char _json_tz  [] PROGMEM = "tz";
+prog_char _json_ntp [] PROGMEM = "ntp";
+prog_char _json_dhcp[] PROGMEM = "dhcp";
+prog_char _json_ip1 [] PROGMEM = "ip1";
+prog_char _json_ip2 [] PROGMEM = "ip2";
+prog_char _json_ip3 [] PROGMEM = "ip3";
+prog_char _json_ip4 [] PROGMEM = "ip4";
+prog_char _json_gw1 [] PROGMEM = "gw1";
+prog_char _json_gw2 [] PROGMEM = "gw2";
+prog_char _json_gw3 [] PROGMEM = "gw3";
+prog_char _json_gw4 [] PROGMEM = "gw4";
+prog_char _json_hp0 [] PROGMEM = "hp0";
+prog_char _json_hp1 [] PROGMEM = "hp1";
+prog_char _json_ar  [] PROGMEM = "ar";
+prog_char _json_ext [] PROGMEM = "ext";
+prog_char _json_seq [] PROGMEM = "seq";
+prog_char _json_sdt [] PROGMEM = "sdt";
+prog_char _json_mas [] PROGMEM = "mas";
+prog_char _json_mton[] PROGMEM = "mton";
+prog_char _json_mtof[] PROGMEM = "mtof";
+prog_char _json_urs [] PROGMEM = "urs";
+prog_char _json_rso [] PROGMEM = "rso";
+prog_char _json_wl  [] PROGMEM = "wl";
+prog_char _json_stt [] PROGMEM = "stt";
+prog_char _json_ipas[] PROGMEM = "ipas";
+prog_char _json_devid[]PROGMEM = "devid";
+prog_char _json_con [] PROGMEM = "con";
+prog_char _json_lit [] PROGMEM = "lit";
+prog_char _json_ntp1[] PROGMEM = "ntp1";
+prog_char _json_ntp2[] PROGMEM = "ntp2";
+prog_char _json_ntp3[] PROGMEM = "ntp3";
+prog_char _json_ntp4[] PROGMEM = "ntp4";
+prog_char _json_reset[] PROGMEM = "reset";
 
 // Option names
 prog_char _str_fwv [] PROGMEM = "Firmware ver.";
 prog_char _str_tz  [] PROGMEM = "Time zone:";
-prog_char _str_ntp [] PROGMEM = "NTP Sync:";
-prog_char _str_dhcp[] PROGMEM = "Use DHCP:";
+prog_char _str_ntp [] PROGMEM = "NTP sync?";
+prog_char _str_dhcp[] PROGMEM = "Use DHCP?";
 prog_char _str_ip1 [] PROGMEM = "Static.ip1:";
-prog_char _str_ip2 [] PROGMEM = "ip2:";
-prog_char _str_ip3 [] PROGMEM = "ip3:";
-prog_char _str_ip4 [] PROGMEM = "ip4:";
+prog_char _str_ip2 [] PROGMEM = "Static.ip2:";
+prog_char _str_ip3 [] PROGMEM = "Static.ip3:";
+prog_char _str_ip4 [] PROGMEM = "Static.ip4:";
 prog_char _str_gw1 [] PROGMEM = "Gateway.ip1:";
-prog_char _str_gw2 [] PROGMEM = "ip2:";
-prog_char _str_gw3 [] PROGMEM = "ip3:";
-prog_char _str_gw4 [] PROGMEM = "ip4:";
+prog_char _str_gw2 [] PROGMEM = "Gateway.ip2:";
+prog_char _str_gw3 [] PROGMEM = "Gateway.ip3:";
+prog_char _str_gw4 [] PROGMEM = "Gateway.ip4:";
 prog_char _str_hp0 [] PROGMEM = "HTTP port:";
 prog_char _str_hp1 [] PROGMEM = "";
-prog_char _str_ar  [] PROGMEM = "Auto reconnect:";
-prog_char _str_ext [] PROGMEM = "Exp. boards:";
-prog_char _str_seq [] PROGMEM = "Sequential:";
+prog_char _str_ar  [] PROGMEM = "Auto reconnect?";
+prog_char _str_ext [] PROGMEM = "# of exp. board:";
+prog_char _str_seq [] PROGMEM = "Sequential mode?";
 prog_char _str_sdt [] PROGMEM = "Station delay:";
 prog_char _str_mas [] PROGMEM = "Master station:";
-prog_char _str_mton[] PROGMEM = "Mas. on adj.:";
-prog_char _str_mtof[] PROGMEM = "Mas. off adj.:";
+prog_char _str_mton[] PROGMEM = "Master  on adj.:";
+prog_char _str_mtof[] PROGMEM = "Master off adj.:";
 prog_char _str_urs [] PROGMEM = "Use rain sensor:";
-prog_char _str_rso [] PROGMEM = "Normally open:";
+prog_char _str_rso [] PROGMEM = "Normally open?";
 prog_char _str_wl  [] PROGMEM = "% Water time:";
 prog_char _str_stt [] PROGMEM = "Selftest time:";
-prog_char _str_ipas[] PROGMEM = "Ignore password:";
+prog_char _str_ipas[] PROGMEM = "Ignore password?";
 prog_char _str_devid[]PROGMEM = "Device ID:";
 prog_char _str_con [] PROGMEM = "LCD Contrast:";
 prog_char _str_lit [] PROGMEM = "LCD Backlight:";
 prog_char _str_ntp1[] PROGMEM = "NTP server.ip1:";
-prog_char _str_ntp2[] PROGMEM = "ip2:";
-prog_char _str_ntp3[] PROGMEM = "ip3:";
-prog_char _str_ntp4[] PROGMEM = "ip4:";
+prog_char _str_ntp2[] PROGMEM = "NTP server.ip2:";
+prog_char _str_ntp3[] PROGMEM = "NTP server.ip3:";
+prog_char _str_ntp4[] PROGMEM = "NTP server.ip4:";
 prog_char _str_reset[] PROGMEM = "Reset all?";
 
 
 OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
-  {SVC_FW_VERSION, 0, _str_fwv, OPFLAG_NONE}, // firmware version
-  {32,  108, _str_tz,   OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},     // default time zone: GMT-4
-  {1,   1,   _str_ntp,  OPFLAG_SETUP_EDIT},   // use NTP sync
-  {1,   1,   _str_dhcp, OPFLAG_SETUP_EDIT},   // 0: use static ip, 1: use dhcp
-  {192, 255, _str_ip1,  OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static ip
-  {168, 255, _str_ip2,  OPFLAG_SETUP_EDIT},
-  {1,   255, _str_ip3,  OPFLAG_SETUP_EDIT},
-  {22,  255, _str_ip4,  OPFLAG_SETUP_EDIT},
-  {192, 255, _str_gw1,  OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static gateway ip
-  {168, 255, _str_gw2,  OPFLAG_SETUP_EDIT},
-  {1,   255, _str_gw3,  OPFLAG_SETUP_EDIT},
-  {1,   255, _str_gw4,  OPFLAG_SETUP_EDIT},
-  {80,  255, _str_hp0,  OPFLAG_WEB_EDIT},     // this and next byte define http port number
-  {0,   255, _str_hp1,  OPFLAG_WEB_EDIT},
-  {1,   1,   _str_ar,   OPFLAG_SETUP_EDIT},   // network auto reconnect
-  {0,   MAX_EXT_BOARDS, _str_ext, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // number of extension board. 0: no extension boards
-  {1,   1,   _str_seq,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // sequential mode. 1: stations run sequentially; 0: concurrently
-  {0,   240, _str_sdt,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // station delay time (0 to 240 seconds).
-  {0,   8,   _str_mas,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // index of master station. 0: no master station
-  {0,   60,  _str_mton, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master on time [0,60] seconds
-  {60,  120, _str_mtof, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master off time [-60,60] seconds
-  {0,   1,   _str_urs,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // rain sensor control bit. 1: use rain sensor input; 0: ignore
-  {1,   1,   _str_rso,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // rain sensor type. 0: normally closed; 1: normally open.
-  {100, 250, _str_wl,   OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // water level (default 100%),
-  {10,  240, _str_stt,  OPFLAG_SETUP_EDIT},                   // self-test time (in seconds)
-  {0,   1,   _str_ipas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // 1: ignore password; 0: use password
-  {0,   255, _str_devid,OPFLAG_SETUP_EDIT},                   // device id
-  {110, 255, _str_con,  OPFLAG_SETUP_EDIT},                   // lcd contrast
-  {200, 255, _str_lit,  OPFLAG_SETUP_EDIT},                   // lcd backlight
-  {204, 255, _str_ntp1, OPFLAG_SETUP_EDIT}, // this and the next three bytes define the ntp server ip
-  {9,   255, _str_ntp2, OPFLAG_SETUP_EDIT}, 
-  {54,  255, _str_ntp3, OPFLAG_SETUP_EDIT},
-  {119, 255, _str_ntp4, OPFLAG_SETUP_EDIT},
-  {0,   1,   _str_reset,OPFLAG_SETUP_EDIT}
+  {SVC_FW_VERSION, 0, _str_fwv, _json_fwv, OPFLAG_NONE}, // firmware version
+  {32,  108, _str_tz,   _json_tz, OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},     // default time zone: GMT-4
+  {1,   1,   _str_ntp,  _json_ntp, OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},   // use NTP sync
+  {1,   1,   _str_dhcp, _json_dhcp,OPFLAG_SETUP_EDIT},   // 0: use static ip, 1: use dhcp
+  {192, 255, _str_ip1,  _json_ip1, OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static ip
+  {168, 255, _str_ip2,  _json_ip2, OPFLAG_SETUP_EDIT},
+  {1,   255, _str_ip3,  _json_ip3, OPFLAG_SETUP_EDIT},
+  {22,  255, _str_ip4,  _json_ip4, OPFLAG_SETUP_EDIT},
+  {192, 255, _str_gw1,  _json_gw1, OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static gateway ip
+  {168, 255, _str_gw2,  _json_gw2, OPFLAG_SETUP_EDIT},
+  {1,   255, _str_gw3,  _json_gw3, OPFLAG_SETUP_EDIT},
+  {1,   255, _str_gw4,  _json_gw4, OPFLAG_SETUP_EDIT},
+  {80,  255, _str_hp0,  _json_hp0, OPFLAG_WEB_EDIT},     // this and next byte define http port number
+  {0,   255, _str_hp1,  _json_hp1, OPFLAG_WEB_EDIT},
+  {1,   1,   _str_ar,   _json_ar,  OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},   // network auto reconnect
+  {0,   MAX_EXT_BOARDS, _str_ext, _json_ext, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // number of extension board. 0: no extension boards
+  {1,   1,   _str_seq,  _json_seq, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // sequential mode. 1: stations run sequentially; 0: concurrently
+  {0,   240, _str_sdt,  _json_sdt, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // station delay time (0 to 240 seconds).
+  {0,   8,   _str_mas,  _json_mas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // index of master station. 0: no master station
+  {0,   60,  _str_mton, _json_mton,OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master on time [0,60] seconds
+  {60,  120, _str_mtof, _json_mtof,OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master off time [-60,60] seconds
+  {0,   1,   _str_urs,  _json_urs, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // rain sensor control bit. 1: use rain sensor input; 0: ignore
+  {1,   1,   _str_rso,  _json_rso, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // rain sensor type. 0: normally closed; 1: normally open.
+  {100, 250, _str_wl,   _json_wl,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // water level (default 100%),
+  {10,  240, _str_stt,  _json_stt, OPFLAG_SETUP_EDIT},                   // self-test time (in seconds)
+  {0,   1,   _str_ipas, _json_ipas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // 1: ignore password; 0: use password
+  {0,   255, _str_devid,_json_devid,OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},                   // device id
+  {110, 255, _str_con,  _json_con, OPFLAG_SETUP_EDIT},                   // lcd contrast
+  {200, 255, _str_lit,  _json_lit, OPFLAG_SETUP_EDIT},                   // lcd backlight
+  {204, 255, _str_ntp1, _json_ntp1, OPFLAG_SETUP_EDIT}, // this and the next three bytes define the ntp server ip
+  {9,   255, _str_ntp2, _json_ntp2, OPFLAG_SETUP_EDIT}, 
+  {54,  255, _str_ntp3, _json_ntp3, OPFLAG_SETUP_EDIT},
+  {119, 255, _str_ntp4, _json_ntp4, OPFLAG_SETUP_EDIT},
+  {0,   1,   _str_reset,_json_reset,OPFLAG_SETUP_EDIT}
 };
 
 // Weekday display strings
@@ -184,6 +221,7 @@ void OpenSprinkler::begin() {
   analogWrite(PIN_LCD_CONTRAST, options[OPTION_LCD_CONTRAST].value);
   analogWrite(PIN_LCD_BACKLIGHT, 255-options[OPTION_LCD_BACKLIGHT].value); 
 
+  lcd.init(1, PIN_LCD_RS, 255, PIN_LCD_EN, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7, 0,0,0,0);
   // begin lcd
   lcd.begin(16, 2);
    
@@ -383,6 +421,7 @@ void OpenSprinkler::options_setup() {
       
     //======== Reset EEPROM data ========
     options_save(); // write default option values
+    constatus_save(); // write default controller status values
     eeprom_string_set(ADDR_EEPROM_PASSWORD, DEFAULT_PASSWORD);  // write default password
     eeprom_string_set(ADDR_EEPROM_LOCATION, DEFAULT_LOCATION);  // write default location
     
@@ -401,6 +440,7 @@ void OpenSprinkler::options_setup() {
       eeprom_write_byte((unsigned char *)(i+2),'0'+(sn%10)); 
     }
     
+    
     // reset master operation bits
     for(i=ADDR_EEPROM_MAS_OP; i<ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1); i++) {
       // default master operation bits on
@@ -415,6 +455,7 @@ void OpenSprinkler::options_setup() {
   else {
     options_load(); // load option values
     masop_load();   // load master operation bits
+    constatus_load(); // load controller status
   }
 
 	byte button = button_read(BUTTON_WAIT_NONE);
@@ -463,6 +504,20 @@ void OpenSprinkler::options_setup() {
   analogWrite(PIN_LCD_BACKLIGHT, 255-options[OPTION_LCD_BACKLIGHT].value); 
 }
 
+// Load controller status data from internal eeprom
+void OpenSprinkler::constatus_load() {
+  status.enabled = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS));
+  status.manual_mode = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS+1));
+  raindelay_stop_time = eeprom_read_dword((unsigned long*)(ADDR_EEPROM_CONSTATUS+2));  
+}
+
+// Save controller status data to internal eeprom
+void OpenSprinkler::constatus_save() {
+  eeprom_write_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS), status.enabled);
+  eeprom_write_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS+1), status.manual_mode);
+  eeprom_write_dword((unsigned long*)(ADDR_EEPROM_CONSTATUS+2), raindelay_stop_time);
+}
+
 // Load options from internal eeprom
 void OpenSprinkler::options_load() {
   for (byte i=0; i<NUM_OPTIONS; i++) {
@@ -491,7 +546,7 @@ void OpenSprinkler::enable() {
   status.enabled = 1;
   apply_all_station_bits();
   // write enable bit to eeprom
-  options_save();
+  constatus_save();
 }
 
 // Disable controller operation
@@ -499,18 +554,19 @@ void OpenSprinkler::disable() {
   status.enabled = 0;
   apply_all_station_bits();
   // write enable bit to eeprom
-  options_save();
+  constatus_save();
 }
 
-void OpenSprinkler::raindelay_start(byte rd) {
-  if(rd == 0) return;
-  raindelay_stop_time = now() + (unsigned long) rd * 3600;
+void OpenSprinkler::raindelay_start() {
   status.rain_delayed = 1;
+  constatus_save();
   apply_all_station_bits();
 }
 
 void OpenSprinkler::raindelay_stop() {
   status.rain_delayed = 0;
+  raindelay_stop_time = 0;
+  constatus_save();
   apply_all_station_bits();
 }
 
@@ -611,7 +667,7 @@ void OpenSprinkler::lcd_print_station(byte line, char c) {
 	}
 	lcd_print_pgm(PSTR("    "));
   lcd.setCursor(14, 1);
-  lcd.write(status.network_fails>0?1:0); 
+  lcd.write(status.network_fails>2?1:0);  // if network failure detection is more than 2, display disconnect icon
 	lcd.setCursor(15, 1);
   if (status.has_sd)  lcd.write(2);
 
@@ -666,7 +722,7 @@ void OpenSprinkler::lcd_print_option(int i) {
       lcd.print((int)options[i].value);
     break;
   }
-  if (i==OPTION_WATER_LEVEL)  lcd_print_pgm(PSTR("%"));
+  if (i==OPTION_WATER_PERCENTAGE)  lcd_print_pgm(PSTR("%"));
   else if (i==OPTION_MASTER_ON_ADJ || i==OPTION_MASTER_OFF_ADJ ||
       i==OPTION_SELFTEST_TIME)
     lcd_print_pgm(PSTR(" sec"));

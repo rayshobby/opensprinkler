@@ -9,22 +9,26 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  201 // firmware version (e.g. 2.0.1 etc)
+#define SVC_FW_VERSION  202 // firmware version (e.g. 2.1.0 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
-#define MAX_EXT_BOARDS    5 // maximum number of ext. boards (each expands 8 stations)
+#define MAX_EXT_BOARDS   5 // maximum number of ext. boards (each expands 8 stations)
                             // total number of stations: (1+MAX_EXT_BOARDS) * 8
-                            // increasing this number will consume more memory and EEPROM space
 
+#define MAX_NUM_STATIONS  ((1+MAX_EXT_BOARDS)*8)
 #define STATION_NAME_SIZE 16 // size of each station name, default is 16 letters max
 
 // Internal EEPROM Defines
 #define INT_EEPROM_SIZE         2048    // ATmega644 eeprom size
-#define ADDR_EEPROM_OPTIONS     0x0000  // address where options are stored, 64 bytes reserved
-#define ADDR_EEPROM_PASSWORD    0x0040	// address where password is stored, 16 bytes reserved
-#define ADDR_EEPROM_LOCATION    0x0050  // address where location is stored, 32 bytes reserved
-#define ADDR_EEPROM_STN_NAMES   0x0070  // address where station names are stored
+
+#define ADDR_EEPROM_OPTIONS     0x0000  // address where options are stored, 48 bytes reserved
+#define ADDR_EEPROM_CONSTATUS   0x0030  // address where controller status data are stored, 16 bytes reserved
+#define ADDR_EEPROM_PASSWORD    0x0040	// address where password is stored, 32 bytes reserved
+#define ADDR_EEPROM_LOCATION    0x0060  // address where location is stored, 32 bytes reserved
+//#define ADDR_EEPROM_SCRIPTPATH	0x0080	// address where javascript path is stored, 128 bytes reserved
+#define ADDR_EEPROM_STN_NAMES   0x0080  // address where station names are stored
+
 #define ADDR_EEPROM_RUNONCE     (ADDR_EEPROM_STN_NAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
                                         // address where run-once data is stored
 #define ADDR_EEPROM_MAS_OP      (ADDR_EEPROM_RUNONCE+(MAX_EXT_BOARDS+1)*8*2)
@@ -34,8 +38,11 @@
 
 #define DEFAULT_PASSWORD        "opendoor"
 #define DEFAULT_LOCATION        "Boston,MA" // zip code, city name or any google supported location strings
-                                            // IMPORTANT: use , or + in place of space
+                                            // IMPORTANT: use , or + in place of 'space'
                                             // So instead of 'New York', use 'New,York' or 'New+York'
+
+#define FN_PROGRAMDATA					"programs.dat"	// programs file name
+
 // macro define of each option
 // See OpenSprinkler.cpp for details on each option
 typedef enum {
@@ -62,7 +69,7 @@ typedef enum {
   OPTION_MASTER_OFF_ADJ,
   OPTION_USE_RAINSENSOR,
   OPTION_RAINSENSOR_TYPE,
-  OPTION_WATER_LEVEL,
+  OPTION_WATER_PERCENTAGE,
   OPTION_SELFTEST_TIME,
   OPTION_IGNORE_PASSWORD,
   OPTION_DEVICE_ID,
@@ -80,7 +87,6 @@ typedef enum {
 #define OPFLAG_NONE        0x00  // default flag, this option is not editable
 #define OPFLAG_SETUP_EDIT  0x01  // this option is editable during startup
 #define OPFLAG_WEB_EDIT    0x02  // this option is editable on the Options webpage
-
 
 // =====================================
 // ====== Arduino Pin Assignments ======

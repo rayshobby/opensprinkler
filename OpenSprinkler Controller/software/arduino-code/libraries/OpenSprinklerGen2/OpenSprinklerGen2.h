@@ -15,15 +15,15 @@
 #endif
 
 #define USE_TINYFAT
-
 #include <avr/eeprom.h>
 #include "../Wire/Wire.h"
-#include "../LiquidCrystal/LiquidCrystal.h"
+
 #ifdef USE_TINYFAT
   #include "tinyFAT.h"
 #else
   #include "../SD/SD.h"
 #endif
+#include "LiquidCrystal.h"
 #include "Time.h"
 #include "DS1307RTC.h"
 #include "EtherCard.h"
@@ -34,6 +34,7 @@ struct OptionStruct{
   byte value; // each option is byte
   byte max;   // maximum value
   char* str;  // name string
+  char* json_str; // json name
   byte flag;  // flag
 };
 
@@ -49,7 +50,15 @@ struct StatusBits {
   byte display_board:4;     // the board that is being displayed onto the lcd
   byte network_fails:4;     // number of network fails
 }; 
-  
+
+struct StationDataBits {
+  byte n_enabled:1;         // 0: enabled; 1: disabled
+  byte n_actmaster:1;       // 0: this station activates master (if master station is defined); 1: this station does not activate master
+  byte n_raindelay:1;       // 0: rain delay applies to this station; 1: rain delay is ignored for this station
+  byte group_index:2;       // group index. 0: global serial group; 1: global concurrent group; 2-3: custom groups
+  byte type:3;              // type of sprinkler station: 0-default, 1-radio frequency station, 2-7: custom types
+};
+
 class OpenSprinkler {
 public:
   
@@ -76,6 +85,9 @@ public:
   static void set_station_name(byte sid, char buf[]); // set station name
   static void masop_load();  // load station master operation bits
   static void masop_save();  // save station master operation bits
+  // -- Controller status
+  static void constatus_load();
+  static void constatus_save();
   // -- Options --
   static void options_setup();
   static void options_load();
@@ -84,7 +96,7 @@ public:
   // -- Operation --
   static void enable();     // enable controller operation
   static void disable();    // disable controller operation, all stations will be closed immediately
-  static void raindelay_start(byte rd);  // start raindelay for rd hours
+  static void raindelay_start();  // start raindelay
   static void raindelay_stop(); // stop rain delay
   static void rainsensor_status(); // update rainsensor stateus
   static byte weekday_today();  // returns index of today's weekday (Monday is 0) 
