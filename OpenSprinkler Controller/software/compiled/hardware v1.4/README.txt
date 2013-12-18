@@ -11,7 +11,9 @@ OpenSprinkler v1.4(u or s) has on-board USBtiny programmer. Basic instructions a
 - Plug in a USB cable to the USB connector.
 
 - To flash, use  command:
-: avrdude -c usbtiny -p m328p -F -U flash:w:xxxxx.hex
+: avrdude -c usbtiny -p m328p -F -U flash:w:xxx.hex
+
+where xxx.hex is the name of the firmware file you want to upload.
 
 If you are using Windows, you need to install driver for USBtiny programmer. Instructions can be found here:
 http://rayshobby.net/?page_id=732#v12

@@ -12,9 +12,12 @@ OpenSprinkler v1.1/v1.0 does not have on-board USB programmer. If you want to di
 - Plug in the ISP programmer connector. Make sure the red strip on the ribbon cable matches the white stripe on the PCB.
 
 - To flash, use  command (if you have USBtiny programmer):
-: avrdude -c usbtiny -p m328p -F -U flash:w:xxxxx.hex
+: avrdude -c usbtiny -p m328p -F -U flash:w:xxx.hex
+
+where xxx.hex is the name of the firmware file you want to upload.
 
 or (if you have USBasp programmer)
 
-: avrdude -c usbasp -p m328p -F -U flash:w:xxxxx.hex
+: avrdude -c usbasp -p m328p -F -U flash:w:xxx.hex
 
+where xxx.hex is the name of the firmware file you want to upload.
