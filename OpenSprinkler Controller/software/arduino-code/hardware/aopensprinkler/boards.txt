@@ -1,5 +1,26 @@
 ############################################################
 
+atmega644usbasp.name=OpenSprinkler2.1 (12MHz, orange terminal)
+
+atmega644usbasp.upload.using=arduino:usbasp
+atmega644usbasp.upload.maximum_size=63488
+atmega644usbasp.upload.speed=57600
+
+atmega644usbasp.bootloader.low_fuses=0xFF
+atmega644usbasp.bootloader.high_fuses=0xDC
+atmega644usbasp.bootloader.extended_fuses=0xFD
+atmega644usbasp.bootloader.path=atmega
+atmega644usbasp.bootloader.file=ATmegaBOOT_168_atmega644.hex
+atmega644usbasp.bootloader.unlock_bits=0x3F
+atmega644usbasp.bootloader.lock_bits=0x0F
+
+atmega644usbasp.build.mcu=atmega644
+atmega644usbasp.build.f_cpu=12000000L
+atmega644usbasp.build.core=arduino
+atmega644usbasp.build.variant=standard
+
+############################################################
+
 atmega644.name=OpenSprinklerGen2
 
 atmega644.upload.using=arduino:usbtinyisp
