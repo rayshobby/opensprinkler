@@ -7,27 +7,18 @@
  The number of programs you can create are subject to EEPROM size.
  
  Creative Commons Attribution-ShareAlike 3.0 license
- Apr 2013 @ Rayshobby.net
+ Dec 2013 @ Rayshobby.net
  */
 #include <limits.h>
 #include <OpenSprinklerGen2.h>
 //#include <SD.h>
 #include <Wire.h>
 #include "program.h"
-// ================================================================================
-// This is the path to which external Javascripst are stored
-// To create custom Javascripts, you need to make a copy of these scripts
-// and put them to your own server, or github, or any available file hosting service
-
-//#define JAVASCRIPT_PATH  "http://192.168.1.103" 
-#define JAVASCRIPT_PATH "."
-//"https://github.com/rayshobby/opensprinkler/raw/master/scripts/java/svc1.8"
-// ================================================================================
 
 // NTP sync interval (in seconds)
 #define NTP_SYNC_INTERVAL       86400L  // 24 hours default
 // RC sync interval (in seconds)
-#define RTC_SYNC_INTERVAL       60     // 1 minute default
+#define RTC_SYNC_INTERVAL       60     // 60 seconds default
 // Interval for checking network connection (in seconds)
 #define CHECK_NETWORK_INTERVAL  60     // 1 minute default
 // Ping test time out (in milliseconds)
@@ -111,30 +102,23 @@ void setup() {
   // calculate http port number
   myport = (int)(svc.options[OPTION_HTTPPORT_1].value<<8) + (int)svc.options[OPTION_HTTPPORT_0].value;
 
-  setSyncInterval(RTC_SYNC_INTERVAL);  // RTC sync interval: 15 minutes
+  setSyncInterval(RTC_SYNC_INTERVAL);  // RTC sync interval
   // if rtc exists, sets it as time sync source
   setSyncProvider(svc.status.has_rtc ? RTC.get : NULL);
   delay(500);
   svc.lcd_print_time(0);  // display time to LCD
   
+  // attempt to detect SD card
   svc.lcd_print_line_clear_pgm(PSTR("Detecting uSD..."), 1);
-
+  
 #ifdef USE_TINYFAT
   byte res=file.initFAT(0);  // initialize wipriceth highest SPI speed
   if (res==NO_ERROR) {
     svc.status.has_sd = 1;
-  } else {
-    svc.lcd_print_line_clear_pgm(PSTR("A microSD card"), 0);
-    svc.lcd_print_line_clear_pgm(PSTR("is required."), 1);
-    while(1);
   }
 #else
   if(SD.begin(0)) {
     svc.status.has_sd = 1;
-  } else {
-    svc.lcd_print_line_clear_pgm(PSTR("A microSD card"), 0);
-    svc.lcd_print_line_clear_pgm(PSTR("is required."), 1);
-    while(1);
   }
 #endif
 
@@ -148,10 +132,6 @@ void setup() {
 
   svc.apply_all_station_bits(); // reset station bits
   
-  //perform_ntp_sync(now());
-  last_sync_time = 0;
-  
-  svc.lcd_print_time(0);  // display time to priceLCD
   //wdt_enable(WDTO_4S);  // enabled watchdog timer
 }
 
@@ -257,8 +237,9 @@ void loop()
         for(s=0;s<8;s++) {
           byte sid = bid*8+s;
           
-          // check if the current station is already running
-          if(((bitvalue>>s)&1)) {
+          // check if the current station has a scheduled program
+          // this includes running stations and stations waiting to run
+          if (pd.scheduled_program_index[sid] > 0) {
             // if so, check if we should turn it off
             if (curr_time >= pd.scheduled_stop_time[sid])
             {
@@ -280,8 +261,8 @@ void loop()
               pd.scheduled_program_index[sid] = 0;            
             }
           }
-          else {
-            // if not running, check if we should turn it on
+          // if current station is not running, check if we should turn it on
+          if(!((bitvalue>>s)&1)) {
             if (curr_time >= pd.scheduled_start_time[sid] && curr_time < pd.scheduled_stop_time[sid]) {
               svc.set_station_bit(sid, 1);
               
@@ -384,8 +365,8 @@ void manual_station_on(byte sid, int ontimer) {
 }
 
 void perform_ntp_sync(time_t curr_time) {
-  // do not perform sync if this option is disabled, or if network is not available
-  if (svc.options[OPTION_USE_NTP].value==0 || svc.status.network_fails>0) return;   
+  // do not perform sync if this option is disabled, or if network is not available, or if a program is running
+  if (svc.options[OPTION_USE_NTP].value==0 || svc.status.network_fails>0 || svc.status.program_busy) return;   
   // sync every 24 hour
   if (last_sync_time == 0 || (curr_time - last_sync_time > NTP_SYNC_INTERVAL)) {
     last_sync_time = curr_time;
@@ -421,8 +402,8 @@ void check_network(time_t curr_time) {
     } while(millis() - start < PING_TIMEOUT);
     if (failed)  svc.status.network_fails++;
     else svc.status.network_fails=0;
-    // if failed more than 3 times in a row, reconnect
-    if (svc.status.network_fails>3&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
+    // if failed more than 2 times in a row, reconnect
+    if (svc.status.network_fails>2&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
       //svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
       svc.start_network(mymac, myport);
       //svc.status.network_fails=0;
@@ -445,7 +426,7 @@ void schedule_all_stations(unsigned long curr_time, byte seq)
 		    pd.scheduled_start_time[sid] = accumulate_time;
 		    accumulate_time += pd.scheduled_stop_time[sid];
 		    pd.scheduled_stop_time[sid] = accumulate_time;
-		    accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value * 60; // add station delay time
+		    accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
 		    svc.status.program_busy = 1;  // set program busy bit
 		  }
 		}

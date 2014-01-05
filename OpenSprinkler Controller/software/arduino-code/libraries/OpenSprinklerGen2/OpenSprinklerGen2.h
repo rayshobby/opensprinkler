@@ -2,7 +2,7 @@
 
 /* OpenSprinkler Class Definition
    Creative Commons Attribution-ShareAlike 3.0 license
-   Apr 2013 @ Rayshobby.net
+   Dec 2013 @ Rayshobby.net
 */
 
 #ifndef _OpenSprinkler_h

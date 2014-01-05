@@ -132,6 +132,7 @@ uint16_t Stash::size () {
   return 63 * count + fetchByte(last, 62) - sizeof (StashHeader);
 }
 
+/*
 static char* wtoa (word value, char* ptr) {
   if (value > 9)
     ptr = wtoa(value / 10, ptr);
@@ -139,6 +140,7 @@ static char* wtoa (word value, char* ptr) {
   *++ptr = 0;
   return ptr;
 }
+*/
 
 void Stash::prepare (PGM_P fmt, ...) {
   Stash::load(0, 0);
@@ -156,10 +158,17 @@ void Stash::prepare (PGM_P fmt, ...) {
       switch (pgm_read_byte(fmt++)) {
         case 'D': {
           char buf[7];
-          wtoa(argval, buf);
+          //wtoa(argval, buf);
+          itoa(argval, buf, 10);
           arglen = strlen(buf);
           break;
         }
+        case 'L': { // ray
+          char buf[12];
+          ultoa(argval, buf, 10);
+          arglen = strlen(buf);
+          break;
+        }          
         case 'S':
           arglen = strlen((const char*) argval);
           break;
@@ -210,9 +219,14 @@ void Stash::extract (word offset, word count, void* buf) {
         mode = pgm_read_byte(fmt++);
         switch (mode) {
           case 'D':
-            wtoa(arg, tmp);
+            //wtoa(arg, tmp);
+            itoa(arg, tmp, 10);
             ptr = tmp;
             break;
+          case 'L': // ray
+            ultoa(arg, tmp, 10);
+            ptr = tmp;
+            break;               
           case 'S':
           case 'F':
           case 'E':
@@ -226,6 +240,7 @@ void Stash::extract (word offset, word count, void* buf) {
         continue;
       }
       case 'D':
+      case 'L':
       case 'S':
         c = *ptr++;
         break;
@@ -281,7 +296,8 @@ void BufferFiller::emit_p(PGM_P fmt, ...) {
         c = pgm_read_byte(fmt++);
         switch (c) {
             case 'D':
-                wtoa(va_arg(ap, word), (char*) ptr);
+                //wtoa(va_arg(ap, word), (char*) ptr);
+                itoa(va_arg(ap, word), (char*)ptr, 10);
                 break;
             #ifdef FLOATEMIT
             case 'T':
@@ -302,7 +318,8 @@ void BufferFiller::emit_p(PGM_P fmt, ...) {
                 continue;
             }
             case 'L':
-                ltoa(va_arg(ap, long), (char*) ptr, 10);
+                //ltoa(va_arg(ap, long), (char*) ptr, 10);
+                ultoa(va_arg(ap, long), (char*)ptr, 10);
                 break;
             case 'S':
                 strcpy((char*) ptr, va_arg(ap, const char*));

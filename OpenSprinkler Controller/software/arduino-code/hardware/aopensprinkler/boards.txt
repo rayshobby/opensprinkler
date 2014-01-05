@@ -1,6 +1,6 @@
 ############################################################
 
-atmega644usbasp.name=OpenSprinkler2.1 (12MHz, orange terminal)
+atmega644usbasp.name=OpenSprinklerHW2.1 (12MHz, USBasp, orange terminal)
 
 atmega644usbasp.upload.using=arduino:usbasp
 atmega644usbasp.upload.maximum_size=63488
@@ -21,7 +21,7 @@ atmega644usbasp.build.variant=standard
 
 ############################################################
 
-atmega644.name=OpenSprinklerGen2
+atmega644.name=OpenSprinklerHW2.0 (8MHz, USBtiny, all green terminals)
 
 atmega644.upload.using=arduino:usbtinyisp
 atmega644.upload.maximum_size=65536

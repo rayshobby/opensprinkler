@@ -118,8 +118,8 @@ OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {10,  240, _str_stt,  _json_stt, OPFLAG_SETUP_EDIT},                   // self-test time (in seconds)
   {0,   1,   _str_ipas, _json_ipas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // 1: ignore password; 0: use password
   {0,   255, _str_devid,_json_devid,OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},                   // device id
-  {110, 255, _str_con,  _json_con, OPFLAG_SETUP_EDIT},                   // lcd contrast
-  {200, 255, _str_lit,  _json_lit, OPFLAG_SETUP_EDIT},                   // lcd backlight
+  {130, 255, _str_con,  _json_con, OPFLAG_SETUP_EDIT},                   // lcd contrast
+  {120, 255, _str_lit,  _json_lit, OPFLAG_SETUP_EDIT},                   // lcd backlight
   {204, 255, _str_ntp1, _json_ntp1, OPFLAG_SETUP_EDIT}, // this and the next three bytes define the ntp server ip
   {9,   255, _str_ntp2, _json_ntp2, OPFLAG_SETUP_EDIT}, 
   {54,  255, _str_ntp3, _json_ntp3, OPFLAG_SETUP_EDIT},
@@ -161,7 +161,7 @@ byte OpenSprinkler::start_network(byte mymac[], int http_port) {
   ether.hisport = http_port;    
   
   if (options[OPTION_USE_DHCP].value) {
-    // register with domain name "opensprinkler"
+    // register with domain name "OpenSprinkler-xx" where xx is the last byte of the MAC address
     if (!ether.dhcpSetup()) return 0;
   } else {
     byte staticip[] = {
@@ -289,7 +289,7 @@ void OpenSprinkler::begin() {
   digitalWrite(PIN_BUTTON_3, HIGH);    
   
   // detect if DS1307 RTC exists
-  if (RTC.testerr()==0) {
+  if (RTC.detect()==0) {
     status.has_rtc = 1;
   }
 }
@@ -359,7 +359,10 @@ void OpenSprinkler::masop_load() {
 
 // Index of today's weekday (Monday is 0)
 byte OpenSprinkler::weekday_today() {
-  return ((byte)weekday()+5)%7; // Time::weekday() assumes Sunday is 1
+  //return ((byte)weekday()+5)%7; // Time::weekday() assumes Sunday is 1
+  tmElements_t tm;
+  RTC.read(tm);
+  return (tm.Wday+5)%7;
 }
 
 // Set station bit
@@ -424,6 +427,7 @@ void OpenSprinkler::options_setup() {
     constatus_save(); // write default controller status values
     eeprom_string_set(ADDR_EEPROM_PASSWORD, DEFAULT_PASSWORD);  // write default password
     eeprom_string_set(ADDR_EEPROM_LOCATION, DEFAULT_LOCATION);  // write default location
+    eeprom_string_set(ADDR_EEPROM_SCRIPTURL, DEFAULT_JAVASCRIPT_URL); // write default javascript url
     
     lcd_print_line_clear_pgm(PSTR("Resetting EEPROM"), 0);
     lcd_print_line_clear_pgm(PSTR("Please Wait..."), 1);  

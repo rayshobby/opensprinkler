@@ -20,23 +20,40 @@
   
   30 Dec 2009 - Initial release
   5 Sep 2011 updated for Arduino 1.0
+  
+  23 Dec 2013 -- modified by Ray Wang (Rayshobby LLC) to add support for MCP7940
  */
 
 #include "Wire.h"
 #include "DS1307RTC.h"
 
-#define DS1307_CTRL_ID 0x68 
+#define DS1307_CTRL_ID 0x68
+#define MCP7940_CTRL_ID 0x6F // ray: ctrl id for MCP7940N
+
+int DS1307RTC::ctrl_id = 0;
 
 DS1307RTC::DS1307RTC()
 {
   Wire.begin();
 }
 
-uint8_t DS1307RTC::testerr()
+uint8_t DS1307RTC::detect()
 {
-  Wire.beginTransmission(DS1307_CTRL_ID);
+  uint8_t ret;
+  ctrl_id = DS1307_CTRL_ID;  // ray: detect DS1307
+  Wire.beginTransmission(ctrl_id);
   Wire.write((uint8_t)(0x00));
-  return Wire.endTransmission();
+  ret = Wire.endTransmission();
+  if (ret == 0) {return 0;}
+
+  ctrl_id = MCP7940_CTRL_ID;  // ray: detect MCP7940
+  Wire.beginTransmission(ctrl_id);  
+  Wire.write((uint8_t)(0x00));
+  ret = Wire.endTransmission();
+  if (ret == 0) {return 0;}
+  
+  ctrl_id = 0;
+  return ret;
 }
 
 // PUBLIC FUNCTIONS
@@ -51,26 +68,27 @@ void DS1307RTC::set(time_t t)
 {
   tmElements_t tm;
   breakTime(t, tm);
-  tm.Second |= 0x80;  // stop the clock 
-  write(tm); 
-  tm.Second &= 0x7f;  // start the clock
+  //tm.Second |= 0x80;  // stop the clock   ray: removed this step
+  //write(tm); 
+  //tm.Second &= 0x7f;  // start the clock  ray: moved to write function
   write(tm); 
 }
 
 // Aquire data from the RTC chip in BCD format
 void DS1307RTC::read( tmElements_t &tm)
 {
-  Wire.beginTransmission(DS1307_CTRL_ID);
+  if (!ctrl_id) return;
+  Wire.beginTransmission(ctrl_id);
 
   Wire.write((uint8_t)0x00); 
   Wire.endTransmission();
 
   // request the 7 data fields   (secs, min, hr, dow, date, mth, yr)
-  Wire.requestFrom(DS1307_CTRL_ID, tmNbrFields);
+  Wire.requestFrom(ctrl_id, tmNbrFields);
   tm.Second = bcd2dec(Wire.read() & 0x7f);   
   tm.Minute = bcd2dec(Wire.read() );
   tm.Hour =   bcd2dec(Wire.read() & 0x3f);  // mask assumes 24hr clock
-  tm.Wday = bcd2dec(Wire.read() );
+  tm.Wday = bcd2dec(Wire.read() & 0x07);
   tm.Day = bcd2dec(Wire.read() );
   tm.Month = bcd2dec(Wire.read() );
   tm.Year = y2kYearToTm((bcd2dec(Wire.read())));
@@ -79,16 +97,33 @@ void DS1307RTC::read( tmElements_t &tm)
 
 void DS1307RTC::write(tmElements_t &tm)
 {
-  Wire.beginTransmission(DS1307_CTRL_ID);
-  Wire.write((uint8_t)0x00); // reset register pointer  
-  Wire.write(dec2bcd(tm.Second)) ;   
-  Wire.write(dec2bcd(tm.Minute));
-  Wire.write(dec2bcd(tm.Hour));      // sets 24 hour format
-  Wire.write(dec2bcd(tm.Wday));   
-  Wire.write(dec2bcd(tm.Day));
-  Wire.write(dec2bcd(tm.Month));
-  Wire.write(dec2bcd(tmYearToY2k(tm.Year))); 
-  Wire.endTransmission();  
+  static uint8_t initialized = 0;
+  
+  if (ctrl_id == DS1307_CTRL_ID) {
+    Wire.beginTransmission(ctrl_id);  
+    Wire.write((uint8_t)0x00); // reset register pointer  
+    Wire.write(dec2bcd(tm.Second) & 0x7f);  // ray: start clock by setting CH bit low
+    Wire.write(dec2bcd(tm.Minute));
+    Wire.write(dec2bcd(tm.Hour));      // sets 24 hour format
+    Wire.write(dec2bcd(tm.Wday));   
+    Wire.write(dec2bcd(tm.Day));
+    Wire.write(dec2bcd(tm.Month));
+    Wire.write(dec2bcd(tmYearToY2k(tm.Year))); 
+    Wire.endTransmission();
+  } else if (ctrl_id == MCP7940_CTRL_ID) {
+    Wire.beginTransmission(ctrl_id);  
+    Wire.write((uint8_t)0x00); // reset register pointer  
+    Wire.write(dec2bcd(tm.Second) | 0x80);  // ray: start clock by setting ST bit high
+    Wire.write(dec2bcd(tm.Minute));
+    Wire.write(dec2bcd(tm.Hour));      // sets 24 hour format
+    Wire.write(dec2bcd(tm.Wday) | 0x08);  // ray: turn on battery backup by setting VBATEN bit high
+    Wire.write(dec2bcd(tm.Day));
+    Wire.write(dec2bcd(tm.Month));
+    Wire.write(dec2bcd(tmYearToY2k(tm.Year))); 
+    Wire.endTransmission();  
+  } else {
+    // undefined RTC type
+  }  
 }
 // PRIVATE FUNCTIONS
 

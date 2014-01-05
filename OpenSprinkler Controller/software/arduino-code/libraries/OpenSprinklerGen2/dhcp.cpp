@@ -93,7 +93,7 @@ typedef struct {
 #define DHCP_REQUEST_TIMEOUT 10000
 
 static byte dhcpState = DHCP_STATE_INIT;
-static char hostname[] = "Arduino-00";
+static char hostname[] = "OpenSprinkler-00";
 static uint32_t currentXid;
 static uint32_t stateTimer;
 static uint32_t leaseStart;
@@ -180,8 +180,8 @@ static void send_dhcp_message (void) {
     addBytes(6, EtherCard::mymac);
     
     addToBuf(12);     // Host name Option
-    addToBuf(10);
-    addBytes(10, (byte*) hostname);
+    addToBuf(16);
+    addBytes(16, (byte*) hostname);
     
 	
 	if( dhcpState == DHCP_STATE_SELECTING) {
@@ -269,8 +269,8 @@ bool EtherCard::dhcpSetup () {
     using_dhcp = true;
 
 	// Set a unique hostname, use Arduino-?? with last octet of mac address
-	 hostname[8] = '0' + (mymac[5] >> 4);
-	 hostname[9] = '0' + (mymac[5] & 0x0F);
+	 hostname[14] = '0' + (mymac[5] >> 4);
+	 hostname[15] = '0' + (mymac[5] & 0x0F);
 
 	 dhcpState = DHCP_STATE_INIT;
 	 word start = millis();	

@@ -274,11 +274,12 @@ make_tcp_ack_from_any(info_data_len,0); // send ack for http get
 get_seq(); //get the sequence number of packets after an ack from GET
 }
 
-void EtherCard::httpServerReply_with_flags (word dlen , byte flags) {
+void EtherCard::httpServerReply_with_flags (word dlen , byte flags, byte keepseq) {
 set_seq();
 gPB[TCP_FLAGS_P] = flags; // final packet
 make_tcp_ack_with_data_noflags(dlen); // send data
-SEQ=SEQ+dlen;
+if(keepseq) {}
+else {SEQ=SEQ+dlen;}
 }
 
 void EtherCard::clientIcmpRequest(const byte *destip) {

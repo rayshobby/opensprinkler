@@ -29,6 +29,8 @@ function fshow() {
     tip=id("tip"+oid);
     if(tip!=null) tip.hidden=false;
   }
+  tip=id("tiploc");
+  if(tip!=null) tip.hidden=false;
 }
 function ntpcheck() {
   var cb=id("ntpcb");
@@ -89,7 +91,7 @@ for(oid=0;oid<nopts;oid++){
     ntpcheck();
   }
 }
-w("<p title=\"City name or zip code. Use comma or + in place of space.\"><b>Location:</b> <input type=text maxlength=31 value=\""+loc+"\" name=loc></p>");
+w("<p title=\"City name or zip code. Use comma or + in place of space.\"><b>Location:</b> <input type=text size=16 maxlength=31 value=\""+loc+"\" name=loc> <span style=\"background-color:#FFF2B8;\" id=tiploc hidden=\"hidden\"><font size=2>City name or zip code. Use comma or + in place of space.</font></span></p>");
 w("<h4>Password:<input type=password size=10 "+(opts[pasoid*4+2]?"disabled":"")+" name=pw></h4>");
 w("<button style=\"height:36\" onclick=\"submit_form(of)\"><b>Submit Changes</b></button>");
 w("<button style=\"height:36\" onclick=\"fcancel();return false;\">Cancel</button>");

@@ -2,14 +2,14 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   Apr 2013 @ Rayshobby.net
+   Dec 2013 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  202 // firmware version (e.g. 2.1.0 etc)
+#define SVC_FW_VERSION  203 // firmware version (203 means 2.0.3 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
@@ -26,8 +26,8 @@
 #define ADDR_EEPROM_CONSTATUS   0x0030  // address where controller status data are stored, 16 bytes reserved
 #define ADDR_EEPROM_PASSWORD    0x0040	// address where password is stored, 32 bytes reserved
 #define ADDR_EEPROM_LOCATION    0x0060  // address where location is stored, 32 bytes reserved
-//#define ADDR_EEPROM_SCRIPTPATH	0x0080	// address where javascript path is stored, 128 bytes reserved
-#define ADDR_EEPROM_STN_NAMES   0x0080  // address where station names are stored
+#define ADDR_EEPROM_SCRIPTURL   0x0080	// address where javascript url is stored, 128 bytes reserved
+#define ADDR_EEPROM_STN_NAMES   0x0100  // address where station names are stored
 
 #define ADDR_EEPROM_RUNONCE     (ADDR_EEPROM_STN_NAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
                                         // address where run-once data is stored
@@ -40,6 +40,8 @@
 #define DEFAULT_LOCATION        "Boston,MA" // zip code, city name or any google supported location strings
                                             // IMPORTANT: use , or + in place of 'space'
                                             // So instead of 'New York', use 'New,York' or 'New+York'
+
+#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.3"
 
 #define FN_PROGRAMDATA					"programs.dat"	// programs file name
 
@@ -120,7 +122,8 @@ typedef enum {
   #define PIN_ETHER_CS       4    // Ethernet controller chip select pin
   #define PIN_SD_CS          0    // SD card chip select pin
   #define PIN_RAINSENSOR    11    // rain sensor is connected to pin D3
-
+  #define PIN_RELAY         14    // mini relay is connected to pin D14
+  
 #endif 
 
 // ====== Button Defines ======

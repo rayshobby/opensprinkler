@@ -4,7 +4,7 @@
 	uint8_t _MOSI	= 51;
 	uint8_t _MISO	= 50;
 	uint8_t _SCK	= 52;
-#elif defined(__AVR_ATmega644__)
+#elif defined(__AVR_ATmega644__) || defined(__AVR_ATmega644P__)
 	uint8_t _SS		= 0;
 	uint8_t _SS_HW	= SS;
 	uint8_t _MOSI	= MOSI;
