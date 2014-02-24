@@ -20,6 +20,7 @@ prog_uchar htmlOkHeader[] PROGMEM =
     "HTTP/1.0 200 OK\r\n"
     "Content-Type: text/html\r\n"
     "Pragma: no-cache\r\n"
+    "Access-Control-Allow-Origin: *\r\n"
     "\r\n"
 ;
 
@@ -27,6 +28,7 @@ prog_uchar htmlJSONHeader[] PROGMEM =
     "HTTP/1.0 200 OK\r\n"
     "Content-Type: application/json\r\n"
     "Connnection: close\r\n"
+    "Access-Control-Allow-Origin: *\r\n"
     "\r\n"
 ;
 
@@ -64,13 +66,17 @@ boolean print_webpage_json_stations(char *p)
   byte sid;
   for(sid=0;sid<svc.nstations;sid++) {
     svc.get_station_name(sid, tmp_buffer);
-    bfill.emit_p(PSTR("\"$S\","), tmp_buffer);
+    bfill.emit_p(PSTR("\"$S\""), tmp_buffer);
+    if(sid!=svc.nstations-1)
+      bfill.emit_p(PSTR(","));
   }
-  bfill.emit_p(PSTR("\"dummy\"],\"masop\":["));
+  bfill.emit_p(PSTR("],\"masop\":["));
   for(byte i=0;i<svc.nboards;i++) {
-    bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
+    bfill.emit_p(PSTR("$D"), svc.masop_bits[i]);
+    if(i!=svc.nboards-1)
+      bfill.emit_p(PSTR(","));
   }  
-  bfill.emit_p(PSTR("0],\"maxlen\":$D}"), STATION_NAME_SIZE);
+  bfill.emit_p(PSTR("],\"maxlen\":$D}"), STATION_NAME_SIZE);
    
   return true;
 }
@@ -190,18 +196,21 @@ boolean print_webpage_json_programs(char *p) {
     // convert interval remainder (absolute->relative)
     if (prog.days[1] > 1)  pd.drem_to_relative(prog.days);
     
-    bfill.emit_p(PSTR("[$D,$D,$D,$D,$D,$D,$D"), pid, prog.enabled, 
+    bfill.emit_p(PSTR("[$D,$D,$D,$D,$D,$D,$D"), prog.enabled, 
       prog.days[0], prog.days[1], prog.start_time, prog.end_time, prog.interval, prog.duration);
     for (bid=0; bid<svc.nboards; bid++) {
       bfill.emit_p(PSTR(",$D"),prog.stations[bid]);
     }
-    bfill.emit_p(PSTR("],"));
+    if(pid!=pd.nprograms-1)
+      bfill.emit_p(PSTR("],"));
+    else
+      bfill.emit_p(PSTR("]"));
     if (pid%4==3) { // push out a packet every 4 programs
       ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
       bfill=ether.tcpOffset();
     } 
   }
-  bfill.emit_p(PSTR("[0,0,0,0,0,0,0,0]]}"));   
+  bfill.emit_p(PSTR("]}"));   
   return true; 
 }
 
@@ -246,7 +255,7 @@ boolean print_webpage_change_runonce(char *p) {
     if(strncmp(pv, "t=[", 3)==0) {
       found=true;
       break;
-    }
+    } 
   }
   if(!found)  return false;
   pv+=3;
@@ -524,10 +533,27 @@ boolean print_webpage_json_controller(char *p)
       rem = (curr_time >= pd.scheduled_start_time[sid]) ? (pd.scheduled_stop_time[sid]-curr_time) : (pd.scheduled_stop_time[sid]-pd.scheduled_start_time[sid]);
       if(pd.scheduled_stop_time[sid]==ULONG_MAX-1)  rem=0;
     }
-    bfill.emit_p(PSTR("$D,$L,"), pd.scheduled_program_index[sid], rem);
+    bfill.emit_p(PSTR("[$D,$L],"), pd.scheduled_program_index[sid], rem);
   }
-  bfill.emit_p(PSTR("0,0]}"));
+  bfill.emit_p(PSTR("[0,0]],\"lrun\":[$D,$D,$D,$L]}"),pd.lastrun.station,
+    pd.lastrun.program,pd.lastrun.duration,pd.lastrun.endtime);
   
+    
+  return true;
+}
+
+boolean print_webpage_test(char *p)
+{
+  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
+  bfill.emit_p(PSTR("<script src=\"https://jqueryjs.googlecode.com/files/jquery-1.3.2.min.js\"></script>\r\n"));
+  bfill.emit_p(PSTR("<script src=\"http://192.168.1.103/mchp.js\"></script>\r\n"));
+  bfill.emit_p(PSTR("<script>\r\n"));
+  bfill.emit_p(PSTR("$$(init);"));
+  bfill.emit_p(PSTR("function init(){func(\"{\\\"devt\\\":0}\");}"));
+  bfill.emit_p(PSTR("function func(data){var jd=JSON.parse(data);$$(\"#output\").text(datestr(jd[\"devt\"]*1000));}"));
+  bfill.emit_p(PSTR("setTimeout(\"newAJAXCommand('jc', func, true)\",1000);"));
+  bfill.emit_p(PSTR("</script>"));
+  bfill.emit_p(PSTR("<div id=\"output\">dummy</div>"));
   return true;
 }
 
@@ -586,12 +612,14 @@ boolean print_webpage_json_options(char *p)
   bfill.emit_p(PSTR("{"));
   byte oid;
   for(oid=0;oid<NUM_OPTIONS;oid++) {
-    bfill.emit_p(PSTR("\"$F\":$D,"),
+    bfill.emit_p(PSTR("\"$F\":$D"),
                  svc.options[oid].json_str,
                  (oid==OPTION_MASTER_OFF_ADJ)?(int)svc.options[oid].value-60:(int)svc.options[oid].value
                 );
+    if(oid!=NUM_OPTIONS-1)
+      bfill.emit_p(PSTR(","));
   }
-  bfill.emit_p(PSTR("\"dummy\":0}"));
+  bfill.emit_p(PSTR("}"));
   return true;
 }
 
@@ -778,6 +806,24 @@ boolean print_webpage_change_options(char *p)
   return true;
 }
 
+boolean print_webpage_json_status(char *p)
+{
+  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
+  bfill.emit_p(PSTR("{\"sn\":["));
+  byte sid;
+
+  for (sid=0;sid<svc.nstations;sid++) {
+    if (svc.status.enabled && (!svc.status.rain_delayed) && !(svc.options[OPTION_USE_RAINSENSOR].value && svc.status.rain_sensed)) {
+      bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
+    } else bfill.emit_p(PSTR("$D"), 0);
+    if(sid!=svc.nstations-1) bfill.emit_p(PSTR(","));
+  }
+  bfill.emit_p(PSTR("],\"nstations\":$D}"), svc.nstations);
+   
+  return true;
+}
+
+
 /*=================================================
   Get/Set Station Bits:
   
@@ -925,8 +971,10 @@ prog_char _url_jo [] PROGMEM = "jo";
 prog_char _url_jn [] PROGMEM = "jn";
 prog_char _url_jp [] PROGMEM = "jp";
 prog_char _url_jc [] PROGMEM = "jc";
+prog_char _url_js [] PROGMEM = "js";
 prog_char _url_su [] PROGMEM = "su";
 prog_char _url_cu [] PROGMEM = "cu";
+prog_char _url_ts [] PROGMEM = "ts";
 
 // Server function handlers
 URLStruct urls[] = {
@@ -948,8 +996,10 @@ URLStruct urls[] = {
   {_url_jn,print_webpage_json_stations},
   {_url_jp,print_webpage_json_programs},
   {_url_jc,print_webpage_json_controller},
+  {_url_js,print_webpage_json_status},  
   {_url_su,print_webpage_view_scripturl},
   {_url_cu,print_webpage_change_scripturl},
+  {_url_ts,print_webpage_test},
 };
 
 // analyze the current url
@@ -1007,11 +1057,11 @@ byte streamfile (char* name , byte lastflag) { //send a file to the buffer
       Ethernet::buffer[cur+53]=file.buffer[i];
     }
     if (cur>=512) {
-      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V);
+      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 3);
       cur=0;
     } else {
       if(lastflag==TCP_FLAGS_FIN_V) {
-        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V);
+        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V, 3);
       }
     }
   }

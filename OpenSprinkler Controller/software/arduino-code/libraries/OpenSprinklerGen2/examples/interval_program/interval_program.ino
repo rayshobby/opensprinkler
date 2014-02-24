@@ -21,12 +21,14 @@
 #define RTC_SYNC_INTERVAL       60     // 60 seconds default
 // Interval for checking network connection (in seconds)
 #define CHECK_NETWORK_INTERVAL  60     // 1 minute default
+// LCD backlight autodimming timeout
+#define LCD_DIMMING_TIMEOUT   30     // 30 seconds default
 // Ping test time out (in milliseconds)
 #define PING_TIMEOUT            200     // 0.2 second default
 
 
 // ====== Ethernet defines ======
-byte mymac[] = { 0x00,0x69,0x69,0x2D,0x30,0x00 }; // mac address
+byte mymac[] = { 0x00,0x69,0x69,0x2D,0x31,0x00 }; // mac address
 uint8_t ntpclientportL = 123; // Default NTP client port
 int myport;
 
@@ -50,6 +52,10 @@ void button_poll() {
 
   if (!(button & BUTTON_FLAG_DOWN)) return;  // repond only to button down events
 
+  svc.button_lasttime = now();
+  // button is pressed, turn on LCD right away
+  analogWrite(PIN_LCD_BACKLIGHT, 255-svc.options[OPTION_LCD_BACKLIGHT].value); 
+  
   switch (button & BUTTON_MASK) {
   case BUTTON_1:
     if (button & BUTTON_FLAG_HOLD) {
@@ -133,6 +139,7 @@ void setup() {
   svc.apply_all_station_bits(); // reset station bits
   
   //wdt_enable(WDTO_4S);  // enabled watchdog timer
+  svc.button_lasttime = now();
 }
 
 // =================
@@ -178,6 +185,12 @@ void loop()
       if (svc.raindelay_stop_time > curr_time) {
         svc.raindelay_start();
       }
+    }
+    
+    // ====== Check LCD backlight timeout ======
+    if (svc.button_lasttime != 0 && svc.button_lasttime + LCD_DIMMING_TIMEOUT < curr_time) {
+      analogWrite(PIN_LCD_BACKLIGHT, 255-svc.options[OPTION_LCD_DIMMING].value); 
+      svc.button_lasttime = 0;
     }
     
     // ====== Check rain sensor status ======

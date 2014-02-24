@@ -2,6 +2,9 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* Feb 24, 2014
+- Check in firmware 2.0.4. This firmware is for hardware v2.0 and v2.1 only.
+
 * Jan 5, 2014
 - Check in firmware 2.0.3. This firmware is for hardware v2.0 and v2.1 only.
 

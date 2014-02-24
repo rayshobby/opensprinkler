@@ -74,6 +74,7 @@ public:
                               // first byte-> master controller, second byte-> ext. board 1, and so on
   static byte masop_bits[];   // station master operation bits. each byte corresponds to a board (8 stations)
   static unsigned long raindelay_stop_time;   // time (in seconds) when raindelay is stopped
+  static unsigned long button_lasttime;
 
   // ====== Member Functions ======
   // -- Setup --

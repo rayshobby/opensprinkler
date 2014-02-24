@@ -9,7 +9,7 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  203 // firmware version (203 means 2.0.3 etc)
+#define SVC_FW_VERSION  204 // firmware version (204 means 2.0.4 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
@@ -41,7 +41,7 @@
                                             // IMPORTANT: use , or + in place of 'space'
                                             // So instead of 'New York', use 'New,York' or 'New+York'
 
-#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.3"
+#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.4"
 
 #define FN_PROGRAMDATA					"programs.dat"	// programs file name
 
@@ -77,6 +77,7 @@ typedef enum {
   OPTION_DEVICE_ID,
   OPTION_LCD_CONTRAST,
   OPTION_LCD_BACKLIGHT,
+  OPTION_LCD_DIMMING,
   OPTION_NTP_IP1,
   OPTION_NTP_IP2,
   OPTION_NTP_IP3,

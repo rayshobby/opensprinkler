@@ -15,6 +15,7 @@ byte OpenSprinkler::nstations;
 byte OpenSprinkler::station_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::masop_bits[MAX_EXT_BOARDS+1];
 unsigned long OpenSprinkler::raindelay_stop_time;
+unsigned long OpenSprinkler::button_lasttime;
 extern char tmp_buffer[];
 
 // Option json names
@@ -47,6 +48,7 @@ prog_char _json_ipas[] PROGMEM = "ipas";
 prog_char _json_devid[]PROGMEM = "devid";
 prog_char _json_con [] PROGMEM = "con";
 prog_char _json_lit [] PROGMEM = "lit";
+prog_char _json_dim [] PROGMEM = "dim";
 prog_char _json_ntp1[] PROGMEM = "ntp1";
 prog_char _json_ntp2[] PROGMEM = "ntp2";
 prog_char _json_ntp3[] PROGMEM = "ntp3";
@@ -83,6 +85,7 @@ prog_char _str_ipas[] PROGMEM = "Ignore password?";
 prog_char _str_devid[]PROGMEM = "Device ID:";
 prog_char _str_con [] PROGMEM = "LCD Contrast:";
 prog_char _str_lit [] PROGMEM = "LCD Backlight:";
+prog_char _str_dim [] PROGMEM = "LCD Dimming:";
 prog_char _str_ntp1[] PROGMEM = "NTP server.ip1:";
 prog_char _str_ntp2[] PROGMEM = "NTP server.ip2:";
 prog_char _str_ntp3[] PROGMEM = "NTP server.ip3:";
@@ -118,8 +121,9 @@ OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {10,  240, _str_stt,  _json_stt, OPFLAG_SETUP_EDIT},                   // self-test time (in seconds)
   {0,   1,   _str_ipas, _json_ipas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // 1: ignore password; 0: use password
   {0,   255, _str_devid,_json_devid,OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},                   // device id
-  {130, 255, _str_con,  _json_con, OPFLAG_SETUP_EDIT},                   // lcd contrast
-  {120, 255, _str_lit,  _json_lit, OPFLAG_SETUP_EDIT},                   // lcd backlight
+  {110, 255, _str_con,  _json_con, OPFLAG_SETUP_EDIT},                   // lcd contrast
+  {100, 255, _str_lit,  _json_lit, OPFLAG_SETUP_EDIT},                   // lcd backlight
+  {5,   255, _str_dim,  _json_dim, OPFLAG_SETUP_EDIT},                   // lcd dimming
   {204, 255, _str_ntp1, _json_ntp1, OPFLAG_SETUP_EDIT}, // this and the next three bytes define the ntp server ip
   {9,   255, _str_ntp2, _json_ntp2, OPFLAG_SETUP_EDIT}, 
   {54,  255, _str_ntp3, _json_ntp3, OPFLAG_SETUP_EDIT},
@@ -246,6 +250,7 @@ void OpenSprinkler::begin() {
   nboards = 1;
   nstations = 8;
   raindelay_stop_time = 0;
+  button_lasttime = 0;
   
   // define lcd custom characters
   byte lcd_wifi_char[8] = {
