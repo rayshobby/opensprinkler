@@ -17,23 +17,9 @@ The device has a white injection-molded enclosure, with GREEN colored 24V AC ter
 
 Unplug 24V AC power. Plug in a USB cable.
 
-4
+5
 
-2.0.3
-2.0.2
-2.0.1
-2.0.0
-
-avrdude -c usbtiny -p m644 -F -U flash:w:
-
-OpenSprinkler_v2.0 Pre-release
-
-The device has a clear/transparent top cover. The version number is printed on the PCB.
-
-Unplug 24V AC power. Plug in a USB cable.
-
-4
-
+2.0.4
 2.0.3
 2.0.2
 2.0.1

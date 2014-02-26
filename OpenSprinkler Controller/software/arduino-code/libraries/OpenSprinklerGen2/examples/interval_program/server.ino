@@ -180,7 +180,7 @@ void bfill_programdata()
 // print page to set javascript url
 boolean print_webpage_view_scripturl(char *p) {
   bfill.emit_p(PSTR("$F"), htmlOkHeader);
-  bfill.emit_p(PSTR("<hr /><form name=of action=cu method=get><p><b>Javascript URL:</b> <input type=text size=32 maxlength=127 value=\"$E\" name=jsp></p><p>Set URL where Javascripts are stored. Default is http://rayshobby.net/scripts/java/svc2.0.3<br />If local on uSD card, use . (i.e. dot)</p><p><b>Password:</b><input type=password size=10 name=pw><input type=submit></p><hr /></form>"), ADDR_EEPROM_SCRIPTURL);  
+  bfill.emit_p(PSTR("<hr /><form name=of action=cu method=get><p><b>Javascript URL:</b> <input type=text size=32 maxlength=127 value=\"$E\" name=jsp></p><p>Set URL where Javascripts are stored. Default is $S<br />If local on uSD card, use . (i.e. dot)</p><p><b>Password:</b><input type=password size=10 name=pw><input type=submit></p><hr /></form>"), ADDR_EEPROM_SCRIPTURL, DEFAULT_JAVASCRIPT_URL);  
   return true;
 }
 
@@ -1057,11 +1057,11 @@ byte streamfile (char* name , byte lastflag) { //send a file to the buffer
       Ethernet::buffer[cur+53]=file.buffer[i];
     }
     if (cur>=512) {
-      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 3);
+      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 4);
       cur=0;
     } else {
       if(lastflag==TCP_FLAGS_FIN_V) {
-        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V, 3);
+        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V, 4);
       }
     }
   }

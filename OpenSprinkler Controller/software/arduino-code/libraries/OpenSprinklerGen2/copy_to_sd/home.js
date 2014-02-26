@@ -3,6 +3,8 @@
 // All content published under:
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2013, Rayshobby.net
+// Redirect to mobile app if mobile device detected. This is a very rudimentery scan and needs to be expanded upon later
+//if (navigator.userAgent.match(/Android|iPhone|iPad|iPod/i)) window.location.href="index.htm"
 function w(s) {document.writeln(s);}
 function link(s) {window.location=s;}
 function linkn(s){window.open(s, '_blank');}
