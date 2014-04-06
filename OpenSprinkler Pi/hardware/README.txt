@@ -7,6 +7,13 @@ http://goo.gl/4Nrvb
 
 Release Notes
 =============
+New in v1.3
+* Added per-station bidirectional TVS (SMBJ48CA)
+* Added 2A solder-on fuse
+* Added on-board mini-relay (120V / 2A)
+* Added rain sensor terminal
+* 24V AC terminal block changed to orange 3.96 spacing type
+
 New in v1.2
 * Added PCF8591T 8-bit 4-channel ADC (analog-digital converter)
 * Added pin headers for ADC and also i2C pins.
