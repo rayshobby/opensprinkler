@@ -2,6 +2,9 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* May 7, 2014
+- Check in firmware 2.0.5. This firmware adds per-station 'ignore rain' bit, which allows a station (including Master) to ignore rain delay / rain sensing. Note that this does not affect manual mode or run-once program -- in other words, when the controller is in manual mode or executing a run-once program, stations will run regardless of rain delay or ignore rain bit.
+
 * Feb 24, 2014
 - Check in firmware 2.0.4. This firmware is for hardware v2.0 and v2.1 only.
 
