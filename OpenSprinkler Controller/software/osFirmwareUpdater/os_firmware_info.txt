@@ -4,8 +4,9 @@ The device has a white injection-molded enclosure, with ORANGE colored 24V AC te
 
 To enter bootloading mode: turn off the controller; press and hold pushbutton B2 while plugging in a USB cable; then release B2 within 2 seconds after inserting the USB cable. The screen should remain off.
 
-2
+3
 
+2.0.5
 2.0.4
 2.0.3
 
@@ -17,8 +18,9 @@ The device has a white injection-molded enclosure, with GREEN colored 24V AC ter
 
 Unplug 24V AC power. Plug in a USB cable.
 
-5
+6
 
+2.0.5
 2.0.4
 2.0.3
 2.0.2

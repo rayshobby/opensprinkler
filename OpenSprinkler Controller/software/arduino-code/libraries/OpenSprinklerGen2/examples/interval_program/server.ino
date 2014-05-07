@@ -75,7 +75,14 @@ boolean print_webpage_json_stations(char *p)
     bfill.emit_p(PSTR("$D"), svc.masop_bits[i]);
     if(i!=svc.nboards-1)
       bfill.emit_p(PSTR(","));
+  }
+  bfill.emit_p(PSTR("],\"ignore_rain\":["));
+  for(byte i=0;i<svc.nboards;i++) {
+    bfill.emit_p(PSTR("$D"), svc.ignrain_bits[i]);
+    if(i!=svc.nboards-1)
+      bfill.emit_p(PSTR(","));
   }  
+  
   bfill.emit_p(PSTR("],\"maxlen\":$D}"), STATION_NAME_SIZE);
    
   return true;
@@ -99,6 +106,10 @@ boolean print_webpage_view_stations(char *p)
   for(byte i=0;i<svc.nboards;i++) {
     bfill.emit_p(PSTR("$D,"), svc.masop_bits[i]);
   }
+  bfill.emit_p(PSTR("0];var ir=["));
+  for(byte i=0;i<svc.nboards;i++) {
+    bfill.emit_p(PSTR("$D,"), svc.ignrain_bits[i]);
+  }  
   bfill.emit_p(PSTR("0];</script>\n<script src=\"$E/viewsn.js\"></script>\n"), ADDR_EEPROM_SCRIPTURL);
   //ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
   
@@ -145,6 +156,16 @@ boolean print_webpage_change_stations(char *p)
     }
   }
   svc.masop_save();
+    
+  // process ignore rain bits
+  tbuf2[0]='i';
+  for(bid=0;bid<svc.nboards;bid++) {
+    itoa(bid, tbuf2+1, 10);
+    if(ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, tbuf2)) {
+      svc.ignrain_bits[bid] = atoi(tmp_buffer);
+    }
+  }  
+  svc.ignrain_save();
   
   bfill.emit_p(PSTR("$F<script>alert(\"Changes saved.\");$F"), htmlOkHeader, htmlReturnHome);
   return true;
@@ -813,9 +834,7 @@ boolean print_webpage_json_status(char *p)
   byte sid;
 
   for (sid=0;sid<svc.nstations;sid++) {
-    if (svc.status.enabled && (!svc.status.rain_delayed) && !(svc.options[OPTION_USE_RAINSENSOR].value && svc.status.rain_sensed)) {
-      bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
-    } else bfill.emit_p(PSTR("$D"), 0);
+    bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
     if(sid!=svc.nstations-1) bfill.emit_p(PSTR(","));
   }
   bfill.emit_p(PSTR("],\"nstations\":$D}"), svc.nstations);
@@ -889,9 +908,7 @@ boolean print_webpage_station_bits(char *p) {
       sidmax=sid;
     }
     for (sid=sidmin;sid<sidmax;sid++) {
-      if (svc.status.enabled && (!svc.status.rain_delayed) && !(svc.options[OPTION_USE_RAINSENSOR].value && svc.status.rain_sensed)) {
-        bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
-      } else bfill.emit_p(PSTR("$D"), 0);
+      bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
     }
     return true;      
   }
@@ -924,7 +941,7 @@ unsigned long ntp_wait_response()
       }
       return time + (int32_t)3600/4*(int32_t)(svc.options[OPTION_TIMEZONE].value-48);
     }
-  } while(millis() - start < 3000); // wait at most 3 seconds for ntp result
+  } while(millis() - start < 1000); // wait at most 1 seconds for ntp result
   return 0;
 }
 unsigned long getNtpTime()
@@ -939,6 +956,7 @@ unsigned long getNtpTime()
   do
   {
     ether.ntpRequest(ntpip, ++ntpclientportL);
+    delay(250);
     ans = ntp_wait_response();
     tick ++;
   } 

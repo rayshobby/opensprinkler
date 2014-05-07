@@ -14,6 +14,7 @@ byte OpenSprinkler::nboards;
 byte OpenSprinkler::nstations;
 byte OpenSprinkler::station_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::masop_bits[MAX_EXT_BOARDS+1];
+byte OpenSprinkler::ignrain_bits[MAX_EXT_BOARDS+1];
 unsigned long OpenSprinkler::raindelay_stop_time;
 unsigned long OpenSprinkler::button_lasttime;
 extern char tmp_buffer[];
@@ -273,13 +274,24 @@ void OpenSprinkler::begin() {
     B10011,
     B11110
   };
+  byte lcd_rain_char[8] = {
+    B00000,
+    B00000,
+    B00110,
+    B01001,
+    B11111,
+    B00000,
+    B10101,
+    B10101
+  };  
   lcd.createChar(1, lcd_wifi_char);  
   lcd_wifi_char[1]=0;
   lcd_wifi_char[2]=0;
   lcd_wifi_char[3]=1;    
   lcd.createChar(0, lcd_wifi_char);  
   lcd.createChar(2, lcd_sd_char);
-
+  lcd.createChar(3, lcd_rain_char);
+  
   // set rf data pin
   pinMode(PIN_RF_DATA, OUTPUT);
   digitalWrite(PIN_RF_DATA, LOW);
@@ -342,6 +354,22 @@ void OpenSprinkler::set_station_name(byte sid, char tmp[]) {
   return;  
 }
 
+// Save ignore rain bits to eeprom
+void OpenSprinkler::ignrain_save() {
+  byte i;
+  for(i=0;i<=MAX_EXT_BOARDS;i++) {
+    eeprom_write_byte((unsigned char *)ADDR_EEPROM_IGNRAIN+i, ignrain_bits[i]);
+  }
+}
+
+// Load ignore rain bits from eeprom
+void OpenSprinkler::ignrain_load() {
+  byte i;
+  for(i=0;i<=MAX_EXT_BOARDS;i++) {
+    ignrain_bits[i] = eeprom_read_byte((unsigned char *)ADDR_EEPROM_IGNRAIN+i);
+  }
+}
+
 // Save station master operation bits to eeprom
 void OpenSprinkler::masop_save() {
   byte i;
@@ -394,19 +422,19 @@ void OpenSprinkler::clear_all_station_bits() {
 // !!! This will activate/deactivate valves !!!
 void OpenSprinkler::apply_all_station_bits() {
   digitalWrite(PIN_SR_LATCH, LOW);
+  byte bid, s, sbits;
 
-  byte bid, s;
-  byte bitvalue;
 
   // Shift out all station bit values
   // from the highest bit to the lowest
   for(bid=0;bid<=MAX_EXT_BOARDS;bid++) {
-    bitvalue = 0;
-    if (status.enabled && (!status.rain_delayed) && !(options[OPTION_USE_RAINSENSOR].value && status.rain_sensed))
-      bitvalue = station_bits[MAX_EXT_BOARDS-bid];
+    if (status.enabled)
+      sbits = station_bits[MAX_EXT_BOARDS-bid];
+    else
+      sbits = 0;
     for(s=0;s<8;s++) {
       digitalWrite(PIN_SR_CLOCK, LOW);
-      digitalWrite(PIN_SR_DATA, (bitvalue & ((byte)1<<(7-s))) ? HIGH : LOW );
+      digitalWrite(PIN_SR_DATA, (sbits & ((byte)1<<(7-s))) ? HIGH : LOW );
       digitalWrite(PIN_SR_CLOCK, HIGH);          
     }
   }
@@ -432,7 +460,7 @@ void OpenSprinkler::options_setup() {
     constatus_save(); // write default controller status values
     eeprom_string_set(ADDR_EEPROM_PASSWORD, DEFAULT_PASSWORD);  // write default password
     eeprom_string_set(ADDR_EEPROM_LOCATION, DEFAULT_LOCATION);  // write default location
-    eeprom_string_set(ADDR_EEPROM_SCRIPTURL, DEFAULT_JAVASCRIPT_URL); // write default javascript url
+    eeprom_string_set(ADDR_EEPROM_SCRIPTURL, DEFAULT_JAVASCRIPT_URL); // write default external url
     
     lcd_print_line_clear_pgm(PSTR("Resetting EEPROM"), 0);
     lcd_print_line_clear_pgm(PSTR("Please Wait..."), 1);  
@@ -464,6 +492,7 @@ void OpenSprinkler::options_setup() {
   else {
     options_load(); // load option values
     masop_load();   // load master operation bits
+    ignrain_load(); // load ignore rain bits
     constatus_load(); // load controller status
   }
 
@@ -659,11 +688,7 @@ void OpenSprinkler::lcd_print_station(byte line, char c) {
   
   if (!status.enabled) {
   	lcd_print_line_clear_pgm(PSTR("-Disabled!-"), 1);
-  }
-  else if (status.rain_delayed || (status.rain_sensed && options[OPTION_USE_RAINSENSOR].value)) {
-    lcd_print_line_clear_pgm(PSTR("-Rain Stop-"), 1);
-  }
-  else {
+  } else {
 	  byte bitvalue = station_bits[status.display_board];
 	  for (byte s=0; s<8; s++) {
 	    if (status.display_board == 0 &&(s+1) == options[OPTION_MASTER_STATION].value) {
@@ -675,10 +700,16 @@ void OpenSprinkler::lcd_print_station(byte line, char c) {
 	  }
 	}
 	lcd_print_pgm(PSTR("    "));
+	lcd.setCursor(13, 1);
+  if(status.rain_delayed || (status.rain_sensed && options[OPTION_USE_RAINSENSOR].value))
+  {
+    lcd.write(3);
+  }
   lcd.setCursor(14, 1);
-  lcd.write(status.network_fails>2?1:0);  // if network failure detection is more than 2, display disconnect icon
-	lcd.setCursor(15, 1);
   if (status.has_sd)  lcd.write(2);
+
+	lcd.setCursor(15, 1);
+  lcd.write(status.network_fails>2?1:0);  // if network failure detection is more than 2, display disconnect icon
 
 }
 

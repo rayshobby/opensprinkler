@@ -73,6 +73,7 @@ public:
   static byte station_bits[]; // station activation bits. each byte corresponds to a board (8 stations)
                               // first byte-> master controller, second byte-> ext. board 1, and so on
   static byte masop_bits[];   // station master operation bits. each byte corresponds to a board (8 stations)
+  static byte ignrain_bits[]; // ignore rain bits. each byte corresponds to a board (8 stations)
   static unsigned long raindelay_stop_time;   // time (in seconds) when raindelay is stopped
   static unsigned long button_lasttime;
 
@@ -86,6 +87,8 @@ public:
   static void set_station_name(byte sid, char buf[]); // set station name
   static void masop_load();  // load station master operation bits
   static void masop_save();  // save station master operation bits
+  static void ignrain_load();  // load ignore rain bits
+  static void ignrain_save();  // save ignore rain bits  
   // -- Controller status
   static void constatus_load();
   static void constatus_save();

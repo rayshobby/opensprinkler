@@ -301,6 +301,9 @@ void loop()
         }//end_s
       }//end_bid
       
+      // process dynamic events
+      process_dynamic_events();
+      
       // activate/deactivate valves
       svc.apply_all_station_bits();
 
@@ -342,6 +345,10 @@ void loop()
       svc.set_station_bit(mas-1, masbit);
     }    
     
+    // process dynamic events
+    process_dynamic_events();
+      
+          
     // activate/deactivate valves
     svc.apply_all_station_bits();
     
@@ -424,30 +431,84 @@ void check_network(time_t curr_time) {
   } 
 }
 
+void process_dynamic_events()
+{
+  // check if rain is detected
+  byte mas = svc.options[OPTION_MASTER_STATION].value;  
+  bool rain = false;
+  bool en = svc.status.enabled ? true : false;
+  bool mm = svc.status.manual_mode ? true : false;
+  if (svc.status.rain_delayed || (svc.options[OPTION_USE_RAINSENSOR].value && svc.status.rain_sensed)) {
+    rain = true;
+  }
+  unsigned long curr_time = now();
+
+  byte sid, s, bid, rbits, sbits;
+  for(bid=0;bid<svc.nboards;bid++) {
+    rbits = svc.ignrain_bits[bid];
+    sbits = svc.station_bits[bid];
+    for(s=0;s<8;s++) {
+      sid=bid*8+s;
+      // if the controller is in program mode (not manual mode)
+      // and this is a normal program (not a run-once program)
+      // and either the controller is disabled, or
+      // if raining and ignore rain bit is cleared
+      if (!mm && (pd.scheduled_program_index[sid] != 254) &&
+          (!en || (rain && !(rbits&(1<<s)))) ) {
+        if (sbits&(1<<s)) { // if station is currently running
+          // stop the station immediately
+          svc.set_station_bit(sid, 0);
+
+          // record lastrun log (only for non-master stations)
+          if(mas != sid+1)
+          {
+            pd.lastrun.station = sid;
+            pd.lastrun.program = pd.scheduled_program_index[sid];
+            pd.lastrun.duration = curr_time - pd.scheduled_start_time[sid];
+            pd.lastrun.endtime = curr_time;
+          }      
+          
+          // reset program data variables
+          //pd.remaining_time[sid] = 0;
+          pd.scheduled_start_time[sid] = 0;
+          pd.scheduled_stop_time[sid] = 0;
+          pd.scheduled_program_index[sid] = 0;               
+        } else if (pd.scheduled_program_index[sid] > 0) { // if station is currently not running but is waiting to run
+          // reset program data variables
+          pd.scheduled_start_time[sid] = 0;
+          pd.scheduled_stop_time[sid] = 0;
+          pd.scheduled_program_index[sid] = 0;             
+        }
+      }
+    }
+  }      
+}
+
 void schedule_all_stations(unsigned long curr_time, byte seq)
 {
   unsigned long accumulate_time = curr_time + 1;
   byte sid;
+    
   // calculate start time of each station
 	if (seq) {
 		// in sequential mode
 	  // stations run one after another
   	// separated by station delay time
 
-		for(sid=0;sid<svc.nstations;sid++) {
-		  if(pd.scheduled_stop_time[sid]) {
-		    pd.scheduled_start_time[sid] = accumulate_time;
-		    accumulate_time += pd.scheduled_stop_time[sid];
-		    pd.scheduled_stop_time[sid] = accumulate_time;
-		    accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
-		    svc.status.program_busy = 1;  // set program busy bit
+    for(sid=0;sid<svc.nstations;sid++) {
+      if(pd.scheduled_stop_time[sid]) {
+        pd.scheduled_start_time[sid] = accumulate_time;
+        accumulate_time += pd.scheduled_stop_time[sid];
+        pd.scheduled_stop_time[sid] = accumulate_time;
+        accumulate_time += svc.options[OPTION_STATION_DELAY_TIME].value; // add station delay time
+        svc.status.program_busy = 1;  // set program busy bit
 		  }
 		}
 	} else {
 		// in concurrent mode, stations are allowed to run in parallel
     for(sid=0;sid<svc.nstations;sid++) {
-			byte bid=sid/8;
-			byte s=sid%8;
+      byte bid=sid/8;
+      byte s=sid%8;
       if(pd.scheduled_stop_time[sid] && !(svc.station_bits[bid]&(1<<s))) {
         pd.scheduled_start_time[sid] = accumulate_time;
         pd.scheduled_stop_time[sid] = accumulate_time + pd.scheduled_stop_time[sid];

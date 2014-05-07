@@ -9,7 +9,7 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  204 // firmware version (204 means 2.0.4 etc)
+#define SVC_FW_VERSION  205 // firmware version (205 means 2.0.5 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
@@ -33,7 +33,8 @@
                                         // address where run-once data is stored
 #define ADDR_EEPROM_MAS_OP      (ADDR_EEPROM_RUNONCE+(MAX_EXT_BOARDS+1)*8*2)
                                         // address where master operation bits are stored
-#define ADDR_EEPROM_USER        (ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1))
+#define ADDR_EEPROM_IGNRAIN     (ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1))
+#define ADDR_EEPROM_USER        (ADDR_EEPROM_IGNRAIN+(MAX_EXT_BOARDS+1))
                                         // address where program schedule data is stored
 
 #define DEFAULT_PASSWORD        "opendoor"
@@ -41,9 +42,7 @@
                                             // IMPORTANT: use , or + in place of 'space'
                                             // So instead of 'New York', use 'New,York' or 'New+York'
 
-#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.4"
-
-#define FN_PROGRAMDATA					"programs.dat"	// programs file name
+#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.5"
 
 // macro define of each option
 // See OpenSprinkler.cpp for details on each option
@@ -102,7 +101,7 @@ typedef enum {
 #error "==This error is intentional==: you must define SVC_HW_VERSION in arduino-xxxx/libraries/OpenSprinklerGen2/defines.h"
 #endif
 
-#if SVC_HW_VERSION == 20
+#if SVC_HW_VERSION == 20 || SVC_HW_VERSION == 21
 
   #define PIN_BUTTON_1      31    // button 1
   #define PIN_BUTTON_2      30    // button 2
