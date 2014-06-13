@@ -284,6 +284,16 @@ void OpenSprinkler::begin() {
     B10101,
     B10101
   };  
+  byte lcd_connect_char[8] = {
+    B00000,
+    B00000,
+    B00111,
+    B00011,
+    B00101,
+    B01000,
+    B10000,
+    B00000
+  };
   lcd.createChar(1, lcd_wifi_char);  
   lcd_wifi_char[1]=0;
   lcd_wifi_char[2]=0;
@@ -291,6 +301,7 @@ void OpenSprinkler::begin() {
   lcd.createChar(0, lcd_wifi_char);  
   lcd.createChar(2, lcd_sd_char);
   lcd.createChar(3, lcd_rain_char);
+  lcd.createChar(4, lcd_connect_char);
   
   // set rf data pin
   pinMode(PIN_RF_DATA, OUTPUT);

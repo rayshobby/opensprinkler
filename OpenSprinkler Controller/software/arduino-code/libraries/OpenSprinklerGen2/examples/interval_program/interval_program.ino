@@ -20,7 +20,7 @@
 // RC sync interval (in seconds)
 #define RTC_SYNC_INTERVAL       60     // 60 seconds default
 // Interval for checking network connection (in seconds)
-#define CHECK_NETWORK_INTERVAL  60     // 1 minute default
+#define CHECK_NETWORK_INTERVAL  15     // 1 minute default
 // LCD backlight autodimming timeout
 #define LCD_DIMMING_TIMEOUT   30     // 30 seconds default
 // Ping test time out (in milliseconds)
@@ -117,16 +117,10 @@ void setup() {
   // attempt to detect SD card
   svc.lcd_print_line_clear_pgm(PSTR("Detecting uSD..."), 1);
   
-#ifdef USE_TINYFAT
-  byte res=file.initFAT(0);  // initialize wipriceth highest SPI speed
+  byte res=file.initFAT(0);  // initialize wipriceth default SPI speed
   if (res==NO_ERROR) {
     svc.status.has_sd = 1;
   }
-#else
-  if(SD.begin(0)) {
-    svc.status.has_sd = 1;
-  }
-#endif
 
   svc.lcd_print_line_clear_pgm(PSTR("Connecting..."), 1);
     
@@ -265,6 +259,7 @@ void loop()
                 pd.lastrun.program = pd.scheduled_program_index[sid];
                 pd.lastrun.duration = curr_time - pd.scheduled_start_time[sid];
                 pd.lastrun.endtime = curr_time;
+                write_log();
               }      
               
               // reset program data variables
@@ -404,7 +399,15 @@ void check_network(time_t curr_time) {
 
   if (last_check_time == 0) {last_check_time = curr_time; return;}
   // check network condition periodically
-  if (curr_time - last_check_time > CHECK_NETWORK_INTERVAL) {
+  // check interval depends on the fail times
+  // the more time it fails, the longer the gap between two checks
+  unsigned long interval = 1 << (svc.status.network_fails);
+  interval *= CHECK_NETWORK_INTERVAL;
+  if (curr_time - last_check_time > interval) {
+    // change LCD icon to indicate it's checking network
+    svc.lcd.setCursor(15, 1);
+    svc.lcd.write(4);
+      
     last_check_time = curr_time;
    
     // ping gateway ip
@@ -420,13 +423,17 @@ void check_network(time_t curr_time) {
         break;
       }
     } while(millis() - start < PING_TIMEOUT);
-    if (failed)  svc.status.network_fails++;
+    if (failed)  {
+      svc.status.network_fails++;
+      // clamp it to 6
+      if (svc.status.network_fails > 6) svc.status.network_fails = 6;
+    }
     else svc.status.network_fails=0;
-    // if failed more than 2 times in a row, reconnect
+    // if failed more than once, reconnect
     if (svc.status.network_fails>2&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
-      //svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
-      svc.start_network(mymac, myport);
-      //svc.status.network_fails=0;
+      svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
+      if (svc.start_network(mymac, myport))
+        svc.status.network_fails=0;
     }
   } 
 }
@@ -466,6 +473,7 @@ void process_dynamic_events()
             pd.lastrun.program = pd.scheduled_program_index[sid];
             pd.lastrun.duration = curr_time - pd.scheduled_start_time[sid];
             pd.lastrun.endtime = curr_time;
+            write_log();
           }      
           
           // reset program data variables
@@ -522,4 +530,58 @@ void reset_all_stations() {
   svc.clear_all_station_bits();
   svc.apply_all_station_bits();
   pd.reset_runtime();
+}
+
+void delete_log(char *name) {
+  if (!svc.status.has_sd) return;
+
+  strcat(name, ".txt");
+  
+  if (!file.exists(name))  return;
+  
+  file.delFile(name);
+  file.closeFile();
+}
+
+// write lastrun record to log on SD card
+void write_log() {
+  if (!svc.status.has_sd)  return;
+
+  // file name will be xxxxx.log where xxxxx is the day in epoch time
+  ultoa(pd.lastrun.endtime / 86400, tmp_buffer, 10);
+  strcat(tmp_buffer, ".txt");
+  
+  //Serial.println(tmp_buffer);
+  if (!file.exists(tmp_buffer)) {
+    // file does not exist yet, create now
+    if (!file.create(tmp_buffer)) return;
+  }
+
+  file.openFile(tmp_buffer, FILEMODE_TEXT_WRITE);
+
+  tmp_buffer[0] = 0;
+  strcat(tmp_buffer, "[");
+  
+  char p[12];
+  
+  itoa(pd.lastrun.program, p, 10);
+  strcat(tmp_buffer, p);
+  strcat(tmp_buffer, ",");
+    
+  itoa(pd.lastrun.station, p, 10);
+  strcat(tmp_buffer, p);
+  strcat(tmp_buffer, ",");
+
+  itoa(pd.lastrun.duration, p, 10);  
+  strcat(tmp_buffer, p);
+  strcat(tmp_buffer, ",");
+
+  ultoa(pd.lastrun.endtime, p, 10);  
+  strcat(tmp_buffer, p);
+  strcat(tmp_buffer, "]");
+
+  file.writeLn(tmp_buffer);
+  //Serial.println(tmp_buffer);
+  
+  file.closeFile();
 }

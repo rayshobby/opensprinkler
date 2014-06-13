@@ -6,9 +6,9 @@ To enter bootloading mode: turn off the controller; press and hold pushbutton B2
 
 3
 
+2.0.6
 2.0.5
 2.0.4
-2.0.3
 
 avrdude -c usbasp -p m644 -F -U flash:w:
 
@@ -18,14 +18,11 @@ The device has a white injection-molded enclosure, with GREEN colored 24V AC ter
 
 Unplug 24V AC power. Plug in a USB cable.
 
-6
+3
 
+2.0.6
 2.0.5
 2.0.4
-2.0.3
-2.0.2
-2.0.1
-2.0.0
 
 avrdude -c usbtiny -p m644 -F -U flash:w:
 

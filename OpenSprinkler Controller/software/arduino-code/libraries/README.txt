@@ -2,6 +2,12 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* June 13, 2014
+- Check in firmware 2.0.6. This firmware adds logging capability (requires a microSD card, 2GB or less, formatted to FAT16). The logging is supported by opensprinkler mobile app.
+  Technically, a log record is written to SD card every time a valve is closed. The record is written to a file named xxxx.txt where xxxx is the epoch time in days.
+  For example, all records generated on June 13, 2014 are written into 16234.txt. You can directly check the log file by http://x.x.x.x/16234.txt.
+- Minor improvement on the auto-reconnect feature to avoid controller getting stuck.
+
 * May 7, 2014
 - Check in firmware 2.0.5. This firmware adds per-station 'ignore rain' bit, which allows a station (including Master) to ignore rain delay / rain sensing. Note that this does not affect manual mode or run-once program -- in other words, when the controller is in manual mode or executing a run-once program, stations will run regardless of rain delay or ignore rain bit.
 

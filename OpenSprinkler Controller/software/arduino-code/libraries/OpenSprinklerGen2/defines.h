@@ -2,18 +2,18 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   Dec 2013 @ Rayshobby.net
+   June 2014 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  205 // firmware version (205 means 2.0.5 etc)
+#define SVC_FW_VERSION  206 // firmware version (206 means 2.0.6 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
-#define MAX_EXT_BOARDS   5 // maximum number of ext. boards (each expands 8 stations)
+#define MAX_EXT_BOARDS   4 // maximum number of ext. boards (each expands 8 stations)
                             // total number of stations: (1+MAX_EXT_BOARDS) * 8
 
 #define MAX_NUM_STATIONS  ((1+MAX_EXT_BOARDS)*8)
@@ -42,7 +42,7 @@
                                             // IMPORTANT: use , or + in place of 'space'
                                             // So instead of 'New York', use 'New,York' or 'New+York'
 
-#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.5"
+#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.6"
 
 // macro define of each option
 // See OpenSprinkler.cpp for details on each option

@@ -563,21 +563,6 @@ boolean print_webpage_json_controller(char *p)
   return true;
 }
 
-boolean print_webpage_test(char *p)
-{
-  bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlMobileHeader);
-  bfill.emit_p(PSTR("<script src=\"https://jqueryjs.googlecode.com/files/jquery-1.3.2.min.js\"></script>\r\n"));
-  bfill.emit_p(PSTR("<script src=\"http://192.168.1.103/mchp.js\"></script>\r\n"));
-  bfill.emit_p(PSTR("<script>\r\n"));
-  bfill.emit_p(PSTR("$$(init);"));
-  bfill.emit_p(PSTR("function init(){func(\"{\\\"devt\\\":0}\");}"));
-  bfill.emit_p(PSTR("function func(data){var jd=JSON.parse(data);$$(\"#output\").text(datestr(jd[\"devt\"]*1000));}"));
-  bfill.emit_p(PSTR("setTimeout(\"newAJAXCommand('jc', func, true)\",1000);"));
-  bfill.emit_p(PSTR("</script>"));
-  bfill.emit_p(PSTR("<div id=\"output\">dummy</div>"));
-  return true;
-}
-
 // print home page
 boolean print_webpage_home(char *p)
 {
@@ -916,6 +901,90 @@ boolean print_webpage_station_bits(char *p) {
   return false;
 }
 
+/*=============================================
+  Print log data in json
+  
+  HTTP GET command format:
+  /jl?start=xxxxx&end=xxxxx
+  
+  start: start day (epoch time / 86400)
+  end:   end day (epoch time / 874000
+  start and end time are inclusive
+  =============================================*/  
+boolean print_webpage_json_log(char *p) {
+
+  // if no sd card, return false
+  if (!svc.status.has_sd)  return false;
+  
+  unsigned int start, end;
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "start"))
+    return false;
+  start = atol(tmp_buffer) / 86400L;
+  
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "end"))
+    return false;
+  end = atol(tmp_buffer) / 86400L;
+  
+  // start must be prior to end, and can't retrieve more than 14 days of data
+  if (start > end || end > start + 14)  return false;
+  
+  bfill.emit_p(PSTR("$F["), htmlJSONHeader);
+ 
+  char *s;
+  int res, count = 0;
+  bool first = true;
+  for(int i=start;i<=end;i++) {
+    itoa(i, tmp_buffer, 10);
+    strcat(tmp_buffer, ".txt");
+    if (!file.exists(tmp_buffer)) continue;
+    
+    file.openFile(tmp_buffer, FILEMODE_TEXT_READ);
+    while(true) {
+      res = file.readLn(tmp_buffer, TMP_BUFFER_SIZE);
+      if (res == EOF) { file.closeFile(); break; }
+      // if this is the first record, do not print comma
+      if (first)  { bfill.emit_p(PSTR("$S"), tmp_buffer); first=false;}
+      else {  bfill.emit_p(PSTR(",$S"), tmp_buffer); }
+      count ++;
+      if (count % 25 == 0) {  // push out a packet every 25 records
+        ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
+        bfill=ether.tcpOffset();
+        count = 0;
+      }
+    }
+  }
+
+  bfill.emit_p(PSTR("]"));   
+  return true; 
+}
+
+/*=============================================
+  Delete Log
+  
+  HTTP GET command format:
+  /dl?pw=xxx&day=xxx
+  
+  pw: password
+  day:day (epoch time / 86400) to delete log for
+  =============================================*/
+boolean print_webpage_delete_log(char *p) {
+
+  p+=3;
+  ether.urlDecode(p);
+  
+  // check password
+  if(check_password(p)==false)  return false;
+  
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "day"))
+    return false;
+    
+  delete_log(tmp_buffer);
+
+  
+  bfill.emit_p(PSTR("$F<script>$F"), htmlOkHeader, htmlReturnHome);
+  return true;
+}
+
 /*boolean print_webpage_favicon()
 {
   bfill.emit_p(PSTR("$F"), htmlFavicon);
@@ -990,9 +1059,11 @@ prog_char _url_jn [] PROGMEM = "jn";
 prog_char _url_jp [] PROGMEM = "jp";
 prog_char _url_jc [] PROGMEM = "jc";
 prog_char _url_js [] PROGMEM = "js";
+prog_char _url_jl [] PROGMEM = "jl";
+prog_char _url_dl [] PROGMEM = "dl";
 prog_char _url_su [] PROGMEM = "su";
 prog_char _url_cu [] PROGMEM = "cu";
-prog_char _url_ts [] PROGMEM = "ts";
+
 
 // Server function handlers
 URLStruct urls[] = {
@@ -1015,9 +1086,10 @@ URLStruct urls[] = {
   {_url_jp,print_webpage_json_programs},
   {_url_jc,print_webpage_json_controller},
   {_url_js,print_webpage_json_status},  
+  {_url_jl,print_webpage_json_log},
+  {_url_dl,print_webpage_delete_log},
   {_url_su,print_webpage_view_scripturl},
   {_url_cu,print_webpage_change_scripturl},
-  {_url_ts,print_webpage_test},
 };
 
 // analyze the current url
@@ -1053,6 +1125,8 @@ void analyze_get_url(char *p)
       //ether.httpServerReplyAck();
       if (streamfile ((char *)tmp_buffer,TCP_FLAGS_FIN_V)==0) {
         // file not found
+        bfill.emit_p(PSTR("$F"), htmlUnauthorized);
+        ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
       }
     } else {
       ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
@@ -1062,7 +1136,6 @@ void analyze_get_url(char *p)
 }
 
 
-#ifdef USE_TINYFAT
 byte streamfile (char* name , byte lastflag) { //send a file to the buffer 
   unsigned long cur=0;
   if (!file.exists(name)) {return 0;}
@@ -1080,30 +1153,12 @@ byte streamfile (char* name , byte lastflag) { //send a file to the buffer
     } else {
       if(lastflag==TCP_FLAGS_FIN_V) {
         ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V, 4);
-      }
+      } /*else {
+        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 4);
+      }*/ 
     }
   }
   file.closeFile();
   return 1;
 }
-#else
-byte streamfile (char* name , byte lastflag) { //send a file to the buffer 
-  unsigned long cur=0;
-  if(!SD.exists(name))  {return 0;}
-  File myfile = SD.open(name);
-  while(myfile.available()) {
-    int nbytes = myfile.read(Ethernet::buffer+54, 512);
-    cur = nbytes;
-    if (cur>=512) {
-      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V);
-      cur=0;
-    } else {
-      if(lastflag==TCP_FLAGS_FIN_V) {
-        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V);
-      }
-    }
-  }
-  myfile.close();
-  return 1;
-}
-#endif
+

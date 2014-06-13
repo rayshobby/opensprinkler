@@ -275,7 +275,8 @@ bool EtherCard::dhcpSetup () {
 	 dhcpState = DHCP_STATE_INIT;
 	 word start = millis();	
 
-	 while (dhcpState != DHCP_STATE_BOUND && (word) (millis() - start) < 60000) {
+   // ray: modified to 30 seconds
+	 while (dhcpState != DHCP_STATE_BOUND && (word) (millis() - start) < 30000) {
 	  if (isLinkUp()) DhcpStateMachine(packetReceive());
     }
     return dhcpState == DHCP_STATE_BOUND ;

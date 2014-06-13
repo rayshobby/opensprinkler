@@ -14,15 +14,10 @@
 #include "WProgram.h"
 #endif
 
-#define USE_TINYFAT
 #include <avr/eeprom.h>
 #include "../Wire/Wire.h"
 
-#ifdef USE_TINYFAT
-  #include "tinyFAT.h"
-#else
-  #include "../SD/SD.h"
-#endif
+#include "tinyFAT.h"
 #include "LiquidCrystal.h"
 #include "Time.h"
 #include "DS1307RTC.h"
