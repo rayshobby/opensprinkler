@@ -4,13 +4,14 @@ The device has a white injection-molded enclosure, with ORANGE colored 24V AC te
 
 To enter bootloading mode: turn off the controller; press and hold pushbutton B2 while plugging in a USB cable; then release B2 within 2 seconds after inserting the USB cable. The screen should remain off.
 
-3
+4
 
+2.0.7
 2.0.6
 2.0.5
 2.0.4
 
-avrdude -c usbasp -p m644 -F -U flash:w:
+-c usbasp -p m644 -F -U flash:w:
 
 OpenSprinkler_v2.0
 
@@ -18,13 +19,14 @@ The device has a white injection-molded enclosure, with GREEN colored 24V AC ter
 
 Unplug 24V AC power. Plug in a USB cable.
 
-3
+4
 
+2.0.7
 2.0.6
 2.0.5
 2.0.4
 
-avrdude -c usbtiny -p m644 -F -U flash:w:
+-c usbtiny -p m644 -F -U flash:w:
 
 OpenSprinkler_v1.4
 
@@ -39,7 +41,7 @@ Unplug 24V AC power. Plug in a USB cable.
 1.8.1
 1.7
 
-avrdude -c usbtiny -p m328p -F -U flash:w:
+-c usbtiny -p m328p -F -U flash:w:
 
 OpenSprinkler_v1.3
 
@@ -54,7 +56,7 @@ Unplug 24V AC power. Plug in a USB cable.
 1.8.1
 1.7
 
-avrdude -c usbtiny -p m328p -F -U flash:w:
+-c usbtiny -p m328p -F -U flash:w:
 
 OpenSprinkler_v1.2
 
@@ -69,7 +71,7 @@ Unplug 24V AC power. Plug in a USB cable.
 1.8.1
 1.7
 
-avrdude -c usbtiny -p m328p -F -U flash:w:
+-c usbtiny -p m328p -F -U flash:w:
 
 OpenSprinkler_v1.1
 
@@ -84,7 +86,7 @@ Requires an external ISP programmer. Go to www.opensprinkler.com -> Firmware Upd
 1.8.1
 1.7
 
-avrdude -c usbtiny -p m328p -F -U flash:w:
+-c usbtiny -p m328p -F -U flash:w:
 
 OpenSprinkler_v1.0
 
@@ -99,4 +101,4 @@ Requires an external ISP programmer. Go to www.opensprinkler.com -> Firmware Upd
 1.8.1
 1.7
 
-avrdude -c usbtiny -p m328p -F -U flash:w:
+-c usbtiny -p m328p -F -U flash:w:
