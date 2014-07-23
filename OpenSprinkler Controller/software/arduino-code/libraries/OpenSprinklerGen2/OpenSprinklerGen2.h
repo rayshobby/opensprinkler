@@ -17,7 +17,6 @@
 #include <avr/eeprom.h>
 #include "../Wire/Wire.h"
 
-#include "tinyFAT.h"
 #include "LiquidCrystal.h"
 #include "Time.h"
 #include "DS1307RTC.h"
@@ -97,7 +96,8 @@ public:
   static void disable();    // disable controller operation, all stations will be closed immediately
   static void raindelay_start();  // start raindelay
   static void raindelay_stop(); // stop rain delay
-  static void rainsensor_status(); // update rainsensor stateus
+  static void rainsensor_status(); // update rainsensor status
+  static byte detect_exp();        // detect the number of expansion boards
   static byte weekday_today();  // returns index of today's weekday (Monday is 0) 
   // -- Station schedules --
   // Call functions below to set station bits

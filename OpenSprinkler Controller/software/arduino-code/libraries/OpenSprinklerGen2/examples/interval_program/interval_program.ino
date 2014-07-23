@@ -11,7 +11,7 @@
  */
 #include <limits.h>
 #include <OpenSprinklerGen2.h>
-//#include <SD.h>
+#include <SdFat.h>
 #include <Wire.h>
 #include "program.h"
 
@@ -40,6 +40,8 @@ unsigned long last_sync_time = 0;
 // ====== Object defines ======
 OpenSprinkler svc;    // OpenSprinkler object
 ProgramData pd;       // ProgramdData object 
+
+SdFat sd;
 
 // ====== UI defines ======
 static char ui_anim_chars[3] = {'.', 'o', 'O'};
@@ -99,8 +101,21 @@ void button_poll() {
 // Arduino Setup Function
 // ======================
 void setup() { 
+  /* Clear WDT reset flag. */
+  MCUSR &= ~(1<<WDRF);
+  // enable WDT
+  /* In order to change WDE or the prescaler, we need to
+   * set WDCE (This will allow updates for 4 clock cycles).
+   */
+  WDTCSR |= (1<<WDCE) | (1<<WDE);
+  /* set new watchdog timeout prescaler value */
+  WDTCSR = 1<<WDP3 | 1<<WDP0;  // 8.0 seconds
+  /* Enable the WD interrupt (note no reset). */
+  WDTCSR |= _BV(WDIE);  
+  
   //Serial.begin(9600);
   //Serial.println("start");
+    
   svc.begin();          // OpenSprinkler init
   svc.options_setup();  // Setup options
  
@@ -116,9 +131,8 @@ void setup() {
   
   // attempt to detect SD card
   svc.lcd_print_line_clear_pgm(PSTR("Detecting uSD..."), 1);
-  
-  byte res=file.initFAT(0);  // initialize wipriceth default SPI speed
-  if (res==NO_ERROR) {
+
+  if(sd.begin(PIN_SD_CS, SPI_HALF_SPEED)) {
     svc.status.has_sd = 1;
   }
 
@@ -132,9 +146,24 @@ void setup() {
 
   svc.apply_all_station_bits(); // reset station bits
   
-  //wdt_enable(WDTO_4S);  // enabled watchdog timer
   svc.button_lasttime = now();
 }
+
+// Arduino software reset function
+void(* sysReset) (void) = 0;
+
+volatile byte wdt_timeout = 0;
+// WDT interrupt service routine
+ISR(WDT_vect)
+{
+  wdt_timeout += 1;
+  // this isr is called every 8 seconds
+  if (wdt_timeout > 15) {
+    // reset after 120 seconds of timeout
+    sysReset();
+  }
+}
+
 
 // =================
 // Arduino Main Loop
@@ -159,6 +188,9 @@ void loop()
   }
   // ======================================
  
+  wdt_reset();  // reset watchdog timer
+  wdt_timeout = 0;
+   
   button_poll();    // process button press
 
 
@@ -397,7 +429,9 @@ void perform_ntp_sync(time_t curr_time) {
 void check_network(time_t curr_time) {
   static unsigned long last_check_time = 0;
 
+  // do not perform network checking if the controller has just started, or if a program is running
   if (last_check_time == 0) {last_check_time = curr_time; return;}
+  if (svc.status.program_busy) {return;}
   // check network condition periodically
   // check interval depends on the fail times
   // the more time it fails, the longer the gap between two checks
@@ -537,10 +571,9 @@ void delete_log(char *name) {
 
   strcat(name, ".txt");
   
-  if (!file.exists(name))  return;
+  if (!sd.exists(name))  return;
   
-  file.delFile(name);
-  file.closeFile();
+  sd.remove(name);
 }
 
 // write lastrun record to log on SD card
@@ -550,38 +583,23 @@ void write_log() {
   // file name will be xxxxx.log where xxxxx is the day in epoch time
   ultoa(pd.lastrun.endtime / 86400, tmp_buffer, 10);
   strcat(tmp_buffer, ".txt");
+
+  SdFile file;
+  file.open(tmp_buffer, O_CREAT | O_WRITE );
+  file.seekEnd();
   
-  //Serial.println(tmp_buffer);
-  if (!file.exists(tmp_buffer)) {
-    // file does not exist yet, create now
-    if (!file.create(tmp_buffer)) return;
-  }
-
-  file.openFile(tmp_buffer, FILEMODE_TEXT_WRITE);
-
-  tmp_buffer[0] = 0;
-  strcat(tmp_buffer, "[");
+  String str = "[";
+  str += pd.lastrun.program;
+  str += ",";
+  str += pd.lastrun.station;
+  str += ",";
+  str += pd.lastrun.duration;
+  str += ",";
+  str += pd.lastrun.endtime;  
+  str += "]";
+  str += "\r\n";
   
-  char p[12];
-  
-  itoa(pd.lastrun.program, p, 10);
-  strcat(tmp_buffer, p);
-  strcat(tmp_buffer, ",");
-    
-  itoa(pd.lastrun.station, p, 10);
-  strcat(tmp_buffer, p);
-  strcat(tmp_buffer, ",");
-
-  itoa(pd.lastrun.duration, p, 10);  
-  strcat(tmp_buffer, p);
-  strcat(tmp_buffer, ",");
-
-  ultoa(pd.lastrun.endtime, p, 10);  
-  strcat(tmp_buffer, p);
-  strcat(tmp_buffer, "]");
-
-  file.writeLn(tmp_buffer);
-  //Serial.println(tmp_buffer);
-  
-  file.closeFile();
+  str.toCharArray(tmp_buffer, TMP_BUFFER_SIZE);
+  file.write(tmp_buffer);
+  file.close();
 }

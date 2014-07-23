@@ -2,18 +2,18 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   June 2014 @ Rayshobby.net
+   July 2014 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  206 // firmware version (206 means 2.0.6 etc)
+#define SVC_FW_VERSION  207 // firmware version (207 means 2.0.7 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
-#define MAX_EXT_BOARDS   4 // maximum number of ext. boards (each expands 8 stations)
+#define MAX_EXT_BOARDS   5 // maximum number of ext. boards (each expands 8 stations)
                             // total number of stations: (1+MAX_EXT_BOARDS) * 8
 
 #define MAX_NUM_STATIONS  ((1+MAX_EXT_BOARDS)*8)
@@ -42,7 +42,7 @@
                                             // IMPORTANT: use , or + in place of 'space'
                                             // So instead of 'New York', use 'New,York' or 'New+York'
 
-#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.6"
+#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.7"
 
 // macro define of each option
 // See OpenSprinkler.cpp for details on each option
@@ -123,7 +123,7 @@ typedef enum {
   #define PIN_SD_CS          0    // SD card chip select pin
   #define PIN_RAINSENSOR    11    // rain sensor is connected to pin D3
   #define PIN_RELAY         14    // mini relay is connected to pin D14
-  
+  #define PIN_EXP_SENSE      4    // expansion board sensing pin (A4)
 #endif 
 
 // ====== Button Defines ======
@@ -155,6 +155,8 @@ typedef enum {
 #define ETHER_BUFFER_SIZE   900  // if buffer size is increased, you must check the total RAM consumption
                                   // otherwise it may cause the program to crash
 #define TMP_BUFFER_SIZE       48  // scratch buffer size
+
+#define 	wdt_reset()   __asm__ __volatile__ ("wdr")
 
 #endif
 

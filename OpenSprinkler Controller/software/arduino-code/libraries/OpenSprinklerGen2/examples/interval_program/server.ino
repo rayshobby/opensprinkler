@@ -15,6 +15,7 @@ extern OpenSprinkler svc;
 extern ProgramData pd;
 extern byte mymac[];
 extern int myport;
+extern SdFat sd;
 
 prog_uchar htmlOkHeader[] PROGMEM = 
     "HTTP/1.0 200 OK\r\n"
@@ -649,8 +650,8 @@ boolean print_webpage_view_options(char *p)
   }
   //svc.location_get(tmp_buffer);
   //svc.eeprom_string_get(ADDR_EEPROM_LOCATION, tmp_buffer);
-  bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$E\",devt=$L,tz=$D;"), noptions, ADDR_EEPROM_LOCATION,
-               now(),(int)svc.options[OPTION_TIMEZONE].value);
+  bfill.emit_p(PSTR("0];var nopts=$D,loc=\"$E\",devt=$L,tz=$D,dexp=$D,mexp=$D;"), noptions, ADDR_EEPROM_LOCATION,
+               now(),(int)svc.options[OPTION_TIMEZONE].value, (int)svc.detect_exp(), MAX_EXT_BOARDS);
   bfill.emit_p(PSTR("</script>\n"));
   // include remote javascript
   bfill.emit_p(PSTR("<script src=\"$E/viewop.js\"></script>\n"), ADDR_EEPROM_SCRIPTURL);
@@ -781,6 +782,8 @@ boolean print_webpage_change_options(char *p)
     unsigned long t;
     ether.urlDecode(tmp_buffer);
     t = atol(tmp_buffer);
+    // before chaging time, reset all stations
+    reset_all_stations();
     setTime(t);  
     if (svc.status.has_rtc) RTC.set(t); // if rtc exists, update rtc
   }
@@ -936,12 +939,23 @@ boolean print_webpage_json_log(char *p) {
   for(int i=start;i<=end;i++) {
     itoa(i, tmp_buffer, 10);
     strcat(tmp_buffer, ".txt");
-    if (!file.exists(tmp_buffer)) continue;
     
-    file.openFile(tmp_buffer, FILEMODE_TEXT_READ);
+    if (!sd.exists(tmp_buffer)) continue;
+    
+    SdFile file;
+    int res;
+    file.open(tmp_buffer, O_READ);
     while(true) {
-      res = file.readLn(tmp_buffer, TMP_BUFFER_SIZE);
-      if (res == EOF) { file.closeFile(); break; }
+      res = file.fgets(tmp_buffer, TMP_BUFFER_SIZE-1);
+      if (res <= 0)
+      {
+        file.close();
+        break;
+      }
+      
+      // remove the \n character
+      if (tmp_buffer[res-1] == '\n')  tmp_buffer[res-1] = 0;
+      
       // if this is the first record, do not print comma
       if (first)  { bfill.emit_p(PSTR("$S"), tmp_buffer); first=false;}
       else {  bfill.emit_p(PSTR(",$S"), tmp_buffer); }
@@ -1123,7 +1137,7 @@ void analyze_get_url(char *p)
       tmp_buffer[k]=0;
       //Serial.println(tmp_buffer);
       //ether.httpServerReplyAck();
-      if (streamfile ((char *)tmp_buffer,TCP_FLAGS_FIN_V)==0) {
+      if (streamfile ((char *)tmp_buffer)==0) {
         // file not found
         bfill.emit_p(PSTR("$F"), htmlUnauthorized);
         ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
@@ -1136,29 +1150,24 @@ void analyze_get_url(char *p)
 }
 
 
-byte streamfile (char* name , byte lastflag) { //send a file to the buffer 
+byte streamfile (char* name) { //send a file to the buffer 
   unsigned long cur=0;
-  if (!file.exists(name)) {return 0;}
-  file.openFile(name, FILEMODE_BINARY);
-  int  car=512;
-  while (car==512) {
-    car=file.readBinary();
-    for(int i=0;i<car;i++) {
-      cur++;
-      Ethernet::buffer[cur+53]=file.buffer[i];
-    }
+  if(!sd.exists(name))  {return 0;}
+  SdFile myfile(name, O_READ);
+
+  while(myfile.available()) {
+    int nbytes = myfile.read(Ethernet::buffer+54, 512);
+    cur = nbytes;
     if (cur>=512) {
-      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 4);
+      ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 3);
       cur=0;
     } else {
-      if(lastflag==TCP_FLAGS_FIN_V) {
-        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V, 4);
-      } /*else {
-        ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 4);
-      }*/ 
+      break;      
     }
   }
-  file.closeFile();
+  ether.httpServerReply_with_flags(cur, TCP_FLAGS_ACK_V+TCP_FLAGS_FIN_V, 3);
+
+  myfile.close();
   return 1;
 }
 

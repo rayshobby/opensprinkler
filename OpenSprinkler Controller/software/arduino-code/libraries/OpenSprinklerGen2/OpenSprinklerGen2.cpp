@@ -214,10 +214,6 @@ void OpenSprinkler::begin() {
   pinMode(PIN_SD_CS, OUTPUT);
   digitalWrite(PIN_SD_CS, HIGH);
   
-#ifdef USE_TINYFAT
-  file.setSSpin(PIN_SD_CS);
-#endif
-  
   // set PWM frequency for LCD
   TCCR1B = 0x01;
   // turn on LCD backlight and contrast
@@ -617,6 +613,29 @@ void OpenSprinkler::raindelay_stop() {
   raindelay_stop_time = 0;
   constatus_save();
   apply_all_station_bits();
+}
+
+byte OpenSprinkler::detect_exp() {
+  unsigned int v = analogRead(PIN_EXP_SENSE);
+  // ideal values: 1024, 890, 787, 706, 640, 585, 539
+  // actual threshold is taken as the midpoint between
+  // two adjacent ideal values
+  byte n = 255;
+  if (v > 957) { // 0
+    n = 0;
+  } else if (v > 838) { // 1
+    n = 1;
+  } else if (v > 746) { // 2
+    n = 2;
+  } else if (v > 673) { // 3
+    n = 3;
+  } else if (v > 612) { // 4
+    n = 4;
+  } else if (v > 562) { // 5
+    n = 5;
+  } else {  // cannot determine
+  }
+  return n;
 }
 
 void OpenSprinkler::rainsensor_status() {
