@@ -1,11 +1,11 @@
 // JS for printing OpenSprinkler schedule page
-// Firmware v2.1
+// Firmware v2.0.5
 // All content published under:
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2013, Rayshobby.net
 var str_days=["Mon","Tue","Wed","Thur","Fri","Sat","Sun"];
 function w(s) {document.writeln(s);}
-function ib(s,t,v) {w("<button style=\"height:44px\" onclick="+s+">"+v+"</button>");}
+function ib(s,t,v) {w("<button style=\"height:44px\" onclick="+s+"><img src=\"http://rayshobby.net/images/icons/svc_"+t+".png\" height=20 align=absmiddle>&nbsp;"+v+"</button>");}
 function del(form,idx) {
   var p="";
   if(!ipas) p=prompt("Please enter your password:","");

@@ -1,5 +1,5 @@
 // JS for printing OpenSprinkler homepage
-// Firmware v2.1
+// Firmware v2.0.5
 // All content published under:
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2013, Rayshobby.net
@@ -10,7 +10,7 @@ function link(s) {window.location=s;}
 function linkn(s){window.open(s, '_blank');}
 // input rain delay value
 function setrd(form,idx) {var h=prompt("Enter hours to delay","0");if(h!=null){form.elements[idx].value=h;form.submit()};}
-function ib(s,t,v) {w("<button style=\"height:44px\" onclick="+s+">"+v+"</button>");}
+function ib(s,t,v) {w("<button style=\"height:44px\" onclick="+s+"><img src=\"http://rayshobby.net/images/icons/svc_"+t+".png\" height=20 align=absmiddle>&nbsp;"+v+"</button>");}
 function datestr(t) {var _t=tz-48; return (new Date(t)).toUTCString()+((_t>=0)?"+":"-")+(Math.abs(_t)/4>>0)+":"+((Math.abs(_t)%4)*15/10>>0)+((Math.abs(_t)%4)*15%10);}
 function rsn() {var p="";if(!ipas) p=prompt("Please enter your password:","");if(p!=null) window.location="/cv?pw="+p+"&rsn=1";}
 function id(s) {return document.getElementById(s);}
@@ -29,20 +29,20 @@ ib("link(\"/\")","reset","Refresh");
 ib("link(\"/vo\")","options","Options");
 ib("link(\"/vs\")","edit","Stations");
 ib("link(\"/vp\")","cal","Programs");
-ib("linkn(\"http://igoogle.wunderground.com/cgi-bin/findweather/getForecast?query="+loc+"\")","weather","Weather");
+ib("linkn(\"http://www.wunderground.com/cgi-bin/findweather/getForecast?query="+loc+"\")","weather","Weather");
 w("<p></p>");
 // print device information
 if(ver>=100) w("<b>Firmware version</b>: "+(ver/100>>0)+"."+((ver/10>>0)%10)+"."+(ver%10)+"<br>");
 else w("<b>Firmware version</b>: "+(ver/10>>0)+"."+(ver%10)+"<br>");
-w("<b>Device time</b>: "+datestr(devt*1000)+"<hr>");
+w("<b>Device time</b>: "+datestr(devt*1000)+"<br>");
+w("<b>User Manual</b> at "+"<a href=\"http://rayshobby.net/?page_id=192\" target=\"_blank\">www.opensprinkler.com</a><hr>");
 if(!mm) {
 ib("linkn(\"/gp?d=0\")","preview","Program Preview");
 ib("rsn()","del","Stop All Stations");
 ib("link(\"/vr\")","start","Run-Once Program");
 w("<p><b>Station Status</b>:</p>");
 w("<table border=1>");
-var bid,s,sid,sn,rem,remm,rems,off,pname;
-off=((en==0||rd!=0||(urs!=0&&rs!=0))?1:0);
+var bid,s,sid,sn,rem,remm,rems,pname;
 for(bid=0;bid<nbrd;bid++){
   for(s=0;s<8;s++){
     w("<tr><td bgcolor=\"#E4E4E4\">");
@@ -50,7 +50,6 @@ for(bid=0;bid<nbrd;bid++){
     sn=sid+1;
     w(snames[sid]+':&nbsp;&nbsp;');
     w("</td><td>");
-    if(off) w("<strike>");
     if(sn==mas) {w(((sbits[bid]>>s)&1?("<b>On</b>").fontcolor("green"):("Off").fontcolor("black"))+" (<b>Master</b>)");}
     else {
       rem=ps[sid][1];remm=rem/60>>0;rems=rem%60;
@@ -64,13 +63,14 @@ for(bid=0;bid<nbrd;bid++){
         else w(("Waiting "+pname+" ("+(remm/10>>0)+(remm%10)+":"+(rems/10>>0)+(rems%10)+" scheduled)").fontcolor("gray"));
       }
     }
-    if(off) w("</strike>");
     w("</td></tr>");
   }
 }
 w("</table>");
 } else {
-w("<b>Manual Control:</b> (timer is optional)<p></p>");
+w("<b>Manual Control:</b> (timer is optional)<br>");
+w("<font color=\"red\">The device is in manual operation mode, programs are disabled.<br>");
+w("To go back to program mode, use the Manual Off button below.</font><p></p>");
 w("<table border=1>");
 var bid,s,sid,sn,rem,remm,rems,sbit;
 for(bid=0;bid<nbrd;bid++){

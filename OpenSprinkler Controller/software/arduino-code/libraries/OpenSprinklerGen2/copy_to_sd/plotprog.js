@@ -1,5 +1,5 @@
 // JS for plotting OpenSprinkler program page
-// Firmware v2.1
+// Firmware v2.0.5
 // All content published under:
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2013, Rayshobby.net

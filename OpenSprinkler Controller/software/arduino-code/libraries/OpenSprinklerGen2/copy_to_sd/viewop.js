@@ -1,5 +1,5 @@
 // JS for printing OpenSprinkler option page 
-// Firmware v2.1
+// Firmware v2.0.5
 // All content published under:
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2013, Rayshobby.net
@@ -8,6 +8,7 @@ var str_tooltips=["Example: GMT-4:00, GMT+5:30.", "Use NTP sync", "HTTP port (ef
 var str_titles=["Time zone:", "NTP sync?", "HTTP port:", "HTTP port:", "Auto reconnect?", "# of exp. boards:", "Sequential mode?", "Station delay:", "Master station:", "Master on adj.:", "Master off adj.:", "Use rain sensor:", "Normally open?", "% Water time:", "Ignore password?", "Device ID:"]
 function w(s) {document.writeln(s);}
 function id(s) {return document.getElementById(s);}
+function linkn(s){window.open(s, '_blank');}
 function submit_form(f) {
   // process time zone value
   var th=parseInt(f.elements["th"].value,10);
@@ -47,6 +48,7 @@ w("<div align=\"center\" style=\"background-color:#EEEEEE;border:2px solid gray;
 w("<b>Set Options</b>:<br><font size=2>(Hover on each option to see tooltip)</font></div>");
 w("<p></p>");
 w("<button style=\"height:24\" onclick=\"fshow();return false;\">Show Tooltips</button>");
+w("<button style=\"height:24\" onclick=linkn(\"http://rayshobby.net/?page_id=3775#setup\")>User Manual</button>");
 // print html form
 w("<form name=of action=co method=get>");
 var oid,name,isbool,value,index,pasoid=0;
@@ -84,6 +86,10 @@ for(oid=0;oid<nopts;oid++){
     }
   }
   //w("</p>");
+  if (name=="ext") {
+    if(dexp==255) {w("<font size=2>(old version detected)</font>");}
+    else {w("<font size=2>("+((dexp>mexp)?mexp:dexp)+" detected)</font>");}
+  }
   w(" <span style=\"background-color:#FFF2B8;\" id=tip"+oid+" hidden=\"hidden\"><font size=2>"+str_tooltips[oid]+"</font></span></p>");
   if (name=="ntp") {
     var d=new Date(devt*1000);

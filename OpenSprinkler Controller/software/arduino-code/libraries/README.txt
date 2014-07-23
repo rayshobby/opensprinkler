@@ -2,6 +2,9 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* July 23, 2014
+- Check in firmware 2.0.7 source code. To compile the source code, you need to download the SdFat library (https://code.google.com/p/sdfatlib/) and install it to your arduino\libraries folder.
+
 * July 5, 2014
 - Check in firmware 2.0.7. This firmware improves SD card support by switching to use the Arduino SdFat lbirary, which eliminates the restriction of 2GB card and FAT16 formatting. With this firmware, you can use microSD card of any size, formatted to either FAT16 or FAT32. The SdFat library also supports creating sub-diectories.
 - Added watchdog timer to automatically restart the controller after a certain timeout (2 minutes by default).

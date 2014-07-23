@@ -1,5 +1,5 @@
 // JS for printing OpenSprinkler modify program page
-// Firmware v2.1
+// Firmware v2.0.5
 // All content published under:
 // Creative Commons Attribution ShareAlike 3.0 License
 // Sep 2013, Rayshobby.net
@@ -78,7 +78,8 @@ function fsubmit(f) {
 // handle form cancel
 function fcancel() {window.location="/vp";}
 // print html form
-w("<div style=\"padding-top:10px;padding-bottom:0px;\"><b>"+((pid>-1)?"Modify Program "+(pid+1):"Add a New Program")+"</b></div><hr>");
+w("<div style=\"padding-top:10px;padding-bottom:0px;\"><b>"+((pid>-1)?"Modify Program "+(pid+1):"Add a New Program")+"</b></div>");
+w("(For instructions, refer to the <a href=\"http://rayshobby.net/?page_id=730#program\" target=\"_blank\">OpenSprinkler User Manual)</a><hr>");
 w("<form name=mf action=cp method=get><input type=hidden name=pw><input type=hidden name=pid><input type=hidden name=v>");
 w("<div style=\"padding-left:5px;padding-right:5px;\">");
 w("<p><b>This program is: </b><input type=radio name=rad_en id=en_on><b>On</b><input type=radio name=rad_en id=en_off><b>Off</b></p>");
@@ -100,7 +101,7 @@ for(bid=0;bid<nboards;bid++) {
   }
 }
 w("</table><p></p><hr>");
-w("<p></p><b>Time:</b> <input type=text size=2 maxlength=2 id=tsh> : <input type=text size=2 maxlength=2 id=tsm> -> <input type=text size=2 maxlength=2 id=teh> : <input type=text size=2 maxlength=2 id=tem> (hh:mm)<br><b>Every:</b> <input type=text size=2 maxlength=2 id=tih> hours <input type=text size=2 maxlength=2 id=tim> minutes <br><b>Duration:</b> <input type=text size=2 maxlength=3 id=tdm> minutes <input type=text size=2 maxlength=2 id=tds> seconds<p></p><hr>");
+w("<p></p><span style=\"display:inline-block;width:140px;\"><b>Start Time:</b></span> <input type=text size=2 maxlength=2 id=tsh> : <input type=text size=2 maxlength=2 id=tsm> (hh:mm) <br> <span style=\"display:inline-block;width:140px;\"><b>End Time:</b></span> <input type=text size=2 maxlength=2 id=teh> : <input type=text size=2 maxlength=2 id=tem> (hh:mm)<br> <span style=\"display:inline-block;width:140px;\"><b>Repeat Every:</b></span> <input type=text size=2 maxlength=2 id=tih> <span style=\"display:inline-block;width:70px;\">hours</span> <input type=text size=2 maxlength=2 id=tim> minutes <br> <span style=\"display:inline-block;width:140px;\"><b>Duration:</b></span> <input type=text size=2 maxlength=3 id=tdm> <span style=\"display:inline-block;width:70px;\">minutes</span> <input type=text size=2 maxlength=2 id=tds> seconds (per station)<p></p><hr>");
 w("</div></form>");
 w("<button style=\"height:44\" onclick=\"fsubmit(mf)\"><b>Submit</b></button>");
 w("<button style=\"height:44\" onclick=\"fcancel()\">Cancel</button>");
