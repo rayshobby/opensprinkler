@@ -20,7 +20,9 @@
 // RC sync interval (in seconds)
 #define RTC_SYNC_INTERVAL       60     // 60 seconds default
 // Interval for checking network connection (in seconds)
-#define CHECK_NETWORK_INTERVAL  15     // 1 minute default
+#define CHECK_NETWORK_INTERVAL  30     // 30 seconds default
+// Interval for renewing DHCP
+#define DHCP_RENEW_INTERVAL     43200L  // 12 hours default
 // LCD backlight autodimming timeout
 #define LCD_DIMMING_TIMEOUT   30     // 30 seconds default
 // Ping test time out (in milliseconds)
@@ -103,15 +105,6 @@ void button_poll() {
 void setup() { 
   /* Clear WDT reset flag. */
   MCUSR &= ~(1<<WDRF);
-  // enable WDT
-  /* In order to change WDE or the prescaler, we need to
-   * set WDCE (This will allow updates for 4 clock cycles).
-   */
-  WDTCSR |= (1<<WDCE) | (1<<WDE);
-  /* set new watchdog timeout prescaler value */
-  WDTCSR = 1<<WDP3 | 1<<WDP0;  // 8.0 seconds
-  /* Enable the WD interrupt (note no reset). */
-  WDTCSR |= _BV(WDIE);  
   
   //Serial.begin(9600);
   //Serial.println("start");
@@ -128,15 +121,23 @@ void setup() {
   setSyncProvider(svc.status.has_rtc ? RTC.get : NULL);
   delay(500);
   svc.lcd_print_time(0);  // display time to LCD
-  
+
+  // enable WDT
+  /* In order to change WDE or the prescaler, we need to
+   * set WDCE (This will allow updates for 4 clock cycles).
+   */
+  WDTCSR |= (1<<WDCE) | (1<<WDE);
+  /* set new watchdog timeout prescaler value */
+  WDTCSR = 1<<WDP3 | 1<<WDP0;  // 8.0 seconds
+  /* Enable the WD interrupt (note no reset). */
+  WDTCSR |= _BV(WDIE);  
+    
   // attempt to detect SD card
   svc.lcd_print_line_clear_pgm(PSTR("Detecting uSD..."), 1);
 
   if(sd.begin(PIN_SD_CS, SPI_HALF_SPEED)) {
     svc.status.has_sd = 1;
   }
-
-  svc.lcd_print_line_clear_pgm(PSTR("Connecting..."), 1);
     
   if (svc.start_network(mymac, myport)) {  // initialize network
     svc.status.network_fails = 0;
@@ -220,7 +221,29 @@ void loop()
     }
     
     // ====== Check rain sensor status ======
-    svc.rainsensor_status();    
+    svc.rainsensor_status();
+
+    // ====== Check controller status changes and write log ======
+    if (svc.old_status.rain_delayed != svc.status.rain_delayed) {
+      if (svc.status.rain_delayed) {
+        // rain delay started, record time
+        svc.raindelay_start_time = curr_time;
+      } else {
+        // rain delay stopped, write log
+        write_log(LOGDATA_RAINDELAY, curr_time);
+      }
+      svc.old_status.rain_delayed = svc.status.rain_delayed;
+    }
+    if (svc.old_status.rain_sensed != svc.status.rain_sensed) {
+      if (svc.status.rain_sensed) {
+        // rain sensor on, record time
+        svc.rainsense_start_time = curr_time;
+      } else {
+        // rain sensor off, write log
+        write_log(LOGDATA_RAINSENSE, curr_time);
+      }
+      svc.old_status.rain_sensed = svc.status.rain_sensed;
+    }
 
     // ====== Schedule program data ======
     // Check if we are cleared to schedule a new program. The conditions are:
@@ -285,15 +308,27 @@ void loop()
               svc.set_station_bit(sid, 0);
 
               // record lastrun log (only for non-master stations)
-              if(mas != sid+1)
+              if((mas != sid+1) && (curr_time>pd.scheduled_start_time[sid]))
               {
                 pd.lastrun.station = sid;
                 pd.lastrun.program = pd.scheduled_program_index[sid];
                 pd.lastrun.duration = curr_time - pd.scheduled_start_time[sid];
                 pd.lastrun.endtime = curr_time;
-                write_log();
+                write_log(LOGDATA_STATION, curr_time);
               }      
               
+              // process relay if
+              // the station is set to activate relay
+              if(svc.actrelay_bits[bid]&(1<<s)) {
+                // turn relay off
+                if(svc.options[OPTION_RELAY_PULSE].value > 0) {
+                  // if the relay is set to pulse
+                  digitalWrite(PIN_RELAY, HIGH);
+                  delay(svc.options[OPTION_RELAY_PULSE].value*10);
+                } 
+                digitalWrite(PIN_RELAY, LOW);
+              }
+                            
               // reset program data variables
               //pd.remaining_time[sid] = 0;
               pd.scheduled_start_time[sid] = 0;
@@ -321,6 +356,17 @@ void loop()
                 if (curr_time >= pd.scheduled_start_time[masid] && curr_time < pd.scheduled_stop_time[masid])
                 {
                   svc.set_station_bit(masid, 1);
+                }
+              }
+              // schedule relay here if
+              // the station is set to activate relay
+              if(svc.actrelay_bits[bid]&(1<<s)) {
+                // turn relay on
+                digitalWrite(PIN_RELAY, HIGH);
+                if(svc.options[OPTION_RELAY_PULSE].value > 0) {
+                  // if the relay is set to pulse
+                  delay(svc.options[OPTION_RELAY_PULSE].value*10);
+                  digitalWrite(PIN_RELAY, LOW);
                 }
               }
             }
@@ -371,7 +417,7 @@ void loop()
       }
       svc.set_station_bit(mas-1, masbit);
     }    
-    
+                  
     // process dynamic events
     process_dynamic_events();
       
@@ -428,9 +474,11 @@ void perform_ntp_sync(time_t curr_time) {
 
 void check_network(time_t curr_time) {
   static unsigned long last_check_time = 0;
+  static unsigned long last_dhcp_time = 0;
 
   // do not perform network checking if the controller has just started, or if a program is running
-  if (last_check_time == 0) {last_check_time = curr_time; return;}
+  if (last_check_time == 0) { last_check_time = curr_time; last_dhcp_time = curr_time;}
+  
   if (svc.status.program_busy) {return;}
   // check network condition periodically
   // check interval depends on the fail times
@@ -464,8 +512,10 @@ void check_network(time_t curr_time) {
     }
     else svc.status.network_fails=0;
     // if failed more than once, reconnect
-    if (svc.status.network_fails>2&&svc.options[OPTION_NETFAIL_RECONNECT].value) {
-      svc.lcd_print_line_clear_pgm(PSTR("Reconnecting..."),0);
+    if ((svc.status.network_fails>2 || (curr_time - last_dhcp_time > DHCP_RENEW_INTERVAL))
+        &&svc.options[OPTION_NETFAIL_RECONNECT].value) {
+      last_dhcp_time = curr_time;
+      //svc.lcd_print_line_clear_pgm(PSTR(""),0);
       if (svc.start_network(mymac, myport))
         svc.status.network_fails=0;
     }
@@ -501,14 +551,26 @@ void process_dynamic_events()
           svc.set_station_bit(sid, 0);
 
           // record lastrun log (only for non-master stations)
-          if(mas != sid+1)
+          if((mas != sid+1) && (curr_time>pd.scheduled_start_time[sid]))
           {
             pd.lastrun.station = sid;
             pd.lastrun.program = pd.scheduled_program_index[sid];
             pd.lastrun.duration = curr_time - pd.scheduled_start_time[sid];
             pd.lastrun.endtime = curr_time;
-            write_log();
+            write_log(LOGDATA_STATION, curr_time);
           }      
+          
+          // process relay if
+          // the station is set to activate relay
+          if(svc.actrelay_bits[bid]&(1<<s)) {
+            // turn relay off
+            if(svc.options[OPTION_RELAY_PULSE].value > 0) {
+              // if the relay is set to pulse
+              digitalWrite(PIN_RELAY, HIGH);
+              delay(svc.options[OPTION_RELAY_PULSE].value*10);
+            } 
+            digitalWrite(PIN_RELAY, LOW);
+          }
           
           // reset program data variables
           //pd.remaining_time[sid] = 0;
@@ -561,9 +623,16 @@ void schedule_all_stations(unsigned long curr_time, byte seq)
 }
 
 void reset_all_stations() {
-  svc.clear_all_station_bits();
+  /*svc.clear_all_station_bits();
   svc.apply_all_station_bits();
-  pd.reset_runtime();
+  pd.reset_runtime();*/
+  // stop all running and scheduled stations
+  unsigned long curr_time = now();
+  for(byte sid=0;sid<svc.nstations;sid++) {
+    if(pd.scheduled_program_index[sid] > 0) {
+      pd.scheduled_stop_time[sid] = curr_time;  
+    }
+  }
 }
 
 void delete_log(char *name) {
@@ -577,29 +646,50 @@ void delete_log(char *name) {
 }
 
 // write lastrun record to log on SD card
-void write_log() {
+void write_log(byte type, unsigned long curr_time) {
   if (!svc.status.has_sd)  return;
 
   // file name will be xxxxx.log where xxxxx is the day in epoch time
-  ultoa(pd.lastrun.endtime / 86400, tmp_buffer, 10);
+  ultoa(curr_time / 86400, tmp_buffer, 10);
   strcat(tmp_buffer, ".txt");
 
   SdFile file;
   file.open(tmp_buffer, O_CREAT | O_WRITE );
   file.seekEnd();
-  
-  String str = "[";
-  str += pd.lastrun.program;
+  String str;
+  str = "[";
+
+  switch(type) {
+  case LOGDATA_STATION:
+    str += pd.lastrun.program;
+    str += ",";
+    str += pd.lastrun.station;
+    str += ",";
+    str += pd.lastrun.duration;
+    break;
+  case LOGDATA_RAINSENSE:
+    str += "0,\"rs\",";
+    str += (curr_time - svc.rainsense_start_time);
+    break;
+  case LOGDATA_RAINDELAY:
+    str += "0,\"rd\",";
+    str += (curr_time - svc.raindelay_start_time);
+    break;
+  /*case LOGDATA_MANUALMODE:
+    str += "0,\"mm\",";
+    str += svc.status.manual_mode ? "1" : "0";
+    break;
+  case LOGDATA_ENABLE:
+    str += "0,\"en\",";
+    str += svc.status.enabled ? "1" : "0";
+    break;*/
+  }
   str += ",";
-  str += pd.lastrun.station;
-  str += ",";
-  str += pd.lastrun.duration;
-  str += ",";
-  str += pd.lastrun.endtime;  
+  str += curr_time;  
   str += "]";
   str += "\r\n";
-  
   str.toCharArray(tmp_buffer, TMP_BUFFER_SIZE);
+
   file.write(tmp_buffer);
   file.close();
 }

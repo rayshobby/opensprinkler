@@ -2,14 +2,14 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   July 2014 @ Rayshobby.net
+   August 2014 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  207 // firmware version (207 means 2.0.7 etc)
+#define SVC_FW_VERSION  208 // firmware version (208 means 2.0.8 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
@@ -34,7 +34,8 @@
 #define ADDR_EEPROM_MAS_OP      (ADDR_EEPROM_RUNONCE+(MAX_EXT_BOARDS+1)*8*2)
                                         // address where master operation bits are stored
 #define ADDR_EEPROM_IGNRAIN     (ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1))
-#define ADDR_EEPROM_USER        (ADDR_EEPROM_IGNRAIN+(MAX_EXT_BOARDS+1))
+#define ADDR_EEPROM_ACTRELAY    (ADDR_EEPROM_IGNRAIN+(MAX_EXT_BOARDS+1))
+#define ADDR_EEPROM_USER        (ADDR_EEPROM_ACTRELAY+(MAX_EXT_BOARDS+1))
                                         // address where program schedule data is stored
 
 #define DEFAULT_PASSWORD        "opendoor"
@@ -42,7 +43,7 @@
                                             // IMPORTANT: use , or + in place of 'space'
                                             // So instead of 'New York', use 'New,York' or 'New+York'
 
-#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/java/svc2.0.7"
+#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/sprinklers/js"
 
 // macro define of each option
 // See OpenSprinkler.cpp for details on each option
@@ -77,6 +78,7 @@ typedef enum {
   OPTION_LCD_CONTRAST,
   OPTION_LCD_BACKLIGHT,
   OPTION_LCD_DIMMING,
+  OPTION_RELAY_PULSE,
   OPTION_NTP_IP1,
   OPTION_NTP_IP2,
   OPTION_NTP_IP3,
@@ -89,6 +91,13 @@ typedef enum {
 #define OPFLAG_NONE        0x00  // default flag, this option is not editable
 #define OPFLAG_SETUP_EDIT  0x01  // this option is editable during startup
 #define OPFLAG_WEB_EDIT    0x02  // this option is editable on the Options webpage
+
+// Log Data Type
+#define LOGDATA_STATION    0x00
+#define LOGDATA_RAINSENSE  0x01
+#define LOGDATA_RAINDELAY  0x02
+#define LOGDATA_MANUALMODE 0x03
+#define LOGDATA_ENABLE     0x04
 
 // =====================================
 // ====== Arduino Pin Assignments ======

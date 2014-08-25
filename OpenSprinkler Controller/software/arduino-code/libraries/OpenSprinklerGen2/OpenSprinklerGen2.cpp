@@ -10,12 +10,16 @@
 // Declare static data members
 LiquidCrystal OpenSprinkler::lcd;
 StatusBits OpenSprinkler::status;
+StatusBits OpenSprinkler::old_status;
 byte OpenSprinkler::nboards;
 byte OpenSprinkler::nstations;
 byte OpenSprinkler::station_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::masop_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::ignrain_bits[MAX_EXT_BOARDS+1];
+byte OpenSprinkler::actrelay_bits[MAX_EXT_BOARDS+1];
 unsigned long OpenSprinkler::raindelay_stop_time;
+unsigned long OpenSprinkler::rainsense_start_time;
+unsigned long OpenSprinkler::raindelay_start_time;
 unsigned long OpenSprinkler::button_lasttime;
 extern char tmp_buffer[];
 
@@ -50,6 +54,7 @@ prog_char _json_devid[]PROGMEM = "devid";
 prog_char _json_con [] PROGMEM = "con";
 prog_char _json_lit [] PROGMEM = "lit";
 prog_char _json_dim [] PROGMEM = "dim";
+prog_char _json_rlp [] PROGMEM = "rlp";
 prog_char _json_ntp1[] PROGMEM = "ntp1";
 prog_char _json_ntp2[] PROGMEM = "ntp2";
 prog_char _json_ntp3[] PROGMEM = "ntp3";
@@ -87,6 +92,7 @@ prog_char _str_devid[]PROGMEM = "Device ID:";
 prog_char _str_con [] PROGMEM = "LCD Contrast:";
 prog_char _str_lit [] PROGMEM = "LCD Backlight:";
 prog_char _str_dim [] PROGMEM = "LCD Dimming:";
+prog_char _str_rlp [] PROGMEM = "Relay Pulse:";
 prog_char _str_ntp1[] PROGMEM = "NTP server.ip1:";
 prog_char _str_ntp2[] PROGMEM = "NTP server.ip2:";
 prog_char _str_ntp3[] PROGMEM = "NTP server.ip3:";
@@ -125,6 +131,7 @@ OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
   {110, 255, _str_con,  _json_con, OPFLAG_SETUP_EDIT},                   // lcd contrast
   {100, 255, _str_lit,  _json_lit, OPFLAG_SETUP_EDIT},                   // lcd backlight
   {5,   255, _str_dim,  _json_dim, OPFLAG_SETUP_EDIT},                   // lcd dimming
+  {0,   200, _str_rlp,  _json_rlp, OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},                   // relay pulse
   {204, 255, _str_ntp1, _json_ntp1, OPFLAG_SETUP_EDIT}, // this and the next three bytes define the ntp server ip
   {9,   255, _str_ntp2, _json_ntp2, OPFLAG_SETUP_EDIT}, 
   {54,  255, _str_ntp3, _json_ntp3, OPFLAG_SETUP_EDIT},
@@ -160,6 +167,9 @@ void(* resetFunc) (void) = 0;
 
 // Initialize network with the given mac address and http port
 byte OpenSprinkler::start_network(byte mymac[], int http_port) {
+
+
+  lcd_print_line_clear_pgm(PSTR("Connecting..."), 1);
 
   mymac[5] = options[OPTION_DEVICE_ID].value;
   if(!ether.begin(ETHER_BUFFER_SIZE, mymac, PIN_ETHER_CS))  return 0;
@@ -235,19 +245,24 @@ void OpenSprinkler::begin() {
   
   // Reset status variables
   status.enabled = 1;
-  status.rain_delayed = 0;
+  old_status.enabled = 1;
+
+  // these values are set to 0 by default
+  /*status.rain_delayed = 0;
   status.rain_sensed = 0;
   status.program_busy = 0;
   status.manual_mode = 0;
   status.has_rtc = 0;
   status.has_sd = 0;
   status.display_board = 0;
-  status.network_fails = 0;
+  status.network_fails = 0;*/
 
   nboards = 1;
   nstations = 8;
-  raindelay_stop_time = 0;
-  button_lasttime = 0;
+  //raindelay_stop_time = 0;
+  //rainsensor_start_time = 0;
+  //raindelay_start_time = 0;
+  //button_lasttime = 0;
   
   // define lcd custom characters
   byte lcd_wifi_char[8] = {
@@ -302,6 +317,9 @@ void OpenSprinkler::begin() {
   // set rf data pin
   pinMode(PIN_RF_DATA, OUTPUT);
   digitalWrite(PIN_RF_DATA, LOW);
+  
+  pinMode(PIN_RELAY, OUTPUT);
+  digitalWrite(PIN_RELAY, LOW);
   
   // set button pins
   // enable internal pullup
@@ -374,6 +392,22 @@ void OpenSprinkler::ignrain_load() {
   byte i;
   for(i=0;i<=MAX_EXT_BOARDS;i++) {
     ignrain_bits[i] = eeprom_read_byte((unsigned char *)ADDR_EEPROM_IGNRAIN+i);
+  }
+}
+
+// Save activate relay bits to eeprom
+void OpenSprinkler::actrelay_save() {
+  byte i;
+  for(i=0;i<=MAX_EXT_BOARDS;i++) {
+    eeprom_write_byte((unsigned char *)ADDR_EEPROM_ACTRELAY+i, actrelay_bits[i]);
+  }
+}
+
+// Load activate relay bits from eeprom
+void OpenSprinkler::actrelay_load() {
+  byte i;
+  for(i=0;i<=MAX_EXT_BOARDS;i++) {
+    actrelay_bits[i] = eeprom_read_byte((unsigned char *)ADDR_EEPROM_ACTRELAY+i);
   }
 }
 
@@ -500,6 +534,7 @@ void OpenSprinkler::options_setup() {
     options_load(); // load option values
     masop_load();   // load master operation bits
     ignrain_load(); // load ignore rain bits
+    actrelay_load(); // load activate relay bits
     constatus_load(); // load controller status
   }
 
@@ -554,6 +589,7 @@ void OpenSprinkler::constatus_load() {
   status.enabled = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS));
   status.manual_mode = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS+1));
   raindelay_stop_time = eeprom_read_dword((unsigned long*)(ADDR_EEPROM_CONSTATUS+2));  
+  old_status = status;
 }
 
 // Save controller status data to internal eeprom

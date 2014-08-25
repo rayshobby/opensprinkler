@@ -58,7 +58,7 @@ public:
   
   // ====== Data Members ======
   static LiquidCrystal lcd;
-  static StatusBits status;
+  static StatusBits status, old_status;
   static byte nboards, nstations;
   
   static OptionStruct options[];  // option values, max, name, and flag
@@ -68,7 +68,10 @@ public:
                               // first byte-> master controller, second byte-> ext. board 1, and so on
   static byte masop_bits[];   // station master operation bits. each byte corresponds to a board (8 stations)
   static byte ignrain_bits[]; // ignore rain bits. each byte corresponds to a board (8 stations)
-  static unsigned long raindelay_stop_time;   // time (in seconds) when raindelay is stopped
+  static byte actrelay_bits[];// activate relay bits. each byte corresponds to a board (8 stations)
+  static unsigned long raindelay_stop_time;   // time (in seconds) when raindelay should be stopped
+  static unsigned long rainsense_start_time;  // time (in seconds) when rain sensor is detected on
+  static unsigned long raindelay_start_time;  // time (in seconds) when rain delay is started
   static unsigned long button_lasttime;
 
   // ====== Member Functions ======
@@ -83,6 +86,8 @@ public:
   static void masop_save();  // save station master operation bits
   static void ignrain_load();  // load ignore rain bits
   static void ignrain_save();  // save ignore rain bits  
+  static void actrelay_load(); // load activate relay bits
+  static void actrelay_save(); // save activate relay bits
   // -- Controller status
   static void constatus_load();
   static void constatus_save();
