@@ -2,6 +2,9 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* Sep 3, 2014
+- Check in firmware 2.0.9 source code. This firmware fixes a major bug in 2.0.8 which causes issues when a SPACE character appears in the station name or location. This firmware also refined cache directives in the HTTP headers.
+
 * Aug  25, 2014
 - Check in firmware 2.0.8 source code. This firmware adds support for relay, logging rain sensor / rain delay status, and the default UI has been changed to Samer's mobile UI.
 

@@ -25,11 +25,18 @@ prog_uchar htmlOkHeader[] PROGMEM =
     "\r\n"
 ;
 
+prog_uchar htmlFileHeader[] PROGMEM =
+    "HTTP/1.0 200 OK\r\n"
+    "Cache-Control: max-age=604800, public\r\n"
+    "\r\n"
+;
+
 prog_uchar htmlJSONHeader[] PROGMEM =
     "HTTP/1.0 200 OK\r\n"
     "Content-Type: application/json\r\n"
     "Connnection: close\r\n"
     "Access-Control-Allow-Origin: *\r\n"
+    "Cache-Control: no-cache\r\n"
     "\r\n"
 ;
 
@@ -41,7 +48,7 @@ prog_uchar htmlUnauthorized[] PROGMEM =
     "HTTP/1.0 401 Unauthorized\r\n"
     "Content-Type: text/html\r\n"
     "\r\n"
-    "<h1>401 Unauthorized</h1>"
+    "401 Unauthorized"
 ;
 
 prog_uchar htmlReturnHome[] PROGMEM = 
@@ -53,17 +60,17 @@ prog_uchar htmlReturnHome[] PROGMEM =
 boolean check_password(char *p)
 {
   if (svc.options[OPTION_IGNORE_PASSWORD].value)  return true;
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw") || !svc.password_verify(tmp_buffer))
-    return false;
-    
-  return true;
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw")) {
+    ether.urlDecode(tmp_buffer);
+    if (svc.password_verify(tmp_buffer))
+      return true;
+  }
+  return false;
 }
 
-// printing station names in json
-boolean print_webpage_json_stations(char *p)
+void print_webpage_json_stations_main()
 {
-  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
-  bfill.emit_p(PSTR("{\"snames\":["));
+  bfill.emit_p(PSTR("\"snames\":["));
   byte sid;
   for(sid=0;sid<svc.nstations;sid++) {
     svc.get_station_name(sid, tmp_buffer);
@@ -90,7 +97,13 @@ boolean print_webpage_json_stations(char *p)
       bfill.emit_p(PSTR(","));
   }  
   bfill.emit_p(PSTR("],\"maxlen\":$D}"), STATION_NAME_SIZE);
-   
+}
+
+// printing station names in json
+boolean print_webpage_json_stations(char *p)
+{
+  print_webpage_json_header();
+  print_webpage_json_stations_main();
   return true;
 }
 
@@ -152,7 +165,7 @@ boolean print_webpage_change_stations(char *p)
   for(sid=0;sid<svc.nstations;sid++) {
     itoa(sid, tbuf2+1, 10);
     if(ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, tbuf2)) {
-      //ether.urlDecode(tmp_buffer);
+      ether.urlDecode(tmp_buffer);
       svc.set_station_name(sid, tmp_buffer);
     }
   }
@@ -226,9 +239,8 @@ boolean print_webpage_view_scripturl(char *p) {
 }
 
 // print program data in json
-boolean print_webpage_json_programs(char *p) {
-  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
-  bfill.emit_p(PSTR("{\"nprogs\":$D,\"nboards\":$D,\"mnp\":$D,\"pd\":["),
+void print_webpage_json_programs_main() {
+  bfill.emit_p(PSTR("\"nprogs\":$D,\"nboards\":$D,\"mnp\":$D,\"pd\":["),
                pd.nprograms, svc.nboards, MAX_NUMBER_PROGRAMS);
   byte pid, bid;
   ProgramStruct prog;
@@ -252,7 +264,13 @@ boolean print_webpage_json_programs(char *p) {
     } 
   }
   bfill.emit_p(PSTR("]}"));   
-  return true; 
+}
+
+boolean print_webpage_json_programs(char *p) 
+{
+  print_webpage_json_header();
+  print_webpage_json_programs_main();
+  return true;
 }
 
 // webpage for printing run-once program
@@ -277,7 +295,6 @@ boolean print_webpage_view_runonce(char *str) {
   bfill.emit_p(PSTR("0];</script>\n"));
   bfill.emit_p(PSTR("<script src=\"$E/viewro.js\"></script>\n"), ADDR_EEPROM_SCRIPTURL);
   //ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
-    
   return true;
 }
 
@@ -328,7 +345,7 @@ boolean print_webpage_change_runonce(char *p) {
 
 // webpage for printing program summary page
 boolean print_webpage_view_program(char *str) {
-
+/*
   bfill.emit_p(PSTR("$F$F<script>"), htmlOkHeader, htmlMobileHeader);
 
   // send station data packet
@@ -338,8 +355,8 @@ boolean print_webpage_view_program(char *str) {
   // send program data
   bfill_programdata();
   bfill.emit_p(PSTR("<script src=\"$E/viewprog.js\"></script>\n"), ADDR_EEPROM_SCRIPTURL);
-
   return true;
+  */
 }
 
 // webpage for printing program modification page 
@@ -547,14 +564,20 @@ boolean print_webpage_change_program(char *p) {
   return true;
 }
 
-// print controller variables in json
 boolean print_webpage_json_controller(char *p)
+{
+  print_webpage_json_header();
+  print_webpage_json_controller_main();
+  return true;
+}
+
+// print controller variables in json
+void print_webpage_json_controller_main()
 {
   byte bid, sid;
   unsigned long curr_time = now();  
-  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
   //svc.eeprom_string_get(ADDR_EEPROM_LOCATION, tmp_buffer);
-  bfill.emit_p(PSTR("{\"devt\":$L,\"nbrd\":$D,\"en\":$D,\"rd\":$D,\"rs\":$D,\"mm\":$D,\"rdst\":$L,\"loc\":\"$E\",\"sbits\":["),
+  bfill.emit_p(PSTR("\"devt\":$L,\"nbrd\":$D,\"en\":$D,\"rd\":$D,\"rs\":$D,\"mm\":$D,\"rdst\":$L,\"loc\":\"$E\",\"sbits\":["),
               curr_time,
               svc.nboards,
               svc.status.enabled,
@@ -591,7 +614,6 @@ boolean print_webpage_json_controller(char *p)
       bfill.emit_p(PSTR(","));    
   }
   bfill.emit_p(PSTR("]}"));    
-  return true;
 }
 
 // print home page
@@ -642,11 +664,13 @@ boolean print_webpage_home(char *p)
   return true;
 }
 
-// printing options in json
-boolean print_webpage_json_options(char *p)
+void print_webpage_json_header()
 {
-  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
-  bfill.emit_p(PSTR("{"));
+  bfill.emit_p(PSTR("$F{"), htmlJSONHeader);
+}
+
+// print options in json (main)
+void print_webpage_json_options_main() {
   byte oid;
   for(oid=0;oid<NUM_OPTIONS;oid++) {
     int v=svc.options[oid].value;
@@ -659,6 +683,13 @@ boolean print_webpage_json_options(char *p)
   }
 
   bfill.emit_p(PSTR(",\"dexp\":$D,\"mexp\":$D}"), (int)svc.detect_exp(), MAX_EXT_BOARDS);
+}
+
+// printing options in json
+boolean print_webpage_json_options(char *p)
+{
+  print_webpage_json_header();
+  print_webpage_json_options_main();
   return true;
 }
 
@@ -763,7 +794,7 @@ boolean print_webpage_change_scripturl(char *p)
   if(check_password(p)==false)  return false;
   char temp[128];
   if (ether.findKeyVal(p, temp, 128, "jsp")) {
-    //ether.urlDecode(temp);
+    ether.urlDecode(temp);
     svc.eeprom_string_set(ADDR_EEPROM_SCRIPTURL, temp);
   }
   bfill.emit_p(PSTR("$F<script>alert(\"Script url saved.\");$F"), htmlOkHeader, htmlReturnHome);  
@@ -809,8 +840,7 @@ boolean print_webpage_change_options(char *p)
   }
   
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "loc")) {
-    //ether.urlDecode(tmp_buffer);
-    //svc.location_set(tmp_buffer);    
+    ether.urlDecode(tmp_buffer);
     svc.eeprom_string_set(ADDR_EEPROM_LOCATION, tmp_buffer);
   }
   if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "ttt")) {
@@ -863,6 +893,7 @@ boolean print_webpage_change_password(char *p)
       char tbuf2[TMP_BUFFER_SIZE];
       if (ether.findKeyVal(p, tbuf2, TMP_BUFFER_SIZE, "cpw") && strncmp(tmp_buffer, tbuf2, 16) == 0) {
         //svc.password_set(tmp_buffer);
+        ether.urlDecode(tmp_buffer);
         svc.eeprom_string_set(ADDR_EEPROM_PASSWORD, tmp_buffer);
         bfill.emit_p(PSTR("$F{\"result\":$D}"), htmlJSONHeader, 1); // success
         return true;
@@ -877,18 +908,22 @@ boolean print_webpage_change_password(char *p)
   return true;
 }
 
-boolean print_webpage_json_status(char *p)
+void print_webpage_json_status_main()
 {
-  bfill.emit_p(PSTR("$F"), htmlJSONHeader);
-  bfill.emit_p(PSTR("{\"sn\":["));
+  bfill.emit_p(PSTR("\"sn\":["));
   byte sid;
 
   for (sid=0;sid<svc.nstations;sid++) {
     bfill.emit_p(PSTR("$D"), (svc.station_bits[(sid>>3)]>>(sid%8))&1);
     if(sid!=svc.nstations-1) bfill.emit_p(PSTR(","));
   }
-  bfill.emit_p(PSTR("],\"nstations\":$D}"), svc.nstations);
-   
+  bfill.emit_p(PSTR("],\"nstations\":$D}"), svc.nstations);  
+}
+
+boolean print_webpage_json_status(char *p)
+{
+  print_webpage_json_header();
+  print_webpage_json_status_main();
   return true;
 }
 
@@ -1153,7 +1188,6 @@ URLStruct urls[] = {
   {_url_vo,print_webpage_view_options},
   {_url_co,print_webpage_change_options},
   {_url_sn,print_webpage_station_bits},
-  //{_url_ps,print_webpage_programdata_subsection},
   {_url_vs,print_webpage_view_stations},
   {_url_cs,print_webpage_change_stations},
   {_url_vr,print_webpage_view_runonce},
@@ -1179,16 +1213,26 @@ void analyze_get_url(char *p)
   // the tcp packet usually starts with 'GET /' -> 5 chars    
   char *str = p+5;
   if(str[0]==' ') {
-    ether.urlDecode(str);
+    //ether.urlDecode(str);
     print_webpage_home(str);  // home page handler
     ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
   } else {
     // server funtion handlers
     byte i;
-    for(i=0;i<sizeof(urls)/sizeof(URLStruct);i++) {
+    // scan to see if there is a / in the name
+    char *ss = str;
+    while(*ss &&  *ss!=' ' && *ss!='\n' && *ss != '?' && *ss != '/') {
+      ss++;      
+    }
+    // if a '/' is encountered this is requesting a file
+    i = 0;
+    if (*ss == '/') {
+      i = sizeof(urls)/sizeof(URLStruct);
+    }
+    for(;i<sizeof(urls)/sizeof(URLStruct);i++) {
       if(pgm_read_byte(urls[i].url)==str[0]
        &&pgm_read_byte(urls[i].url+1)==str[1]) {
-        ether.urlDecode(str);
+        //ether.urlDecode(str);
         if ((urls[i].handler)(str) == false) {
           bfill.emit_p(PSTR("$F"), htmlUnauthorized);
         }
@@ -1221,6 +1265,9 @@ byte streamfile (char* name) { //send a file to the buffer
   if(!sd.exists(name))  {return 0;}
   SdFile myfile(name, O_READ);
 
+  bfill.emit_p(PSTR("$F"), htmlFileHeader);
+  ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
+  bfill = ether.tcpOffset();
   while(myfile.available()) {
     int nbytes = myfile.read(Ethernet::buffer+54, 512);
     cur = nbytes;

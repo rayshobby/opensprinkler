@@ -9,7 +9,7 @@
 #define _Defines_h
 
 // Firmware version
-#define SVC_FW_VERSION  208 // firmware version (208 means 2.0.8 etc)
+#define SVC_FW_VERSION  209 // firmware version (208 means 2.0.8 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
