@@ -1,6 +1,18 @@
+No Device Selected
+
+Please click on 'Update and Detect' above, or manually select a device.
+
+To start, plug in device in bootloading mode
+
+1
+
+-.-.-
+
+--
+
 OpenSprinkler_v2.1
 
-The device has a white injection-molded enclosure, with ORANGE colored 24V AC terminal block.
+This device has an ORANGE-colored 24V AC terminal block.
 
 To enter bootloading mode: turn off the controller; press and hold pushbutton B2 while plugging in a USB cable; then release B2 within 2 seconds after inserting the USB cable. The screen should remain off.
 
@@ -11,11 +23,11 @@ To enter bootloading mode: turn off the controller; press and hold pushbutton B2
 2.0.6
 2.0.5
 
--c usbasp -p m644 -F -U flash:w:
+-c usbasp -p m644
 
 OpenSprinkler_v2.0
 
-The device has a white injection-molded enclosure, with GREEN colored 24V AC terminal block.
+This device has a GREEN-colored 24V AC terminal block.
 
 Unplug 24V AC power. Plug in a USB cable.
 
@@ -26,79 +38,4 @@ Unplug 24V AC power. Plug in a USB cable.
 2.0.6
 2.0.5
 
--c usbtiny -p m644 -F -U flash:w:
-
-OpenSprinkler_v1.4
-
-The device has a clear/transparent top cover. The version number is printed on the PCB.
-
-Unplug 24V AC power. Plug in a USB cable.
-
-4
-
-1.8.3
-1.8.2
-1.8.1
-1.7
-
--c usbtiny -p m328p -F -U flash:w:
-
-OpenSprinkler_v1.3
-
-The device has a clear/transparent top cover. The version number is printed on the PCB.
-
-Unplug 24V AC power. Plug in a USB cable.
-
-4
-
-1.8.3
-1.8.2
-1.8.1
-1.7
-
--c usbtiny -p m328p -F -U flash:w:
-
-OpenSprinkler_v1.2
-
-The device has a clear/transparent top cover. The version number is printed on the PCB.
-
-Unplug 24V AC power. Plug in a USB cable.
-
-4
-
-1.8.3
-1.8.2
-1.8.1
-1.7
-
--c usbtiny -p m328p -F -U flash:w:
-
-OpenSprinkler_v1.1
-
-The device has a clear/transparent top cover. The version number is printed on the PCB.
-
-Requires an external ISP programmer. Go to www.opensprinkler.com -> Firmware Update for details.
-
-4
-
-1.8.3
-1.8.2
-1.8.1
-1.7
-
--c usbtiny -p m328p -F -U flash:w:
-
-OpenSprinkler_v1.0
-
-The device has a clear/transparent top cover. The version number is printed on the PCB.
-
-Requires an external ISP programmer. Go to www.opensprinkler.com -> Firmware Update for details.
-
-4
-
-1.8.3
-1.8.2
-1.8.1
-1.7
-
--c usbtiny -p m328p -F -U flash:w:
+-c usbtiny -p m644

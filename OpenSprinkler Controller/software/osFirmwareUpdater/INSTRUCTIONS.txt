@@ -1,0 +1,24 @@
+====== General Instructions ======
+
+Please run the 'osFirmwareUpdater' program in the folder that corresponds to your operating system:
+
+* Windows (32-bit and 64-bit): windows
+* Mac OSX: macosx
+* Linux 32-bit: linux32
+* Linux 64-bit: linux64
+
+
+====== Windows Users ======
+If the program reports 'javaw.exe' not found, please go to www.java.com, download and install Java.
+
+Depending on the hardware version of your OpenSprinkler, you need to install Windows driver:
+ * For OpenSprinkler 2.1: USBasp driver (http://www.fischl.de/usbasp/)
+ * For OpenSprinkler 2.0: USBtinyISP (https://learn.adafruit.com/usbtinyisp/drivers)
+
+
+====== MAC Users ======
+No need to install driver. If you encounter an error 'Application is damaged and can’t be opened', you need to temporarily change the settings in Security and Privacy (under System Preferences) to allow applications downloaded from anywhere.
+
+
+====== Linux Users ======
+No need to install driver. Please run the program in 'sudo', unless if you have udev rules set for the corresponding USB devices (USBasp or USBtiny).
