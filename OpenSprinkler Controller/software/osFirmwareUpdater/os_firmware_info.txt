@@ -2,7 +2,7 @@ No Device Selected
 
 Please click on 'Update and Detect' above, or manually select a device.
 
-To start, plug in device in bootloading mode
+None.
 
 1
 
@@ -16,8 +16,9 @@ This device has an ORANGE-colored 24V AC terminal block.
 
 To enter bootloading mode: turn off the controller; press and hold pushbutton B2 while plugging in a USB cable; then release B2 within 2 seconds after inserting the USB cable. The screen should remain off.
 
-4
+5
 
+2.1.0-beta
 2.0.9
 2.0.7
 2.0.6
@@ -31,8 +32,9 @@ This device has a GREEN-colored 24V AC terminal block.
 
 Unplug 24V AC power. Plug in a USB cable.
 
-4
+5
 
+2.1.0-beta
 2.0.9
 2.0.7
 2.0.6

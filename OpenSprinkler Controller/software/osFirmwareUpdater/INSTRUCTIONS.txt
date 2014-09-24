@@ -1,24 +1,55 @@
-====== General Instructions ======
+====== Preparation ======
 
-Please run the 'osFirmwareUpdater' program in the folder that corresponds to your operating system:
+You need a regular-size (A Male to B Male) USB cable. Most
+printers use this type of cable.
 
-* Windows (32-bit and 64-bit): windows
-* Mac OSX: macosx
-* Linux 32-bit: linux32
-* Linux 64-bit: linux64
+Please run the 'osFirmwareUpdater' program in the folder
+that corresponds to your operating system:
 
+* For Windows: if it reports 'javaw.exe' not found, please
+  go to www.java.com, download and install Java.
 
-====== Windows Users ======
-If the program reports 'javaw.exe' not found, please go to www.java.com, download and install Java.
+* For Mac: if it reports error 'Application is damaged and
+  can’t be opened', you need to temporarily change the
+  settings in Security and Privacy (under System Preferences)
+  to allow applications downloaded from anywhere.
 
-Depending on the hardware version of your OpenSprinkler, you need to install Windows driver:
- * For OpenSprinkler 2.1: USBasp driver (http://www.fischl.de/usbasp/)
- * For OpenSprinkler 2.0: USBtinyISP (https://learn.adafruit.com/usbtinyisp/drivers)
-
-
-====== MAC Users ======
-No need to install driver. If you encounter an error 'Application is damaged and can’t be opened', you need to temporarily change the settings in Security and Privacy (under System Preferences) to allow applications downloaded from anywhere.
+* For Linux: run the program in 'sudo', unless if you have
+  udev rules set for the corresponding USB devices (USBasp or USBtiny).
 
 
-====== Linux Users ======
-No need to install driver. Please run the program in 'sudo', unless if you have udev rules set for the corresponding USB devices (USBasp or USBtiny).
+====== Driver ======
+
+Mac and Linux do not need drivers.
+
+For Windows, you need to install driver:
+  * For OpenSprinkler 2.1: USBasp driver (http://www.fischl.de/usbasp/)
+  * For OpenSprinkler 2.0: USBtinyISP (https://learn.adafruit.com/usbtinyisp/drivers)
+
+
+====== Instructions ======
+
+1. If you have OpenSprinkler 2.1: please first enter bootloader:
+   turn off controller, press and hold button B2 while plugging
+   in USB cable, then release the button within 1-2 seconds;
+   
+   For other versions of OpenSprinkler:
+   Just plug in the USB cable.
+
+2. Click on 'Update and Detect'. The software will automatically
+   detect the OpenSprinkler version you have, and download the
+   latest firmware for your device.
+
+3. If you have OpenSprinkler 2.1: please re-enter bootloader, 
+   then click on the 'Upload' button.
+   
+   For other versions of OpenSprinkler:
+   Just click on the 'Upload' button.
+
+NOTE: You can also skip Step 2 above, and instead manually select
+      a device and firmware version to upload.
+
+==========================
+
+
+
