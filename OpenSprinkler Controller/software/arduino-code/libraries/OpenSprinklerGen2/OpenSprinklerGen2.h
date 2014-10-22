@@ -2,7 +2,7 @@
 
 /* OpenSprinkler Class Definition
    Creative Commons Attribution-ShareAlike 3.0 license
-   Dec 2013 @ Rayshobby.net
+   Sep 2014 @ Rayshobby.net
 */
 
 #ifndef _OpenSprinkler_h
@@ -25,40 +25,44 @@
 
 // Option Data Structure
 struct OptionStruct{
-  byte value; // each option is byte
-  byte max;   // maximum value
-  char* str;  // name string
-  char* json_str; // json name
-  byte flag;  // flag
+  byte value;     // each option is stored as a byte
+  byte max;       // maximum value
+  char* str;      // name string
+  char* json_str; // json string
 };
 
-struct StatusBits {
+// Non-Volatile Controller Data
+// these will be stored in EEPROM and RAM
+struct NVConData {
+  uint16_t sunrise_time;      // sunrise time (in minutes)
+  uint16_t sunset_time;       // sunset time (in minutes)
+  uint32_t rd_stop_time;      // rain delay stop time
+};
+
+// Volatile Controller Status Bits
+// these will be stored in RAM only
+struct ConStatus {
   byte enabled:1;           // operation enable (when set, controller operation is enabled)
   byte rain_delayed:1;      // rain delay bit (when set, rain delay is applied)
   byte rain_sensed:1;       // rain sensor bit (when set, it indicates that rain is detected)
   byte program_busy:1;      // HIGH means a program is being executed currently
-  byte manual_mode:1;       // HIGH means the controller is in manual mode
   byte has_rtc:1;           // HIGH means the controller has a DS1307 RTC
   byte has_sd:1;            // HIGH means a microSD card is detected
-  byte dummy:1;
+  byte seq:1;               // HIGH means the controller is in sequential mode
+  byte wt_received:1;       // HIGH means weather info has been received
   byte display_board:4;     // the board that is being displayed onto the lcd
   byte network_fails:4;     // number of network fails
+  byte mas:8;               // master station index
 }; 
-
-struct StationDataBits {
-  byte n_enabled:1;         // 0: enabled; 1: disabled
-  byte n_actmaster:1;       // 0: this station activates master (if master station is defined); 1: this station does not activate master
-  byte n_raindelay:1;       // 0: rain delay applies to this station; 1: rain delay is ignored for this station
-  byte group_index:2;       // group index. 0: global serial group; 1: global concurrent group; 2-3: custom groups
-  byte type:3;              // type of sprinkler station: 0-default, 1-radio frequency station, 2-7: custom types
-};
 
 class OpenSprinkler {
 public:
   
   // ====== Data Members ======
   static LiquidCrystal lcd;
-  static StatusBits status, old_status;
+  static NVConData nvdata;
+  static ConStatus status;
+  static ConStatus old_status;
   static byte nboards, nstations;
   
   static OptionStruct options[];  // option values, max, name, and flag
@@ -66,31 +70,32 @@ public:
   static char* days_str[];		// 3-letter name of each weekday
   static byte station_bits[]; // station activation bits. each byte corresponds to a board (8 stations)
                               // first byte-> master controller, second byte-> ext. board 1, and so on
+  /* station attributes */
   static byte masop_bits[];   // station master operation bits. each byte corresponds to a board (8 stations)
   static byte ignrain_bits[]; // ignore rain bits. each byte corresponds to a board (8 stations)
   static byte actrelay_bits[];// activate relay bits. each byte corresponds to a board (8 stations)
-  static unsigned long raindelay_stop_time;   // time (in seconds) when raindelay should be stopped
+  static byte stndis_bits[];  // station disable bits. each byte 
   static unsigned long rainsense_start_time;  // time (in seconds) when rain sensor is detected on
   static unsigned long raindelay_start_time;  // time (in seconds) when rain delay is started
   static unsigned long button_lasttime;
-
+  static unsigned long ntpsync_lasttime;
+  static unsigned long checkwt_lasttime;
+  static unsigned long network_lasttime;
+  static unsigned long dhcpnew_lasttime;
+  
   // ====== Member Functions ======
   // -- Setup --
   static void reboot();   // reboot the microcontroller
   static void begin();    // initialization, must call this function before calling other functions
-  static byte start_network(byte mymac[], int http_port);  // initialize network with the given mac and port
-  static void self_test(unsigned long ms);  // self-test function
+  static byte start_network();  // initialize network with the given mac and port
+  //static void self_test(unsigned long ms);  // self-test function
   static void get_station_name(byte sid, char buf[]); // get station name
   static void set_station_name(byte sid, char buf[]); // set station name
-  static void masop_load();  // load station master operation bits
-  static void masop_save();  // save station master operation bits
-  static void ignrain_load();  // load ignore rain bits
-  static void ignrain_save();  // save ignore rain bits  
-  static void actrelay_load(); // load activate relay bits
-  static void actrelay_save(); // save activate relay bits
+  static void station_attrib_bits_save(int addr, byte bits[]); // save station attribute bits to eeprom
+  static void station_attrib_bits_load(int addr, byte bits[]); // load station attribute bits from eeprom
   // -- Controller status
-  static void constatus_load();
-  static void constatus_save();
+  static void nvdata_load();
+  static void nvdata_save();
   // -- Options --
   static void options_setup();
   static void options_load();
@@ -139,4 +144,7 @@ private:
   static byte button_read_busy(byte pin_butt, byte waitmode, byte butt, byte is_holding);
 };
 
+byte strcmp_to_eeprom(const char* src, int addr);
+byte water_time_encode(uint16_t i);
+uint16_t water_time_decode(byte i);
 #endif

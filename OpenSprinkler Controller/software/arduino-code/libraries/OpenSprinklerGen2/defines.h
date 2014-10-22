@@ -2,50 +2,69 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   August 2014 @ Rayshobby.net
+   Sep 2014 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
 #define _Defines_h
 
-// Firmware version
-#define SVC_FW_VERSION  209 // firmware version (208 means 2.0.8 etc)
+// =================================================
+// ====== Firmware Version and Maximal Values ======
+// =================================================
+#define OS_FW_VERSION  210 // firmware version (210 means 2.1.0 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 
-#define MAX_EXT_BOARDS   5 // maximum number of ext. boards (each expands 8 stations)
+#define MAX_EXT_BOARDS   5  // maximum number of exp. boards (each expands 8 stations)
                             // total number of stations: (1+MAX_EXT_BOARDS) * 8
 
 #define MAX_NUM_STATIONS  ((1+MAX_EXT_BOARDS)*8)
 #define STATION_NAME_SIZE 16 // size of each station name, default is 16 letters max
 
-// Internal EEPROM Defines
+// =====================================
+// ====== Internal EEPROM Defines ======
+// =====================================
+
 #define INT_EEPROM_SIZE         2048    // ATmega644 eeprom size
 
-#define ADDR_EEPROM_OPTIONS     0x0000  // address where options are stored, 48 bytes reserved
-#define ADDR_EEPROM_CONSTATUS   0x0030  // address where controller status data are stored, 16 bytes reserved
-#define ADDR_EEPROM_PASSWORD    0x0040	// address where password is stored, 32 bytes reserved
-#define ADDR_EEPROM_LOCATION    0x0060  // address where location is stored, 32 bytes reserved
-#define ADDR_EEPROM_SCRIPTURL   0x0080	// address where javascript url is stored, 128 bytes reserved
-#define ADDR_EEPROM_STN_NAMES   0x0100  // address where station names are stored
+/* EEPROM structure:
+ * |              |     |---STRING PARAMETERS---|               |--STATION ATTRIBUTES---|            |
+ * | PROGRAM_DATA | CON | PWD | LOC | URL | KEY | STATION_NAMES | MAS | IGR | ACT | DIS | OPTIONS... |
+ * |   (1000)     |(12) |(32) |(48) |(64) |(32) | (6*8*16)=768  | (6) | (6) | (6) | (6) |    (68)    |
+ * |              |     |     |     |     |     |               |     |     |     |     |            |
+ * 0            1000  1012   1044  1092  1156  1188            1956  1962  1968  1974 1980          2048
+ */
+/* program data is now stored at the beginning of the EEPROM
+ * so that they can be preserved across firmware upgrades,
+ * unless if program data structure is changed */
+#define MAX_PROGRAMDATA           1000  // program data, 1000 bytes max
+#define MAX_NVCONDATA               12  // non-volatile controller data, 12 bytes max
+#define MAX_USER_PASSWORD           32  // user password, 32 bytes max
+#define MAX_LOCATION                48  // location string, 48 bytes max
+#define MAX_SCRIPTURL               64  // javascript url, 64 bytes max
+#define MAX_WEATHER_KEY             32  // weather api key, 32 bytes max
 
-#define ADDR_EEPROM_RUNONCE     (ADDR_EEPROM_STN_NAMES+(MAX_EXT_BOARDS+1)*8*STATION_NAME_SIZE)
-                                        // address where run-once data is stored
-#define ADDR_EEPROM_MAS_OP      (ADDR_EEPROM_RUNONCE+(MAX_EXT_BOARDS+1)*8*2)
-                                        // address where master operation bits are stored
-#define ADDR_EEPROM_IGNRAIN     (ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1))
-#define ADDR_EEPROM_ACTRELAY    (ADDR_EEPROM_IGNRAIN+(MAX_EXT_BOARDS+1))
-#define ADDR_EEPROM_USER        (ADDR_EEPROM_ACTRELAY+(MAX_EXT_BOARDS+1))
-                                        // address where program schedule data is stored
+#define ADDR_EEPROM_PROGRAMS         0  // program starting address, 1000 bytes max
+#define ADDR_EEPROM_NVCONDATA     (ADDR_EEPROM_PROGRAMS+MAX_PROGRAMDATA)
+#define ADDR_EEPROM_PASSWORD      (ADDR_EEPROM_NVCONDATA+MAX_NVCONDATA)
+#define ADDR_EEPROM_LOCATION      (ADDR_EEPROM_PASSWORD+MAX_USER_PASSWORD)
+#define ADDR_EEPROM_SCRIPTURL     (ADDR_EEPROM_LOCATION+MAX_LOCATION)
+#define ADDR_EEPROM_WEATHER_KEY   (ADDR_EEPROM_SCRIPTURL+MAX_SCRIPTURL)
+#define ADDR_EEPROM_STN_NAMES     (ADDR_EEPROM_WEATHER_KEY+MAX_WEATHER_KEY)
+#define ADDR_EEPROM_MAS_OP        (ADDR_EEPROM_STN_NAMES+MAX_NUM_STATIONS*STATION_NAME_SIZE) // master op bits
+#define ADDR_EEPROM_IGNRAIN       (ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1))  // ignore rain bits 
+#define ADDR_EEPROM_ACTRELAY      (ADDR_EEPROM_IGNRAIN+(MAX_EXT_BOARDS+1)) // activate relay bits
+#define ADDR_EEPROM_STNDISABLE    (ADDR_EEPROM_ACTRELAY+(MAX_EXT_BOARDS+1))// station disable bits
+#define ADDR_EEPROM_OPTIONS       (ADDR_EEPROM_STNDISABLE+(MAX_EXT_BOARDS+1))  // options
 
+/* String Parameters Default Values */
 #define DEFAULT_PASSWORD        "opendoor"
-#define DEFAULT_LOCATION        "Boston,MA" // zip code, city name or any google supported location strings
-                                            // IMPORTANT: use , or + in place of 'space'
-                                            // So instead of 'New York', use 'New,York' or 'New+York'
+#define DEFAULT_LOCATION        "Boston,MA"
+#define DEFAULT_WEATHER_KEY     ""
+#define DEFAULT_JAVASCRIPT_URL  "http://ui.opensprinkler.com/js"
+#define WEATHER_SCRIPT_HOST     "weather.opensprinkler.com"
 
-#define DEFAULT_JAVASCRIPT_URL  "http://rayshobby.net/scripts/sprinklers/js"
-
-// macro define of each option
+// Macro define of each option
 // See OpenSprinkler.cpp for details on each option
 typedef enum {
   OPTION_FW_VERSION = 0,
@@ -72,13 +91,14 @@ typedef enum {
   OPTION_USE_RAINSENSOR,
   OPTION_RAINSENSOR_TYPE,
   OPTION_WATER_PERCENTAGE,
-  OPTION_SELFTEST_TIME,
+  OPTION_DEVICE_ENABLE,
   OPTION_IGNORE_PASSWORD,
   OPTION_DEVICE_ID,
   OPTION_LCD_CONTRAST,
   OPTION_LCD_BACKLIGHT,
   OPTION_LCD_DIMMING,
   OPTION_RELAY_PULSE,
+  OPTION_USE_WEATHER,
   OPTION_NTP_IP1,
   OPTION_NTP_IP2,
   OPTION_NTP_IP3,
@@ -87,30 +107,23 @@ typedef enum {
   NUM_OPTIONS	// total number of options
 } OS_OPTION_t;
 
-// Option Flags
-#define OPFLAG_NONE        0x00  // default flag, this option is not editable
-#define OPFLAG_SETUP_EDIT  0x01  // this option is editable during startup
-#define OPFLAG_WEB_EDIT    0x02  // this option is editable on the Options webpage
-
 // Log Data Type
 #define LOGDATA_STATION    0x00
 #define LOGDATA_RAINSENSE  0x01
 #define LOGDATA_RAINDELAY  0x02
-#define LOGDATA_MANUALMODE 0x03
-#define LOGDATA_ENABLE     0x04
 
 // =====================================
 // ====== Arduino Pin Assignments ======
 // =====================================
 
-// ------ Define hardware version here ------
-#define SVC_HW_VERSION 20
+// ====== Define hardware version here ======
+#define OS_HW_VERSION 20
 
-#ifndef SVC_HW_VERSION
-#error "==This error is intentional==: you must define SVC_HW_VERSION in arduino-xxxx/libraries/OpenSprinklerGen2/defines.h"
+#ifndef OS_HW_VERSION
+#error "==This error is intentional==: you must define OS_HW_VERSION in arduino-xxxx/libraries/OpenSprinklerGen2/defines.h"
 #endif
 
-#if SVC_HW_VERSION == 20 || SVC_HW_VERSION == 21
+#if OS_HW_VERSION == 20 || OS_HW_VERSION == 21
 
   #define PIN_BUTTON_1      31    // button 1
   #define PIN_BUTTON_2      30    // button 2
@@ -149,8 +162,7 @@ typedef enum {
 
 // button timing values
 #define BUTTON_DELAY_MS        1  // short delay (milliseconds)
-#define BUTTON_HOLD_MS       800  // long hold expiration time (milliseconds)
-#define BUTTON_IDLE_TIMEOUT    8  // timeout if no button is pressed within certain number of seconds
+#define BUTTON_HOLD_MS      1200  // long hold expiration time (milliseconds)
 
 // button mode values
 #define BUTTON_WAIT_NONE       0  // do not wait, return value immediately
@@ -162,10 +174,26 @@ typedef enum {
 
 // ====== Ethernet Defines ======
 #define ETHER_BUFFER_SIZE   900  // if buffer size is increased, you must check the total RAM consumption
-                                  // otherwise it may cause the program to crash
-#define TMP_BUFFER_SIZE       48  // scratch buffer size
+                                 // otherwise it may cause the program to crash
+#define TMP_BUFFER_SIZE     120  // scratch buffer size
 
 #define 	wdt_reset()   __asm__ __volatile__ ("wdr")
+
+//#define SERIAL_DEBUG
+
+#ifdef SERIAL_DEBUG
+
+#define DEBUG_BEGIN(x)   Serial.begin(x)
+#define DEBUG_PRINT(x)   Serial.print(x)
+#define DEBUG_PRINTLN(x) Serial.println(x)
+
+#else
+
+#define DEBUG_BEGIN(x)   {}
+#define DEBUG_PRINT(x)   {}
+#define DEBUG_PRINTLN(x) {}
+
+#endif
 
 #endif
 

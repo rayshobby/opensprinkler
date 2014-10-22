@@ -2,25 +2,32 @@
 
 /* OpenSprinkler Class Implementation
    Creative Commons Attribution-ShareAlike 3.0 license
-   Dec 2012 @ Rayshobby.net
+   Sep 2014 @ Rayshobby.net
 */
 
 #include "OpenSprinklerGen2.h"
 
 // Declare static data members
 LiquidCrystal OpenSprinkler::lcd;
-StatusBits OpenSprinkler::status;
-StatusBits OpenSprinkler::old_status;
+NVConData OpenSprinkler::nvdata;
+ConStatus OpenSprinkler::status;
+ConStatus OpenSprinkler::old_status;
+
 byte OpenSprinkler::nboards;
 byte OpenSprinkler::nstations;
 byte OpenSprinkler::station_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::masop_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::ignrain_bits[MAX_EXT_BOARDS+1];
 byte OpenSprinkler::actrelay_bits[MAX_EXT_BOARDS+1];
-unsigned long OpenSprinkler::raindelay_stop_time;
+byte OpenSprinkler::stndis_bits[MAX_EXT_BOARDS+1];
+
 unsigned long OpenSprinkler::rainsense_start_time;
 unsigned long OpenSprinkler::raindelay_start_time;
 unsigned long OpenSprinkler::button_lasttime;
+unsigned long OpenSprinkler::ntpsync_lasttime;
+unsigned long OpenSprinkler::checkwt_lasttime;
+unsigned long OpenSprinkler::network_lasttime;
+unsigned long OpenSprinkler::dhcpnew_lasttime;
 extern char tmp_buffer[];
 
 // Option json names
@@ -48,13 +55,14 @@ prog_char _json_mtof[] PROGMEM = "mtof";
 prog_char _json_urs [] PROGMEM = "urs";
 prog_char _json_rso [] PROGMEM = "rso";
 prog_char _json_wl  [] PROGMEM = "wl";
-prog_char _json_stt [] PROGMEM = "stt";
+prog_char _json_den [] PROGMEM = "den";
 prog_char _json_ipas[] PROGMEM = "ipas";
 prog_char _json_devid[]PROGMEM = "devid";
 prog_char _json_con [] PROGMEM = "con";
 prog_char _json_lit [] PROGMEM = "lit";
 prog_char _json_dim [] PROGMEM = "dim";
 prog_char _json_rlp [] PROGMEM = "rlp";
+prog_char _json_uwt [] PROGMEM = "uwt";
 prog_char _json_ntp1[] PROGMEM = "ntp1";
 prog_char _json_ntp2[] PROGMEM = "ntp2";
 prog_char _json_ntp3[] PROGMEM = "ntp3";
@@ -63,8 +71,8 @@ prog_char _json_reset[] PROGMEM = "reset";
 
 // Option names
 prog_char _str_fwv [] PROGMEM = "Firmware ver.";
-prog_char _str_tz  [] PROGMEM = "Time zone:";
-prog_char _str_ntp [] PROGMEM = "NTP sync?";
+prog_char _str_tz  [] PROGMEM = "TZone:";
+prog_char _str_ntp [] PROGMEM = "NTP?";
 prog_char _str_dhcp[] PROGMEM = "Use DHCP?";
 prog_char _str_ip1 [] PROGMEM = "Static.ip1:";
 prog_char _str_ip2 [] PROGMEM = "Static.ip2:";
@@ -77,66 +85,68 @@ prog_char _str_gw4 [] PROGMEM = "Gateway.ip4:";
 prog_char _str_hp0 [] PROGMEM = "HTTP port:";
 prog_char _str_hp1 [] PROGMEM = "";
 prog_char _str_ar  [] PROGMEM = "Auto reconnect?";
-prog_char _str_ext [] PROGMEM = "# of exp. board:";
-prog_char _str_seq [] PROGMEM = "Sequential mode?";
-prog_char _str_sdt [] PROGMEM = "Station delay:";
-prog_char _str_mas [] PROGMEM = "Master station:";
-prog_char _str_mton[] PROGMEM = "Master  on adj.:";
-prog_char _str_mtof[] PROGMEM = "Master off adj.:";
-prog_char _str_urs [] PROGMEM = "Use rain sensor:";
+prog_char _str_ext [] PROGMEM = "Exp. board:";
+prog_char _str_seq [] PROGMEM = "Sequential?";
+prog_char _str_sdt [] PROGMEM = "Stn delay:";
+prog_char _str_mas [] PROGMEM = "Mas. station:";
+prog_char _str_mton[] PROGMEM = "Mas.  on adj.:";
+prog_char _str_mtof[] PROGMEM = "Mas. off adj.:";
+prog_char _str_urs [] PROGMEM = "Rain sensor:";
 prog_char _str_rso [] PROGMEM = "Normally open?";
 prog_char _str_wl  [] PROGMEM = "% Water time:";
-prog_char _str_stt [] PROGMEM = "Selftest time:";
-prog_char _str_ipas[] PROGMEM = "Ignore password?";
-prog_char _str_devid[]PROGMEM = "Device ID:";
-prog_char _str_con [] PROGMEM = "LCD Contrast:";
-prog_char _str_lit [] PROGMEM = "LCD Backlight:";
-prog_char _str_dim [] PROGMEM = "LCD Dimming:";
-prog_char _str_rlp [] PROGMEM = "Relay Pulse:";
-prog_char _str_ntp1[] PROGMEM = "NTP server.ip1:";
-prog_char _str_ntp2[] PROGMEM = "NTP server.ip2:";
-prog_char _str_ntp3[] PROGMEM = "NTP server.ip3:";
-prog_char _str_ntp4[] PROGMEM = "NTP server.ip4:";
+prog_char _str_den [] PROGMEM = "Device enable?";
+prog_char _str_ipas[] PROGMEM = "Ign password?";
+prog_char _str_devid[]PROGMEM = "Dev. ID:";
+prog_char _str_con [] PROGMEM = "LCD contrast:";
+prog_char _str_lit [] PROGMEM = "LCD backlight:";
+prog_char _str_dim [] PROGMEM = "LCD dimming:";
+prog_char _str_rlp [] PROGMEM = "Relay pulse:";
+prog_char _str_uwt  [] PROGMEM = "Use weather?";
+prog_char _str_ntp1[] PROGMEM = "NTP.ip1:";
+prog_char _str_ntp2[] PROGMEM = "NTP.ip2:";
+prog_char _str_ntp3[] PROGMEM = "NTP.ip3:";
+prog_char _str_ntp4[] PROGMEM = "NTP.ip4:";
 prog_char _str_reset[] PROGMEM = "Reset all?";
 
 
 OptionStruct OpenSprinkler::options[NUM_OPTIONS] = {
-  {SVC_FW_VERSION, 0, _str_fwv, _json_fwv, OPFLAG_NONE}, // firmware version
-  {32,  108, _str_tz,   _json_tz, OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},     // default time zone: GMT-4
-  {1,   1,   _str_ntp,  _json_ntp, OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},   // use NTP sync
-  {1,   1,   _str_dhcp, _json_dhcp,OPFLAG_SETUP_EDIT},   // 0: use static ip, 1: use dhcp
-  {192, 255, _str_ip1,  _json_ip1, OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static ip
-  {168, 255, _str_ip2,  _json_ip2, OPFLAG_SETUP_EDIT},
-  {1,   255, _str_ip3,  _json_ip3, OPFLAG_SETUP_EDIT},
-  {22,  255, _str_ip4,  _json_ip4, OPFLAG_SETUP_EDIT},
-  {192, 255, _str_gw1,  _json_gw1, OPFLAG_SETUP_EDIT},   // this and next 3 bytes define static gateway ip
-  {168, 255, _str_gw2,  _json_gw2, OPFLAG_SETUP_EDIT},
-  {1,   255, _str_gw3,  _json_gw3, OPFLAG_SETUP_EDIT},
-  {1,   255, _str_gw4,  _json_gw4, OPFLAG_SETUP_EDIT},
-  {80,  255, _str_hp0,  _json_hp0, OPFLAG_WEB_EDIT},     // this and next byte define http port number
-  {0,   255, _str_hp1,  _json_hp1, OPFLAG_WEB_EDIT},
-  {1,   1,   _str_ar,   _json_ar,  OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},   // network auto reconnect
-  {0,   MAX_EXT_BOARDS, _str_ext, _json_ext, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // number of extension board. 0: no extension boards
-  {1,   1,   _str_seq,  _json_seq, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // sequential mode. 1: stations run sequentially; 0: concurrently
-  {0,   240, _str_sdt,  _json_sdt, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // station delay time (0 to 240 seconds).
-  {0,   8,   _str_mas,  _json_mas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // index of master station. 0: no master station
-  {0,   60,  _str_mton, _json_mton,OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master on time [0,60] seconds
-  {60,  120, _str_mtof, _json_mtof,OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // master off time [-60,60] seconds
-  {0,   1,   _str_urs,  _json_urs, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // rain sensor control bit. 1: use rain sensor input; 0: ignore
-  {1,   1,   _str_rso,  _json_rso, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // rain sensor type. 0: normally closed; 1: normally open.
-  {100, 250, _str_wl,   _json_wl,  OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // water level (default 100%),
-  {10,  240, _str_stt,  _json_stt, OPFLAG_SETUP_EDIT},                   // self-test time (in seconds)
-  {0,   1,   _str_ipas, _json_ipas, OPFLAG_SETUP_EDIT | OPFLAG_WEB_EDIT}, // 1: ignore password; 0: use password
-  {0,   255, _str_devid,_json_devid,OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},                   // device id
-  {110, 255, _str_con,  _json_con, OPFLAG_SETUP_EDIT},                   // lcd contrast
-  {100, 255, _str_lit,  _json_lit, OPFLAG_SETUP_EDIT},                   // lcd backlight
-  {5,   255, _str_dim,  _json_dim, OPFLAG_SETUP_EDIT},                   // lcd dimming
-  {0,   200, _str_rlp,  _json_rlp, OPFLAG_WEB_EDIT | OPFLAG_SETUP_EDIT},                   // relay pulse
-  {204, 255, _str_ntp1, _json_ntp1, OPFLAG_SETUP_EDIT}, // this and the next three bytes define the ntp server ip
-  {9,   255, _str_ntp2, _json_ntp2, OPFLAG_SETUP_EDIT}, 
-  {54,  255, _str_ntp3, _json_ntp3, OPFLAG_SETUP_EDIT},
-  {119, 255, _str_ntp4, _json_ntp4, OPFLAG_SETUP_EDIT},
-  {0,   1,   _str_reset,_json_reset,OPFLAG_SETUP_EDIT}
+  {OS_FW_VERSION, 0, _str_fwv, _json_fwv}, // firmware version
+  {32,  108, _str_tz,   _json_tz},    // default time zone: GMT-4
+  {1,   1,   _str_ntp,  _json_ntp},   // use NTP sync
+  {1,   1,   _str_dhcp, _json_dhcp},  // 0: use static ip, 1: use dhcp
+  {192, 255, _str_ip1,  _json_ip1},   // this and next 3 bytes define static ip
+  {168, 255, _str_ip2,  _json_ip2},
+  {1,   255, _str_ip3,  _json_ip3},
+  {22,  255, _str_ip4,  _json_ip4},
+  {192, 255, _str_gw1,  _json_gw1},   // this and next 3 bytes define static gateway ip
+  {168, 255, _str_gw2,  _json_gw2},
+  {1,   255, _str_gw3,  _json_gw3},
+  {1,   255, _str_gw4,  _json_gw4},
+  {80,  255, _str_hp0,  _json_hp0},   // this and next byte define http port number
+  {0,   255, _str_hp1,  _json_hp1},
+  {1,   1,   _str_ar,   _json_ar},    // network auto reconnect
+  {0,   MAX_EXT_BOARDS, _str_ext, _json_ext}, // number of extension board. 0: no extension boards
+  {1,   1,   _str_seq,  _json_seq},   // sequential mode. 1: stations run sequentially; 0: concurrently
+  {0,   254, _str_sdt,  _json_sdt},   // station delay time (0 to 240 seconds).
+  {0,   8,   _str_mas,  _json_mas},   // index of master station. 0: no master station
+  {0,   60,  _str_mton, _json_mton},  // master on time [0,60] seconds
+  {60,  120, _str_mtof, _json_mtof},  // master off time [-60,60] seconds
+  {0,   1,   _str_urs,  _json_urs},   // rain sensor control bit. 1: use rain sensor input; 0: ignore
+  {1,   1,   _str_rso,  _json_rso},   // rain sensor type. 0: normally closed; 1: normally open.
+  {100, 250, _str_wl,   _json_wl},    // water level (default 100%),
+  {1,   1,   _str_den,  _json_den},   // device enable
+  {0,   1,   _str_ipas, _json_ipas},  // 1: ignore password; 0: use password
+  {0,   255, _str_devid,_json_devid}, // device id
+  {110, 255, _str_con,  _json_con},   // lcd contrast
+  {100, 255, _str_lit,  _json_lit},   // lcd backlight
+  {5,   255, _str_dim,  _json_dim},   // lcd dimming
+  {0,   200, _str_rlp,  _json_rlp},   // relay pulse
+  {0,   5,   _str_uwt,  _json_uwt}, 
+  {204, 255, _str_ntp1, _json_ntp1},  // this and the next three bytes define the ntp server ip
+  {9,   255, _str_ntp2, _json_ntp2}, 
+  {54,  255, _str_ntp3, _json_ntp3},
+  {119, 255, _str_ntp4, _json_ntp4},
+  {0,   1,   _str_reset,_json_reset}
 };
 
 // Weekday display strings
@@ -158,6 +168,9 @@ char* OpenSprinkler::days_str[7] = {
   str_day6
 };
 
+// ====== Ethernet defines ======
+static byte mymac[] = { 0x00,0x69,0x69,0x2D,0x31,0x00 }; // mac address
+
 // ===============
 // Setup Functions
 // ===============
@@ -166,15 +179,18 @@ char* OpenSprinkler::days_str[7] = {
 void(* resetFunc) (void) = 0;
 
 // Initialize network with the given mac address and http port
-byte OpenSprinkler::start_network(byte mymac[], int http_port) {
-
+byte OpenSprinkler::start_network() {
 
   lcd_print_line_clear_pgm(PSTR("Connecting..."), 1);
 
+  network_lasttime = now();
+  dhcpnew_lasttime = network_lasttime;
+
   mymac[5] = options[OPTION_DEVICE_ID].value;
   if(!ether.begin(ETHER_BUFFER_SIZE, mymac, PIN_ETHER_CS))  return 0;
-  ether.hisport = http_port;    
-  
+  // calculate http port number
+  ether.hisport = (int)(options[OPTION_HTTPPORT_1].value<<8) + (int)options[OPTION_HTTPPORT_0].value;
+
   if (options[OPTION_USE_DHCP].value) {
     // register with domain name "OpenSprinkler-xx" where xx is the last byte of the MAC address
     if (!ether.dhcpSetup()) return 0;
@@ -190,7 +206,7 @@ byte OpenSprinkler::start_network(byte mymac[], int http_port) {
       options[OPTION_GATEWAY_IP2].value,
       options[OPTION_GATEWAY_IP3].value,
       options[OPTION_GATEWAY_IP4].value};
-    if (!ether.staticSetup(staticip, gateway))  return 0;
+    if (!ether.staticSetup(staticip, gateway, gateway))  return 0;
   }
   return 1;
 }
@@ -204,15 +220,15 @@ void OpenSprinkler::reboot() {
 void OpenSprinkler::begin() {
 
   // shift register setup
-  pinMode(PIN_SR_LATCH, OUTPUT);
   pinMode(PIN_SR_OE, OUTPUT);
+  // pull shift register OE high to disable output
+  digitalWrite(PIN_SR_OE, HIGH);
+  pinMode(PIN_SR_LATCH, OUTPUT);
+  digitalWrite(PIN_SR_LATCH, HIGH);
+
   pinMode(PIN_SR_CLOCK, OUTPUT);
   pinMode(PIN_SR_DATA,  OUTPUT);
   
-  digitalWrite(PIN_SR_LATCH, HIGH);
-  // pull shift register OE high to disable output
-  digitalWrite(PIN_SR_OE, HIGH);
- 
 	// Reset all stations
   clear_all_station_bits();
   apply_all_station_bits();
@@ -220,11 +236,11 @@ void OpenSprinkler::begin() {
   // pull shift register OE low to enable output
   digitalWrite(PIN_SR_OE, LOW);
 
-  // set sd cs pin high
+  // set sd cs pin high to release SD
   pinMode(PIN_SD_CS, OUTPUT);
   digitalWrite(PIN_SD_CS, HIGH);
   
-  // set PWM frequency for LCD
+  // set PWM frequency for adjustable LCD backlight and contrast 
   TCCR1B = 0x01;
   // turn on LCD backlight and contrast
   pinMode(PIN_LCD_BACKLIGHT, OUTPUT);
@@ -232,8 +248,8 @@ void OpenSprinkler::begin() {
   analogWrite(PIN_LCD_CONTRAST, options[OPTION_LCD_CONTRAST].value);
   analogWrite(PIN_LCD_BACKLIGHT, 255-options[OPTION_LCD_BACKLIGHT].value); 
 
+  // turn on lcd
   lcd.init(1, PIN_LCD_RS, 255, PIN_LCD_EN, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7, 0,0,0,0);
-  // begin lcd
   lcd.begin(16, 2);
    
   // Rain sensor port set up
@@ -243,28 +259,21 @@ void OpenSprinkler::begin() {
   // Init I2C
   Wire.begin();
   
-  // Reset status variables
+  // Default controller status variables
+  // AVR assigns 0 to static variables by default
+  // so only need to initialize non-zero ones
   status.enabled = 1;
-  old_status.enabled = 1;
-
-  // these values are set to 0 by default
-  /*status.rain_delayed = 0;
-  status.rain_sensed = 0;
-  status.program_busy = 0;
-  status.manual_mode = 0;
-  status.has_rtc = 0;
-  status.has_sd = 0;
-  status.display_board = 0;
-  status.network_fails = 0;*/
-
+  status.seq = 1;
+  
+  old_status = status;
+  
+  nvdata.sunrise_time = 360;  // 6:00am default
+  nvdata.sunset_time = 1080;  // 6:00pm default
+  
   nboards = 1;
   nstations = 8;
-  //raindelay_stop_time = 0;
-  //rainsensor_start_time = 0;
-  //raindelay_start_time = 0;
-  //button_lasttime = 0;
   
-  // define lcd custom characters
+  // define lcd custom icons
   byte lcd_wifi_char[8] = {
     B00000,
     B10100,
@@ -336,23 +345,6 @@ void OpenSprinkler::begin() {
   }
 }
 
-// Self_test function
-void OpenSprinkler::self_test(unsigned long ms) {
-	byte sid;
-	while(1) {
-		for(sid=0; sid<nstations; sid++) {
-			lcd.clear();
-			lcd.setCursor(0, 0);
-			lcd.print((int)sid+1);
-			clear_all_station_bits();
-			set_station_bit(sid, 1);
-			apply_all_station_bits();
-			// run each station for designated amount of time
-			delay(ms);	
-		}
-	}
-}
-
 // Get station name from eeprom
 void OpenSprinkler::get_station_name(byte sid, char tmp[]) {
   int i=0;
@@ -379,52 +371,68 @@ void OpenSprinkler::set_station_name(byte sid, char tmp[]) {
   return;  
 }
 
-// Save ignore rain bits to eeprom
-void OpenSprinkler::ignrain_save() {
-  byte i;
-  for(i=0;i<=MAX_EXT_BOARDS;i++) {
-    eeprom_write_byte((unsigned char *)ADDR_EEPROM_IGNRAIN+i, ignrain_bits[i]);
-  }
+// Save station attribute bits to EEPROM
+void OpenSprinkler::station_attrib_bits_save(int addr, byte bits[]) {
+  eeprom_write_block(bits, (unsigned char *)addr, MAX_EXT_BOARDS+1);
 }
 
-// Load ignore rain bits from eeprom
-void OpenSprinkler::ignrain_load() {
-  byte i;
-  for(i=0;i<=MAX_EXT_BOARDS;i++) {
-    ignrain_bits[i] = eeprom_read_byte((unsigned char *)ADDR_EEPROM_IGNRAIN+i);
-  }
+void OpenSprinkler::station_attrib_bits_load(int addr, byte bits[]) {
+  eeprom_read_block(bits, (unsigned char *)addr, MAX_EXT_BOARDS+1);
 }
 
-// Save activate relay bits to eeprom
-void OpenSprinkler::actrelay_save() {
-  byte i;
-  for(i=0;i<=MAX_EXT_BOARDS;i++) {
-    eeprom_write_byte((unsigned char *)ADDR_EEPROM_ACTRELAY+i, actrelay_bits[i]);
+
+// ==================
+// String Functions
+// ==================
+void OpenSprinkler::eeprom_string_set(int start_addr, char* buf) {
+  byte i=0;
+  for (; (*buf)!=0; buf++, i++) {
+    eeprom_write_byte((unsigned char*)(start_addr+i), *(buf));
   }
+  eeprom_write_byte((unsigned char*)(start_addr+i), 0);  
 }
 
-// Load activate relay bits from eeprom
-void OpenSprinkler::actrelay_load() {
-  byte i;
-  for(i=0;i<=MAX_EXT_BOARDS;i++) {
-    actrelay_bits[i] = eeprom_read_byte((unsigned char *)ADDR_EEPROM_ACTRELAY+i);
-  }
+void OpenSprinkler::eeprom_string_get(int start_addr, char *buf) {
+  byte c;
+  byte i = 0;
+  do {
+    c = eeprom_read_byte((unsigned char*)(start_addr+i));
+    //if (c==' ') c='+';
+    *(buf++) = c;
+    i ++;
+  } while (c != 0);
 }
 
-// Save station master operation bits to eeprom
-void OpenSprinkler::masop_save() {
-  byte i;
-  for(i=0;i<=MAX_EXT_BOARDS;i++) {
-    eeprom_write_byte((unsigned char *)ADDR_EEPROM_MAS_OP+i, masop_bits[i]);
+
+// verify if a string matches password
+byte OpenSprinkler::password_verify(char *pw) { 
+  unsigned char *addr = (unsigned char*)ADDR_EEPROM_PASSWORD;
+  byte c1, c2;
+  while(1) {
+    c1 = eeprom_read_byte(addr++);
+    c2 = *pw++;
+    if (c1==0 || c2==0)
+      break;
+    if (c1!=c2) {
+      return 0;
+    }
   }
+  return (c1==c2) ? 1 : 0;
 }
 
-// Load station master operation bits from eeprom
-void OpenSprinkler::masop_load() {
-  byte i;
-  for(i=0;i<=MAX_EXT_BOARDS;i++) {
-    masop_bits[i] = eeprom_read_byte((unsigned char *)ADDR_EEPROM_MAS_OP+i);
+// compare a string to eeprom
+byte strcmp_to_eeprom(const char* src, int _addr) {
+  byte i=0;
+  byte c1, c2;
+  unsigned char *addr = (unsigned char*)_addr;
+  while(1) {
+    c1 = eeprom_read_byte(addr++);
+    c2 = *src++;
+    if (c1==0 || c2==0)
+      break;      
+    if (c1!=c2)  return 1;
   }
+  return (c1==c2) ? 0 : 1;
 }
 
 // ==================
@@ -442,7 +450,7 @@ byte OpenSprinkler::weekday_today() {
 // Set station bit
 void OpenSprinkler::set_station_bit(byte sid, byte value) {
   byte bid = (sid>>3);  // board index
-  byte s = sid % 8;     // station bit index
+  byte s = sid&0x07;     // station bit index
   if (value) {
     station_bits[bid] = station_bits[bid] | ((byte)1<<s);
   } 
@@ -493,37 +501,47 @@ void OpenSprinkler::options_setup() {
   
   // check reset condition: either firmware version has changed, or reset flag is up
   byte curr_ver = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_FW_VERSION));
-  if (curr_ver<100) curr_ver = curr_ver*10; // adding a default 0 if version number is the old type
-  if (curr_ver != SVC_FW_VERSION || eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_RESET))==0xAA) {
-      
-    //======== Reset EEPROM data ========
-    options_save(); // write default option values
-    constatus_save(); // write default controller status values
-    eeprom_string_set(ADDR_EEPROM_PASSWORD, DEFAULT_PASSWORD);  // write default password
-    eeprom_string_set(ADDR_EEPROM_LOCATION, DEFAULT_LOCATION);  // write default location
-    eeprom_string_set(ADDR_EEPROM_SCRIPTURL, DEFAULT_JAVASCRIPT_URL); // write default external url
-    
-    lcd_print_line_clear_pgm(PSTR("Resetting EEPROM"), 0);
-    lcd_print_line_clear_pgm(PSTR("Please Wait..."), 1);  
-      
-    int i, sn;
-    for(i=ADDR_EEPROM_STN_NAMES; i<INT_EEPROM_SIZE; i++) {
-      eeprom_write_byte((unsigned char *) i, 0);      
-    }
+  //if (curr_ver<100) curr_ver = curr_ver*10; // adding a default 0 if version number is the old type
+  if (curr_ver != OS_FW_VERSION || eeprom_read_byte((unsigned char*)(ADDR_EEPROM_OPTIONS+OPTION_RESET))==0xAA)  {
 
-    // reset station names
-    for(i=ADDR_EEPROM_STN_NAMES, sn=1; i<ADDR_EEPROM_RUNONCE; i+=STATION_NAME_SIZE, sn++) {
+    lcd_print_line_clear_pgm(PSTR("Resetting Device"), 0);
+    lcd_print_line_clear_pgm(PSTR("Please Wait..."), 1);  
+    
+    // ======== Reset EEPROM data ========
+    int i, sn;
+
+    // 0. wipe out eeprom
+    for(i=0;i<INT_EEPROM_SIZE;i++) {
+      eeprom_write_byte((unsigned char*)i, 0);
+    }
+    
+    // 1. write program data default parameters
+    
+    // 2. write non-volatile controller status
+    nvdata_save();
+    
+    // 3. write string parameters 
+    eeprom_string_set(ADDR_EEPROM_PASSWORD, DEFAULT_PASSWORD);
+    eeprom_string_set(ADDR_EEPROM_LOCATION, DEFAULT_LOCATION);
+    eeprom_string_set(ADDR_EEPROM_SCRIPTURL, DEFAULT_JAVASCRIPT_URL);
+    eeprom_string_set(ADDR_EEPROM_WEATHER_KEY, DEFAULT_WEATHER_KEY);
+
+    // 4. reset station names, default Sxx
+    for(i=ADDR_EEPROM_STN_NAMES, sn=1; i<ADDR_EEPROM_MAS_OP; i+=STATION_NAME_SIZE, sn++) {
       eeprom_write_byte((unsigned char *)i    ,'S');
       eeprom_write_byte((unsigned char *)(i+1),'0'+(sn/10));
       eeprom_write_byte((unsigned char *)(i+2),'0'+(sn%10)); 
     }
     
-    
-    // reset master operation bits
+    // 5. reset station attributes
+    // since we wiped out eeprom, only non-zero attributes need to be initialized
     for(i=ADDR_EEPROM_MAS_OP; i<ADDR_EEPROM_MAS_OP+(MAX_EXT_BOARDS+1); i++) {
       // default master operation bits on
       eeprom_write_byte((unsigned char *)i, 0xff);
     }
+
+    // 6. write options
+    options_save(); // write default option values
     //======== END OF EEPROM RESET CODE ========
     
     // restart after resetting EEPROM.
@@ -531,42 +549,39 @@ void OpenSprinkler::options_setup() {
     reboot();
   } 
   else {
-    options_load(); // load option values
-    masop_load();   // load master operation bits
-    ignrain_load(); // load ignore rain bits
-    actrelay_load(); // load activate relay bits
-    constatus_load(); // load controller status
+    // load ram parameters from eeprom
+    // 1. load options
+    options_load();
+    // 2. station attributes
+    station_attrib_bits_load(ADDR_EEPROM_MAS_OP, masop_bits);
+    station_attrib_bits_load(ADDR_EEPROM_IGNRAIN, ignrain_bits);
+    station_attrib_bits_load(ADDR_EEPROM_ACTRELAY, actrelay_bits);
+    station_attrib_bits_load(ADDR_EEPROM_STNDISABLE, stndis_bits);
+    // 3. load non-volatile controller data
+    nvdata_load();
   }
 
 	byte button = button_read(BUTTON_WAIT_NONE);
 	
 	switch(button & BUTTON_MASK) {
-	case BUTTON_1:
-  	// if BUTTON_1 is pressed during startup, go to self-test
-    delay(100);
-    if(digitalRead(PIN_BUTTON_3) == 0) {
-      // if BUTTON_3 is pressed at the same time
-      // enter short test
-      self_test(800);
-    } else {
-  	  self_test((unsigned long)options[OPTION_SELFTEST_TIME].value*1000);
-    }
-		break;
-		
-  case BUTTON_2:
+	
+  case BUTTON_1:
   	// if BUTTON_2 is pressed during startup, go to 'reset all options'
 		ui_set_options(OPTION_RESET);
 		if (options[OPTION_RESET].value) {
 			resetFunc();
 		}
 		break;
-		
+
+  case BUTTON_2:  // button 2 is used to enter bootloader
+    break;
+  		
 	case BUTTON_3:
   	// if BUTTON_3 is pressed during startup, enter Setup option mode
     lcd_print_line_clear_pgm(PSTR("==Set Options=="), 0);
     delay(DISPLAY_MSG_MS);
-    lcd_print_line_clear_pgm(PSTR("B3:sel B1/B2:chg"), 0);
-    lcd_print_line_clear_pgm(PSTR("B3:hold to save"), 1);
+    lcd_print_line_clear_pgm(PSTR("B1/B2:+/-, B3:->"), 0);
+    lcd_print_line_clear_pgm(PSTR("Hold B3 to save"), 1);
     do {
       button = button_read(BUTTON_WAIT_NONE);
     } while (!(button & BUTTON_FLAG_DOWN));
@@ -584,19 +599,15 @@ void OpenSprinkler::options_setup() {
   analogWrite(PIN_LCD_BACKLIGHT, 255-options[OPTION_LCD_BACKLIGHT].value); 
 }
 
-// Load controller status data from internal eeprom
-void OpenSprinkler::constatus_load() {
-  status.enabled = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS));
-  status.manual_mode = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS+1));
-  raindelay_stop_time = eeprom_read_dword((unsigned long*)(ADDR_EEPROM_CONSTATUS+2));  
+// Load non-volatile controller status data from internal eeprom
+void OpenSprinkler::nvdata_load() {
+  eeprom_read_block(&nvdata, (unsigned char*)ADDR_EEPROM_NVCONDATA, sizeof(NVConData));
   old_status = status;
 }
 
-// Save controller status data to internal eeprom
-void OpenSprinkler::constatus_save() {
-  eeprom_write_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS), status.enabled);
-  eeprom_write_byte((unsigned char*)(ADDR_EEPROM_CONSTATUS+1), status.manual_mode);
-  eeprom_write_dword((unsigned long*)(ADDR_EEPROM_CONSTATUS+2), raindelay_stop_time);
+// Save non-volatile controller status data to internal eeprom
+void OpenSprinkler::nvdata_save() {
+  eeprom_write_block(&nvdata, (unsigned char*)ADDR_EEPROM_NVCONDATA, sizeof(NVConData));
 }
 
 // Load options from internal eeprom
@@ -606,16 +617,18 @@ void OpenSprinkler::options_load() {
   }
   nboards = options[OPTION_EXT_BOARDS].value+1;
   nstations = nboards * 8;
+  status.enabled = options[OPTION_DEVICE_ENABLE].value;
 }
 
 // Save options to internal eeprom
 void OpenSprinkler::options_save() {
-  // save options in reverse order so version number is saved the last
+  // save options in reverse order so version number is written the last
   for (int i=NUM_OPTIONS-1; i>=0; i--) {
     eeprom_write_byte((unsigned char *) (ADDR_EEPROM_OPTIONS + i), options[i].value);
   }
   nboards = options[OPTION_EXT_BOARDS].value+1;
   nstations = nboards * 8;
+  status.enabled = options[OPTION_DEVICE_ENABLE].value;
 }
 
 // ==============================
@@ -625,37 +638,38 @@ void OpenSprinkler::options_save() {
 // Enable controller operation
 void OpenSprinkler::enable() {
   status.enabled = 1;
-  apply_all_station_bits();
-  // write enable bit to eeprom
-  constatus_save();
+  options[OPTION_DEVICE_ENABLE].value = 1;
+  options_save();
 }
 
 // Disable controller operation
 void OpenSprinkler::disable() {
   status.enabled = 0;
-  apply_all_station_bits();
-  // write enable bit to eeprom
-  constatus_save();
+  options[OPTION_DEVICE_ENABLE].value = 0;
+  options_save();
 }
 
 void OpenSprinkler::raindelay_start() {
   status.rain_delayed = 1;
-  constatus_save();
-  apply_all_station_bits();
+  nvdata_save();
 }
 
 void OpenSprinkler::raindelay_stop() {
   status.rain_delayed = 0;
-  raindelay_stop_time = 0;
-  constatus_save();
-  apply_all_station_bits();
+  nvdata.rd_stop_time = 0;
+  nvdata_save();
 }
 
 byte OpenSprinkler::detect_exp() {
   unsigned int v = analogRead(PIN_EXP_SENSE);
-  // ideal values: 1024, 890, 787, 706, 640, 585, 539
-  // actual threshold is taken as the midpoint between
-  // two adjacent ideal values
+  // OpenSprinkler uses voltage divider to detect expansion boards
+  // Master controller has a 1.5K pull-up;
+  // each expansion board (8 stations) has 10K pull-down connected in parallel;
+  // so the exact ADC value for n expansion boards is:
+  //    ADC = 1024 * 10 / (10 + 1.5 * n)
+  // For  0,   1,   2,   3,   4,   5 expansion boards, the ADC values are:
+  //   1024, 890, 787, 706, 640, 585
+  // Actual threshold is taken as the midpoint between, to account for errors
   byte n = 255;
   if (v > 957) { // 0
     n = 0;
@@ -784,8 +798,8 @@ void OpenSprinkler::lcd_print_option(int i) {
   lcd_print_line_clear_pgm(options[i].str, 0);  
   lcd_print_line_clear_pgm(PSTR(""), 1);
   lcd.setCursor(0, 1);
-  if(options[i].flag&OPFLAG_SETUP_EDIT) lcd.blink();
-  else lcd.noBlink();
+  //if(options[i].flag&OPFLAG_SETUP_EDIT) lcd.blink();
+  //else lcd.noBlink();
   int tz;
   switch(i) {
   case OPTION_TIMEZONE: // if this is the time zone option, do some conversion
@@ -812,6 +826,12 @@ void OpenSprinkler::lcd_print_option(int i) {
   case OPTION_HTTPPORT_0:
     lcd.print((int)(options[i+1].value<<8)+options[i].value);
     break;
+  case OPTION_RELAY_PULSE:
+    lcd.print((int)options[i].value*10);
+    break;
+  case OPTION_STATION_DELAY_TIME:
+    lcd.print(water_time_decode(options[i].value));
+    break;
   case OPTION_LCD_CONTRAST:
     analogWrite(PIN_LCD_CONTRAST, options[i].value);
     lcd.print((int)options[i].value);
@@ -820,6 +840,7 @@ void OpenSprinkler::lcd_print_option(int i) {
     analogWrite(PIN_LCD_BACKLIGHT, 255-options[i].value);
     lcd.print((int)options[i].value);
     break;
+
   default:
     // if this is a boolean option
     if (options[i].max==1)
@@ -829,11 +850,12 @@ void OpenSprinkler::lcd_print_option(int i) {
     break;
   }
   if (i==OPTION_WATER_PERCENTAGE)  lcd_print_pgm(PSTR("%"));
-  else if (i==OPTION_MASTER_ON_ADJ || i==OPTION_MASTER_OFF_ADJ ||
-      i==OPTION_SELFTEST_TIME)
+  else if (i==OPTION_MASTER_ON_ADJ || i==OPTION_MASTER_OFF_ADJ)
     lcd_print_pgm(PSTR(" sec"));
   else if (i==OPTION_STATION_DELAY_TIME)
-    lcd_print_pgm(PSTR(" min"));
+    lcd_print_pgm(PSTR(" sec"));
+  else if (i==OPTION_RELAY_PULSE)
+    lcd_print_pgm(PSTR(" ms"));
 }
 
 
@@ -904,12 +926,12 @@ void OpenSprinkler::ui_set_options(int oid)
 
     switch (button & BUTTON_MASK) {
     case BUTTON_1:
-      if (!(options[i].flag&OPFLAG_SETUP_EDIT)) break; // ignore non-editable options
+      if (i==0) break; // ignore non-editable options
       if (options[i].max != options[i].value) options[i].value ++;
       break;
 
     case BUTTON_2:
-      if (!(options[i].flag&OPFLAG_SETUP_EDIT)) break; // ignore non-editable options
+      if (i==0) break; // ignore non-editable options
       if (options[i].value != 0) options[i].value --;
       break;
 
@@ -942,43 +964,39 @@ void OpenSprinkler::ui_set_options(int oid)
   lcd.noBlink();
 }
 
-// ==================
-// String Functions
-// ==================
-void OpenSprinkler::eeprom_string_set(int start_addr, char* buf) {
-  byte i=0;
-  for (; (*buf)!=0; buf++, i++) {
-    eeprom_write_byte((unsigned char*)(start_addr+i), *(buf));
+
+// ================================================
+// ====== Data Encoding / Decoding Functions ======
+// ================================================
+// encode a 16-bit unsigned water time to 8-bit byte
+/* encoding scheme:
+   byte value : water time
+     [0.. 59]  : [0..59]  (seconds)
+    [60..238]  : [1..179] (minutes), or 60 to 10740 seconds
+   [239..254]  : [3..18]  (hours),   or 10800 to 64800 seconds
+*/
+byte water_time_encode(uint16_t i) {
+  if (i<60) {
+    return byte(i);
+  } else if (i<10800) {
+    return byte(i/60+59);
+  } else if (i<64800) {
+    return byte(i/3600+236);
+  } else {
+    return 254;
   }
-  eeprom_write_byte((unsigned char*)(start_addr+i), 0);  
 }
 
-void OpenSprinkler::eeprom_string_get(int start_addr, char *buf) {
-  byte c;
-  byte i = 0;
-  do {
-    c = eeprom_read_byte((unsigned char*)(start_addr+i));
-    //if (c==' ') c='+';
-    *(buf++) = c;
-    i ++;
-  } while (c != 0);
+// decode a 8-bit byte to a 16-bit unsigned water time
+uint16_t water_time_decode(byte i) {
+  uint16_t ii = i;
+  if (i<60) {
+    return ii;
+  } else if (i<239) {
+    return (ii-59)*60;
+  } else {
+    return (ii-236)*3600;
+  }  
 }
 
-// verify if a string matches password
-byte OpenSprinkler::password_verify(char *pw) { 
-  byte i = 0;
-  byte c1, c2;
-  while(1) {
-    c1 = eeprom_read_byte((unsigned char*)(ADDR_EEPROM_PASSWORD+i));
-    c2 = *pw;
-    if (c1==0 || c2==0)
-      break;
-    if (c1!=c2) {
-      return 0;
-    }
-    i++;
-    pw++;
-  }
-  return (c1==c2) ? 1 : 0;
-}
 
