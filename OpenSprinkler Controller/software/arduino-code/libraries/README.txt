@@ -2,6 +2,9 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* Oct 22, 2014
+- Check in firmware 2.1.0 source code. This firmware is a major upgrade, adding features such as per-station water time, automatic weather-based water time adjustment, auto-detection of time zone and DST. For intermediate changes please refer to the development thread at https://github.com/OpenSprinkler/OpenSprinklerGen2.
+
 * Sep 3, 2014
 - Check in firmware 2.0.9 source code. This firmware fixes a major bug in 2.0.8 which causes issues when a SPACE character appears in the station name or location. This firmware also refined cache directives in the HTTP headers.
 
