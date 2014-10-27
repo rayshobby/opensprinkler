@@ -1,5 +1,26 @@
 ############################################################
 
+atmega644_16.name=OpenSprinklerHW2.2 (16MHz, Serial)
+
+atmega644_16.upload.protocol=arduino
+atmega644_16.upload.maximum_size=64512
+atmega644_16.upload.speed=115200
+
+atmega644_16.bootloader.low_fuses=0xFF
+atmega644_16.bootloader.high_fuses=0xD6
+atmega644_16.bootloader.extended_fuses=0xFF
+atmega644_16.bootloader.path=atmega644p
+atmega644_16.bootloader.file=optiboot_sanguino.hex
+atmega644_16.bootloader.unlock_bits=0x3F
+atmega644_16.bootloader.lock_bits=0x0F
+
+atmega644_16.build.mcu=atmega644p
+atmega644_16.build.f_cpu=16000000L
+atmega644_16.build.core=arduino
+atmega644_16.build.variant=standard
+
+############################################################
+
 atmega644usbasp.name=OpenSprinklerHW2.1 (12MHz, USBasp, orange terminal)
 
 atmega644usbasp.upload.using=arduino:usbasp
