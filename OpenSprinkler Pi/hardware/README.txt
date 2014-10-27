@@ -7,6 +7,10 @@ http://goo.gl/4Nrvb
 
 Release Notes
 =============
+New in v1.4 / v1.4 B+
+* New layout to fit the OpenSprinkler injection-molded enclosure
+* Changed on-board relay to 250V / 3A type
+
 New in v1.3
 * Added per-station bidirectional TVS (SMBJ48CA)
 * Added 2A solder-on fuse
