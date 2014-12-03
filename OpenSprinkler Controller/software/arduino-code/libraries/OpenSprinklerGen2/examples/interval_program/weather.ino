@@ -28,13 +28,14 @@ void getweather_callback(byte status, word off, word len) {
   if (*p != '&')  return;
   int v;
   DEBUG_PRINTLN(p);
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "sunrise")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("sunrise"), true)) {
     v = atoi(tmp_buffer);
     if (v>=0 && v<=1440) {
       os.nvdata.sunrise_time = v;
     }
   }
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "sunset")) {
+
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("sunset"), true)) {
     v = atoi(tmp_buffer);
     if (v>=0 && v<=1440) {
       os.nvdata.sunset_time = v;
@@ -42,7 +43,7 @@ void getweather_callback(byte status, word off, word len) {
   }
   os.nvdata_save(); // save non-volatile memory
 
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "scale")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("scale"), true)) {
     v = atoi(tmp_buffer);
     if (v>=0 && v<=250) {
       os.options[OPTION_WATER_PERCENTAGE].value = v;
@@ -50,7 +51,7 @@ void getweather_callback(byte status, word off, word len) {
     }
   }
   
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "tz")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("tz"), true)) {
     v = atoi(tmp_buffer);
     if (v>=0 && v<= 96) {
       if (v != os.options[OPTION_TIMEZONE].value) {
@@ -85,8 +86,6 @@ void GetWeather() {
   // url encode. convert SPACE to %20
   // copy reversely from the end because we are potentially expanding
   // the string size 
-  DEBUG_PRINTLN((int)(*src));
-  DEBUG_PRINTLN((int)(*dst));
   while(src!=tmp_buffer) {
     c = *src--;
     if(c==' ') {
@@ -101,6 +100,9 @@ void GetWeather() {
   
   DEBUG_PRINTLN(dst);
   os.status.wt_received = 0;
+  uint16_t _port = ether.hisport; // save current port number
+  ether.hisport = 80;
   ether.browseUrl(PSTR("/weather"), dst, website, getweather_callback);
+  ether.hisport = _port;
 }
 

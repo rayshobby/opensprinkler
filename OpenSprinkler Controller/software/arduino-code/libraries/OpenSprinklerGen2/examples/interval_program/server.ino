@@ -24,31 +24,44 @@ static uint8_t ntpclientportL = 123; // Default NTP client port
 #define HTML_DATA_MISSING      0x10
 #define HTML_DATA_OUTOFBOUND   0x11
 #define HTML_DATA_FORMATERROR  0x12
+#define HTML_RFCODE_ERROR      0x13
 #define HTML_PAGE_NOT_FOUND    0x20
 #define HTML_NOT_PERMITTED     0x30
 #define HTML_REDIRECT_HOME     0xFF
 
-static prog_uchar htmlOkHeader[] PROGMEM = 
+static prog_uchar html200OK[] PROGMEM =
     "HTTP/1.0 200 OK\r\n"
-    "Content-Type: text/html\r\n"
-    "Pragma: no-cache\r\n"
-    "Access-Control-Allow-Origin: *\r\n"
-    "\r\n"
 ;
 
-static prog_uchar htmlFileHeader[] PROGMEM =
-    "HTTP/1.0 200 OK\r\n"
+static prog_uchar htmlCacheCtrl[] PROGMEM =
     "Cache-Control: max-age=604800, public\r\n"
-    "\r\n"
 ;
 
-static prog_uchar htmlJSONHeader[] PROGMEM =
-    "HTTP/1.0 200 OK\r\n"
+static prog_uchar htmlNoCache[] PROGMEM = 
+    "Pragma: no-cache\r\n"
+;   
+    
+static prog_uchar htmlContentHTML[] PROGMEM =
+    "Content-Type: text/html\r\n"
+;
+
+static prog_uchar htmlAccessControl[] PROGMEM = 
+    "Access-Control-Allow-Origin: *\r\n"
+;
+
+static prog_uchar htmlContentCgz[] PROGMEM = 
+    "Content-Type: text/css;charset=utf-8\r\n"
+    "Content-Encoding: gzip\r\n"
+;
+
+static prog_uchar htmlContentJgz[] PROGMEM = 
+    "Content-Type: text/javascript;charset=utf-8\r\n"
+    "Content-Encoding: gzip\r\n"
+;
+    
+static prog_uchar htmlContentJSON[] PROGMEM =
     "Content-Type: application/json\r\n"
     "Connnection: close\r\n"
-    "Access-Control-Allow-Origin: *\r\n"
-    "Cache-Control: no-cache\r\n"
-    "\r\n"
 ;
 
 static prog_uchar htmlMobileHeader[] PROGMEM =
@@ -59,13 +72,25 @@ static prog_uchar htmlReturnHome[] PROGMEM =
   "<script>window.location=\"/\";</script>\n"
 ;
 
+void print_html_standard_header() {
+  bfill.emit_p(PSTR("$F$F$F$F\r\n"), html200OK, htmlContentHTML, htmlNoCache, htmlAccessControl);
+}
+
+void print_json_header() {
+  bfill.emit_p(PSTR("$F$F$F$F\r\n"), html200OK, htmlContentJSON, htmlAccessControl, htmlNoCache);
+}
+
+void print_json_header_with_bracket() {
+  bfill.emit_p(PSTR("$F$F$F$F\r\n{"), html200OK, htmlContentJSON, htmlAccessControl, htmlNoCache);
+}
+
 /**
   Check and verify password
 */
 boolean check_password(char *p)
 {
   if (os.options[OPTION_IGNORE_PASSWORD].value)  return true;
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pw")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("pw"), true)) {
     ether.urlDecode(tmp_buffer);
     if (os.password_verify(tmp_buffer))
       return true;
@@ -97,6 +122,8 @@ void server_json_stations_main()
   server_json_stations_attrib(PSTR("ignore_rain"), os.ignrain_bits);
   server_json_stations_attrib(PSTR("act_relay"), os.actrelay_bits);
   server_json_stations_attrib(PSTR("stn_dis"), os.stndis_bits);
+  server_json_stations_attrib(PSTR("rfstn"), os.rfstn_bits);
+  server_json_stations_attrib(PSTR("stn_seq"), os.stnseq_bits);
   bfill.emit_p(PSTR("],\"maxlen\":$D}"), STATION_NAME_SIZE);
 }
 
@@ -105,7 +132,7 @@ void server_json_stations_main()
 */
 byte server_json_stations(char *p)
 {
-  server_json_header();
+  print_json_header_with_bracket();
   server_json_stations_main();
   return HTML_OK;
 }
@@ -159,6 +186,11 @@ byte server_change_stations(char *p)
   server_change_stations_attrib(p, 'd', os.stndis_bits);
   os.station_attrib_bits_save(ADDR_EEPROM_STNDISABLE, os.stndis_bits); 
   
+  os.update_rfstation_bits();
+  
+  server_change_stations_attrib(p, 'q', os.stnseq_bits);
+  os.station_attrib_bits_save(ADDR_EEPROM_STNSEQ, os.stnseq_bits); 
+  
   return HTML_SUCCESS;
 }
 
@@ -166,7 +198,7 @@ byte server_change_stations(char *p)
   Output script url form
 */
 byte server_view_scripturl(char *p) {
-  bfill.emit_p(PSTR("$F"), htmlOkHeader);
+  print_html_standard_header();
   bfill.emit_p(PSTR("<hr /><form name=of action=cu method=get><p><b>Script URL:</b><input type=text size=32 maxlength=127 value=\"$E\" name=jsp></p><p>Default is $S<br />If local on uSD card, use ./</p><p><b>Password:</b><input type=password size=32 name=pw><input type=submit></p><hr /></form>"), ADDR_EEPROM_SCRIPTURL, DEFAULT_JAVASCRIPT_URL);  
   return HTML_OK;
 }
@@ -203,7 +235,7 @@ void server_json_programs_main() {
     else
       bfill.emit_p(PSTR("\"]"));
     if (pid%3==2) { // push out a packet every 4 programs
-      ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
+      ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V, 3);
       bfill=ether.tcpOffset();
     } 
   }
@@ -215,7 +247,7 @@ void server_json_programs_main() {
 */
 byte server_json_programs(char *p) 
 {
-  server_json_header();
+  print_json_header_with_bracket();
   server_json_programs_main();
   return HTML_OK;
 }
@@ -228,6 +260,8 @@ byte server_json_programs(char *p)
   t:  station water time
 */
 byte server_change_runonce(char *p) {
+  // decode url first
+  ether.urlDecode(p);
   // search for the start of v=[
   char *pv;
   boolean found=false;
@@ -259,7 +293,7 @@ byte server_change_runonce(char *p) {
     }
   }
   if(match_found) {
-    schedule_all_stations(now(), os.status.seq);
+    schedule_all_stations(now());
     return HTML_SUCCESS;
   }
 
@@ -275,7 +309,7 @@ byte server_change_runonce(char *p) {
   pid:program index (-1 will delete all programs)
 */
 byte server_delete_program(char *p) {
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pid"))
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("pid"), true))
     return HTML_DATA_MISSING;
     
   int pid=atoi(tmp_buffer);
@@ -317,7 +351,7 @@ uint16_t parse_listdata(char **p) {
   pid:program index
 */
 byte server_moveup_program(char *p) {
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pid")) {
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("pid"), true)) {
     return HTML_DATA_MISSING;  
   }
   int pid=atoi(tmp_buffer);
@@ -339,10 +373,12 @@ byte server_moveup_program(char *p) {
   dur?:  station water time
   name:  program name
 */
+prog_char _str_program[] PROGMEM = "Program ";
 byte server_change_program(char *p) {
-
+  // decode url first
+  ether.urlDecode(p);
   // parse program index
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "pid")) {
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("pid"), true)) {
     return HTML_DATA_MISSING;
   }
   int pid=atoi(tmp_buffer);
@@ -354,6 +390,7 @@ byte server_change_program(char *p) {
   // search for the start of v=[
   char *pv;
   boolean found=false;
+
   for(pv=p;(*pv)!=0 && pv<p+100;pv++) {
     if(strncmp(pv, "v=[", 3)==0) {
       found=true;
@@ -381,11 +418,13 @@ byte server_change_program(char *p) {
   pv++; // this should be a ']'
   pv++; // this should be a ']'
   // parse program name
-  if (ether.findKeyVal(pv, tmp_buffer, TMP_BUFFER_SIZE, "name")) {
+
+  if (ether.findKeyVal(pv, tmp_buffer, TMP_BUFFER_SIZE, PSTR("name"), true)) {
     ether.urlDecode(tmp_buffer);
     strncpy(prog.name, tmp_buffer, PROGRAM_NAME_SIZE);
   } else {
-    strcpy(prog.name, "Program ");
+    strcpy_P(prog.name, _str_program);
+    //strcpy(prog.name, "Program ");
     itoa((pid==-1)? (pd.nprograms+1): (pid+1), prog.name+8, 10); 
   }
 
@@ -400,8 +439,6 @@ byte server_change_program(char *p) {
     pd.drem_to_absolute(prog.days);
   }
       
-  //bfill.emit_p(PSTR("$F<script>"), htmlOkHeader);
-
   if (pid==-1) {
     if(!pd.add(&prog))
       return HTML_DATA_OUTOFBOUND;
@@ -414,7 +451,7 @@ byte server_change_program(char *p) {
 
 byte server_json_controller(char *p)
 {
-  server_json_header();
+  print_json_header_with_bracket();
   server_json_controller_main();
   return HTML_OK;
 }
@@ -460,20 +497,20 @@ byte server_home(char *p)
   byte bid, sid;
   unsigned long curr_time = now();
 
-  bfill.emit_p(PSTR("$F<!DOCTYPE html>\n<html>\n<head>\n$F</head>\n<body>\n<script>"), htmlOkHeader, htmlMobileHeader);
+  print_html_standard_header();
+  bfill.emit_p(PSTR("<!DOCTYPE html>\n<html>\n<head>\n$F</head>\n<body>\n<script>"), htmlMobileHeader);
 
   // send server variables and javascript packets
   bfill.emit_p(PSTR("var ver=$D,ipas=$D;</script>\n"),
                OS_FW_VERSION, os.options[OPTION_IGNORE_PASSWORD].value);
   bfill.emit_p(PSTR("<script src=\"$E/home.js\"></script>\n</body>\n</html>"), ADDR_EEPROM_SCRIPTURL);
-  //ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
   return HTML_OK;
 }
 
-void server_json_header()
+/*void server_json_header()
 {
   bfill.emit_p(PSTR("$F{"), htmlJSONHeader);
-}
+}*/
 
 void server_json_options_main() {
   byte oid;
@@ -481,14 +518,10 @@ void server_json_options_main() {
     int32_t v=os.options[oid].value;
     if (oid==OPTION_MASTER_OFF_ADJ) {v-=60;}
     if (oid==OPTION_RELAY_PULSE) {v*=10;}    
-    if (oid==OPTION_STATION_DELAY_TIME) {v=water_time_decode(v);}
-    if (oid==OPTION_STATION_DELAY_TIME) {
-      bfill.emit_p(PSTR("\"$F\":$L"),
-                 os.options[oid].json_str, v);  // account for value possibly larger than 32767
-    } else {
-      bfill.emit_p(PSTR("\"$F\":$D"),
-                   os.options[oid].json_str, v);
-    }
+    if (oid==OPTION_STATION_DELAY_TIME) {v=water_time_decode_signed(v);}
+    if (pgm_read_byte(os.options[oid].json_str)=='_') continue;
+    bfill.emit_p(PSTR("\"$F\":$D"),
+                 os.options[oid].json_str, v);
     if(oid!=NUM_OPTIONS-1)
       bfill.emit_p(PSTR(","));
   }
@@ -502,7 +535,7 @@ void server_json_options_main() {
 */
 byte server_json_options(char *p)
 {
-  server_json_header();
+  print_json_header_with_bracket();
   server_json_options_main();
   return HTML_OK;
 }
@@ -517,26 +550,27 @@ byte server_json_options(char *p)
   en:  enable (0 or 1)
   rd:  rain delay hours (0 turns off rain delay)
 */
+
 byte server_change_values(char *p)
 {
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rsn")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("rsn"), true)) {
     reset_all_stations();
   }
   
 #define TIME_REBOOT_DELAY  20
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rbt") && atoi(tmp_buffer) > 0) {
-    //bfill.emit_p(PSTR("$F<meta http-equiv=\"refresh\" content=\"$D; url=/\">"), htmlOkHeader, TIME_REBOOT_DELAY);
-    bfill.emit_p(PSTR("$FRebooting..."), htmlOkHeader);
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("rbt"), true) && atoi(tmp_buffer) > 0) {
+    print_html_standard_header();
+    //bfill.emit_p(PSTR("Rebooting..."));
     ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
     os.reboot();
   } 
   
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "en")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("en"), true)) {
     if (tmp_buffer[0]=='1' && !os.status.enabled)  os.enable();
     else if (tmp_buffer[0]=='0' &&  os.status.enabled)  os.disable();
   }   
   
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "rd")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("rd"), true)) {
     int rd = atoi(tmp_buffer);
     if (rd>0) {
       os.nvdata.rd_stop_time = now() + (unsigned long) rd * 3600;    
@@ -570,7 +604,7 @@ void string_remove_space(char *src) {
 */
 byte server_change_scripturl(char *p)
 {
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "jsp")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("jsp"), true)) {
     ether.urlDecode(tmp_buffer);
     tmp_buffer[MAX_SCRIPTURL]=0;  // make sure we don't exceed the maximum size
     // trim unwanted space characters
@@ -590,6 +624,9 @@ byte server_change_scripturl(char *p)
   wtkey: weather underground api key
   ttt: manual time (applicable only if ntp=0)
 */
+prog_char _key_loc[] PROGMEM = "loc";
+prog_char _key_wtkey[] PROGMEM = "wtkey";
+prog_char _key_ttt[] PROGMEM = "ttt";
 byte server_change_options(char *p)
 {
   // temporarily save some old options values
@@ -604,8 +641,12 @@ byte server_change_options(char *p)
   byte prev_value;
   for (byte oid=0; oid<NUM_OPTIONS; oid++) {
     //if ((os.options[oid].flag&OPFLAG_WEB_EDIT)==0) continue;
-    // skip binary options that do not appear in the UI
-    if (oid==OPTION_RESET || oid==OPTION_DEVICE_ENABLE) continue;
+    
+    // skip options that cannot be set through web UI
+    if (oid==OPTION_RESET || oid==OPTION_DEVICE_ENABLE ||
+        oid==OPTION_FW_VERSION || oid==OPTION_HW_VERSION ||
+        oid==OPTION_SEQUENTIAL_RETIRED)
+      continue;
     prev_value = os.options[oid].value;
     if (os.options[oid].max==1)  os.options[oid].value = 0;  // set a bool variable to 0 first
     char tbuf2[5] = {'o', 0, 0, 0, 0};
@@ -617,7 +658,11 @@ byte server_change_options(char *p)
 		    int32_t v = atol(tmp_buffer);
 		    if (oid==OPTION_MASTER_OFF_ADJ) {v+=60;} // master off time
 		    if (oid==OPTION_RELAY_PULSE) {v/=10;} // relay pulse time
-		    if (oid==OPTION_STATION_DELAY_TIME) {v=water_time_encode((uint16_t)v);} // encode station delay time
+		    if (oid==OPTION_STATION_DELAY_TIME) {
+		      DEBUG_PRINTLN(v);
+		      v=water_time_encode_signed((int16_t)v);
+		      DEBUG_PRINTLN(v);
+		    } // encode station delay time
 		    if (v>=0 && v<=os.options[oid].max) {
 		      os.options[oid].value = v;
 		    } else {
@@ -634,7 +679,7 @@ byte server_change_options(char *p)
     }
   }
   
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "loc")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("loc"), true)) {
     ether.urlDecode(tmp_buffer);
     tmp_buffer[MAX_LOCATION]=0;   // make sure we don't exceed the maximum size
     if (strcmp_to_eeprom(tmp_buffer, ADDR_EEPROM_LOCATION)) { // if location has changed
@@ -643,7 +688,7 @@ byte server_change_options(char *p)
     }
   }
   uint8_t keyfound = 0;
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "wtkey", &keyfound)) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("wtkey"), true, &keyfound)) {
     ether.urlDecode(tmp_buffer);
     tmp_buffer[MAX_WEATHER_KEY]=0;
     if (strcmp_to_eeprom(tmp_buffer, ADDR_EEPROM_WEATHER_KEY)) {  // if weather key has changed
@@ -656,7 +701,7 @@ byte server_change_options(char *p)
     os.eeprom_string_set(ADDR_EEPROM_WEATHER_KEY, tmp_buffer);
   }
   // if not using NTP and manually setting time
-  if (!os.options[OPTION_USE_NTP].value && ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "ttt")) {
+  if (!os.options[OPTION_USE_NTP].value && ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("ttt"), true)) {
     unsigned long t;
     t = atol(tmp_buffer);
     // before chaging time, reset all stations to avoid messing up with timing
@@ -694,9 +739,9 @@ byte server_change_options(char *p)
 */
 byte server_change_password(char *p)
 {
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "npw")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("npw"), true)) {
     char tbuf2[TMP_BUFFER_SIZE];
-    if (ether.findKeyVal(p, tbuf2, TMP_BUFFER_SIZE, "cpw") && strncmp(tmp_buffer, tbuf2, 16) == 0) {
+    if (ether.findKeyVal(p, tbuf2, TMP_BUFFER_SIZE, PSTR("cpw"), true) && strncmp(tmp_buffer, tbuf2, 16) == 0) {
       //os.password_set(tmp_buffer);
       ether.urlDecode(tmp_buffer);
       tmp_buffer[MAX_USER_PASSWORD]=0;  // make sure we don't exceed the maximum size
@@ -726,7 +771,7 @@ void server_json_status_main()
 */
 byte server_json_status(char *p)
 {
-  server_json_header();
+  print_json_header_with_bracket();
   server_json_status_main();
   return HTML_OK;
 }
@@ -742,7 +787,7 @@ byte server_json_status(char *p)
 */
 byte server_change_manual(char *p) {
   int sid=-1;
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "sid")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("sid"), true)) {
     sid=atoi(tmp_buffer);
     if (sid<0 || sid>=os.nstations) return HTML_DATA_OUTOFBOUND;  
   } else {
@@ -750,7 +795,7 @@ byte server_change_manual(char *p) {
   }
   
   byte en=0;
-  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "en")) {
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("en"), true)) {
     en=atoi(tmp_buffer);
   } else {
     return HTML_DATA_MISSING;
@@ -759,7 +804,7 @@ byte server_change_manual(char *p) {
   uint16_t timer=0;
   unsigned long curr_time = now();
   if (en) { // if turning on a station, must provide timer
-    if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "t")) {
+    if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("t"), true)) {
       timer=(uint16_t)atol(tmp_buffer);
       if (timer==0 || timer>64800) {
         return HTML_DATA_OUTOFBOUND;
@@ -770,7 +815,7 @@ byte server_change_manual(char *p) {
       // - currently running (cannot handle overlapping schedules of the same station)
       byte bid = sid>>3;
       byte s = sid&0x07;
-      if ((os.status.mas==sid+1) || (os.station_bits[bid]&(1<<s)))   //|| (os.stndis_bits[bid]&(1<<s))
+      if ((os.status.mas==sid+1) || (os.station_bits[bid]&(1<<s)))
         return HTML_NOT_PERMITTED;
       
       // if the station doesn't already have a scheduled stop time
@@ -779,7 +824,7 @@ byte server_change_manual(char *p) {
         // water time is scaled by watering percentage
         pd.scheduled_stop_time[sid] = timer;
         pd.scheduled_program_index[sid] = 99;   // testing stations are assigned program index 99
-        schedule_all_stations(curr_time, os.status.seq);
+        schedule_all_stations(curr_time);
       } else {
         return HTML_NOT_PERMITTED;
       }
@@ -794,10 +839,16 @@ byte server_change_manual(char *p) {
 
 /**
   Get log data
-  Command: /jl?start=x&end=x
+  Command: /jl?start=x&end=x&hist=x&type=x
   
+  hist:  history (past n days)
+         when hist is speceified, the start
+         and end parameters below will be ignored
   start: start time (epoch time)
   end:   end time (epoch time)
+  type:  type of log records (optional)
+         rs, rd, wl
+         if unspecified, output all records
 */  
 byte server_json_log(char *p) {
 
@@ -805,18 +856,36 @@ byte server_json_log(char *p) {
   if (!os.status.has_sd)  return HTML_PAGE_NOT_FOUND;
   
   unsigned int start, end;
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "start"))
-    return HTML_DATA_MISSING;
-  start = atol(tmp_buffer) / 86400L;
+
+  // past n day history
+  if (ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("hist"), true)) {
+    int hist = atoi(tmp_buffer);
+    if (hist< 0 || hist > 365) return HTML_DATA_OUTOFBOUND;
+    end = now() / 86400L;
+    start = end - hist;
+  }
+  else
+  {
+    if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("start"), true))
+      return HTML_DATA_MISSING;
+    start = atol(tmp_buffer) / 86400L;
+    
+    if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("end"), true))
+      return HTML_DATA_MISSING;
+    end = atol(tmp_buffer) / 86400L;
+    
+    // start must be prior to end, and can't retrieve more than 365 days of data
+    if ((start>end) || (end-start)>365)  return HTML_DATA_OUTOFBOUND;
+  }
+
+  // extract the type parameter
+  char type[4] = {0};
+  bool type_specified = false;
+  if (ether.findKeyVal(p, type, 4, PSTR("type"), true))
+    type_specified = true;
   
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "end"))
-    return HTML_DATA_MISSING;
-  end = atol(tmp_buffer) / 86400L;
-  
-  // start must be prior to end, and can't retrieve more than 365 days of data
-  if ((start>end) || (end-start)>365)  return HTML_DATA_OUTOFBOUND;
-  
-  bfill.emit_p(PSTR("$F["), htmlJSONHeader);
+  print_json_header();
+  bfill.emit_p(PSTR("["));
  
   char *s;
   int res, count = 0;
@@ -841,12 +910,20 @@ byte server_json_log(char *p) {
       // remove the \n character
       if (tmp_buffer[res-1] == '\n')  tmp_buffer[res-1] = 0;
       
+      // check record type
+      // special records are all in the form of [0,"xx",...]
+      // where xx is the type name
+      if (type_specified && strncmp(type, tmp_buffer+4, 2))
+        continue;
+      // if type is not specified, output everything except "wl" records
+      if (!type_specified && !strncmp("wl", tmp_buffer+4, 2)) 
+        continue;
       // if this is the first record, do not print comma
       if (first)  { bfill.emit_p(PSTR("$S"), tmp_buffer); first=false;}
       else {  bfill.emit_p(PSTR(",$S"), tmp_buffer); }
       count ++;
       if (count % 25 == 0) {  // push out a packet every 25 records
-        ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
+        ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V, 3);
         bfill=ether.tcpOffset();
         count = 0;
       }
@@ -868,7 +945,7 @@ byte server_json_log(char *p) {
 */
 byte server_delete_log(char *p) {
 
-  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, "day"))
+  if (!ether.findKeyVal(p, tmp_buffer, TMP_BUFFER_SIZE, PSTR("day"), true))
     return HTML_DATA_MISSING;
   
   delete_log(tmp_buffer);
@@ -977,7 +1054,7 @@ void analyze_get_url(char *p)
         } else if (str[0]=='j' && str[1]=='o')  { // for /jo page we output fwv if password fails
           str+=3;
           if(check_password(str)==false) {
-            server_json_header();
+            print_json_header_with_bracket();
             bfill.emit_p(PSTR("\"$F\":$D}"),
                    os.options[0].json_str, os.options[0].value);
             ret = HTML_OK;
@@ -997,10 +1074,12 @@ void analyze_get_url(char *p)
         case HTML_OK:
           break;
         case HTML_REDIRECT_HOME:
-          bfill.emit_p(PSTR("$F$F"), htmlOkHeader, htmlReturnHome);
+          print_html_standard_header();
+          bfill.emit_p(PSTR("$F"), htmlReturnHome);
           break;
         default:
-          bfill.emit_p(PSTR("$F{\"result\":$D}"), htmlJSONHeader, ret);
+          print_json_header();
+          bfill.emit_p(PSTR("{\"result\":$D}"), ret);
         }
         break;
       }
@@ -1015,7 +1094,8 @@ void analyze_get_url(char *p)
       sd.chdir("/");
       if (streamfile ((char *)tmp_buffer)==0) {
         // file not found
-        bfill.emit_p(PSTR("$F{\"result\":$D}"), htmlJSONHeader, HTML_PAGE_NOT_FOUND);
+        print_json_header();
+        bfill.emit_p(PSTR("{\"result\":$D}"), HTML_PAGE_NOT_FOUND);
         ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V|TCP_FLAGS_FIN_V);
       }
     } else {
@@ -1031,13 +1111,21 @@ byte streamfile (char* name) { //send a file to the buffer
   if(!sd.exists(name))  {return 0;}
   SdFile myfile(name, O_READ);
 
-  bfill.emit_p(PSTR("$F"), htmlFileHeader);
+  // print file header dependeing on file type
+  bfill.emit_p(PSTR("$F$F"), html200OK, htmlCacheCtrl);  
+  char *pext = name+strlen(name)-4;
+  if(strncmp(pext, ".cgz", 4)==0) {
+    bfill.emit_p(PSTR("$F"), htmlContentCgz);
+  } else if(strncmp(pext, ".jgz", 4)==0) {
+    bfill.emit_p(PSTR("$F"), htmlContentJgz);
+  }
+  bfill.emit_p(PSTR("\r\n"));
   ether.httpServerReply_with_flags(bfill.position(), TCP_FLAGS_ACK_V);
   bfill = ether.tcpOffset();
   while(myfile.available()) {
-    int nbytes = myfile.read(Ethernet::buffer+54, 512);
+    int nbytes = myfile.read(Ethernet::buffer+54, ETHER_BUFFER_SIZE - 54);
     cur = nbytes;
-    if (cur>=512) {
+    if (cur>=ETHER_BUFFER_SIZE - 54) {
       ether.httpServerReply_with_flags(cur,TCP_FLAGS_ACK_V, 3);
       cur=0;
     } else {

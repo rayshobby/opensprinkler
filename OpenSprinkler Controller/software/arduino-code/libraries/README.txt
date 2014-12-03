@@ -2,6 +2,10 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* Dec 2,  2014
+- Check in firmware 2.1.1 source code. This firmware fixed a few bugs in 2.1.0, and added support for radio frequency (RF) stations, support for per-station 'sequential' flag, water percentage logging, negative station delay time, hardware MAC address, and 'enable logging' option. For intermediate changes please refer to the development thread at https://github.com/OpenSprinkler/OpenSprinklerGen2.
+
+
 * Oct 22, 2014
 - Check in firmware 2.1.0 source code. This firmware is a major upgrade, adding features such as per-station water time, automatic weather-based water time adjustment, auto-detection of time zone and DST. For intermediate changes please refer to the development thread at https://github.com/OpenSprinkler/OpenSprinklerGen2.
 
