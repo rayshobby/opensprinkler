@@ -2,7 +2,7 @@
 
 /* Macro definitions and Arduino pin assignments
    Creative Commons Attribution-ShareAlike 3.0 license
-   Nov 2014 @ Rayshobby.net
+   Dec 2014 @ Rayshobby.net
 */
 
 #ifndef _Defines_h
@@ -11,7 +11,7 @@
 // =================================================
 // ====== Firmware Version and Maximal Values ======
 // =================================================
-#define OS_FW_VERSION  211 // firmware version (211 means 2.1.1 etc)
+#define OS_FW_VERSION  212 // firmware version (212 means 2.1.2 etc)
                             // if this number is different from stored in EEPROM,
                             // an EEPROM reset will be automatically triggered
 

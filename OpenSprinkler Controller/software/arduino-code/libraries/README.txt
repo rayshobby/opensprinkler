@@ -2,6 +2,9 @@
 The list here documents updates to the OpenSprinkler library. Updates to specific programs are documented in each program folder.
 
 ===============================
+* Dec 15, 2014
+- Check in firmware 2.1.2 source code. This firmware fixed the following bugs in 2.1.1: 1) program data output (/jp) is incomplete when the number of programs is a multiple of 3 (likely a compiler bug); 2) incorrect handling of the SPACE character in program names. For details please refer to the development thread at https://github.com/OpenSprinkler/OpenSprinklerGen2.
+
 * Dec 2,  2014
 - Check in firmware 2.1.1 source code. This firmware fixed a few bugs in 2.1.0, and added support for radio frequency (RF) stations, support for per-station 'sequential' flag, water percentage logging, negative station delay time, hardware MAC address, and 'enable logging' option. For intermediate changes please refer to the development thread at https://github.com/OpenSprinkler/OpenSprinklerGen2.
 
