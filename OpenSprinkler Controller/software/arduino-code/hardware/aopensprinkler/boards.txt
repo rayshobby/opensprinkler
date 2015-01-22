@@ -35,7 +35,7 @@ atmega644usbasp.bootloader.file=ATmegaBOOT_168_atmega644.hex
 atmega644usbasp.bootloader.unlock_bits=0x3F
 atmega644usbasp.bootloader.lock_bits=0x0F
 
-atmega644usbasp.build.mcu=atmega644
+atmega644usbasp.build.mcu=atmega644p
 atmega644usbasp.build.f_cpu=12000000L
 atmega644usbasp.build.core=arduino
 atmega644usbasp.build.variant=standard
@@ -57,7 +57,7 @@ atmega644.bootloader.file=ATmegaBOOT_168_atmega644.hex
 atmega644.bootloader.unlock_bits=0x3F
 atmega644.bootloader.lock_bits=0x0F
 
-atmega644.build.mcu=atmega644
+atmega644.build.mcu=atmega644p
 atmega644.build.f_cpu=8000000L
 atmega644.build.core=arduino
 atmega644.build.variant=standard
