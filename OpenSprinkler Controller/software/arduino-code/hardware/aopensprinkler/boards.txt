@@ -1,66 +1,86 @@
 ############################################################
 
-atmega644_16.name=OpenSprinklerHW2.2 (16MHz, Serial)
+os23.name=OpenSprinklerHW2.3 (16MHz, Serial)
 
-atmega644_16.upload.protocol=arduino
-atmega644_16.upload.maximum_size=64512
-atmega644_16.upload.speed=115200
+os23.upload.protocol=arduino
+os23.upload.maximum_size=130048
+os23.upload.speed=115200
 
-atmega644_16.bootloader.low_fuses=0xFF
-atmega644_16.bootloader.high_fuses=0xD6
-atmega644_16.bootloader.extended_fuses=0xFF
-atmega644_16.bootloader.path=atmega644p
-atmega644_16.bootloader.file=optiboot_sanguino.hex
-atmega644_16.bootloader.unlock_bits=0x3F
-atmega644_16.bootloader.lock_bits=0x0F
+os23.bootloader.low_fuses=0xFF
+os23.bootloader.high_fuses=0xD6
+os23.bootloader.extended_fuses=0xFF
+os23.bootloader.path=atmega1284p
+os23.bootloader.file=optiboot_atmega1284.hex
+os23.bootloader.unlock_bits=0x3F
+os23.bootloader.lock_bits=0x0F
 
-atmega644_16.build.mcu=atmega644p
-atmega644_16.build.f_cpu=16000000L
-atmega644_16.build.core=arduino
-atmega644_16.build.variant=standard
-
-############################################################
-
-atmega644usbasp.name=OpenSprinklerHW2.1 (12MHz, USBasp, orange terminal)
-
-atmega644usbasp.upload.using=arduino:usbasp
-atmega644usbasp.upload.maximum_size=63488
-atmega644usbasp.upload.speed=57600
-
-atmega644usbasp.bootloader.low_fuses=0xFF
-atmega644usbasp.bootloader.high_fuses=0xDC
-atmega644usbasp.bootloader.extended_fuses=0xFD
-atmega644usbasp.bootloader.path=atmega
-atmega644usbasp.bootloader.file=ATmegaBOOT_168_atmega644.hex
-atmega644usbasp.bootloader.unlock_bits=0x3F
-atmega644usbasp.bootloader.lock_bits=0x0F
-
-atmega644usbasp.build.mcu=atmega644p
-atmega644usbasp.build.f_cpu=12000000L
-atmega644usbasp.build.core=arduino
-atmega644usbasp.build.variant=standard
+os23.build.mcu=atmega1284p
+os23.build.f_cpu=16000000L
+os23.build.core=arduino
+os23.build.variant=standard
 
 ############################################################
 
-atmega644.name=OpenSprinklerHW2.0 (8MHz, USBtiny, all green terminals)
+os22.name=OpenSprinklerHW2.2 (16MHz, Serial)
 
-atmega644.upload.using=arduino:usbtinyisp
-atmega644.upload.maximum_size=65536
-atmega644.upload.speed=57600
+os22.upload.protocol=arduino
+os22.upload.maximum_size=64512
+os22.upload.speed=115200
 
-atmega644.bootloader.low_fuses=0xE2
-atmega644.bootloader.high_fuses=0xD1
-atmega644.bootloader.extended_fuses=0xFE
-atmega644.bootloader.path=atmega
-atmega644.bootloader.file=ATmegaBOOT_168_atmega644.hex
-#atmega644.bootloader.file=ATmegaBOOT_644.hex
-atmega644.bootloader.unlock_bits=0x3F
-atmega644.bootloader.lock_bits=0x0F
+os22.bootloader.low_fuses=0xFF
+os22.bootloader.high_fuses=0xD6
+os22.bootloader.extended_fuses=0xFF
+os22.bootloader.path=atmega644p
+os22.bootloader.file=optiboot_sanguino.hex
+os22.bootloader.unlock_bits=0x3F
+os22.bootloader.lock_bits=0x0F
 
-atmega644.build.mcu=atmega644p
-atmega644.build.f_cpu=8000000L
-atmega644.build.core=arduino
-atmega644.build.variant=standard
+os22.build.mcu=atmega644p
+os22.build.f_cpu=16000000L
+os22.build.core=arduino
+os22.build.variant=standard
+
+############################################################
+
+os21.name=OpenSprinklerHW2.1 (12MHz, USBasp, orange terminal)
+
+os21.upload.using=arduino:usbasp
+os21.upload.maximum_size=63488
+os21.upload.speed=57600
+
+os21.bootloader.low_fuses=0xFF
+os21.bootloader.high_fuses=0xDC
+os21.bootloader.extended_fuses=0xFD
+os21.bootloader.path=atmega
+os21.bootloader.file=ATmegaBOOT_168_atmega644.hex
+os21.bootloader.unlock_bits=0x3F
+os21.bootloader.lock_bits=0x0F
+
+os21.build.mcu=atmega644p
+os21.build.f_cpu=12000000L
+os21.build.core=arduino
+os21.build.variant=standard
+
+############################################################
+
+os20.name=OpenSprinklerHW2.0 (8MHz, USBtiny, all green terminals)
+
+os20.upload.using=arduino:usbtinyisp
+os20.upload.maximum_size=65536
+os20.upload.speed=57600
+
+os20.bootloader.low_fuses=0xE2
+os20.bootloader.high_fuses=0xD1
+os20.bootloader.extended_fuses=0xFE
+os20.bootloader.path=atmega
+os20.bootloader.file=ATmegaBOOT_168_atmega644.hex
+os20.bootloader.unlock_bits=0x3F
+os20.bootloader.lock_bits=0x0F
+
+os20.build.mcu=atmega644p
+os20.build.f_cpu=8000000L
+os20.build.core=arduino
+os20.build.variant=standard
 
 ##############################################################
 
