@@ -1,0 +1,52 @@
+#!/bin/bash
+PS3='Select the program: '
+options=("interval_program" "sprinklers_pi" "ospi_gc" "none" "quit")
+select opt in "${options[@]}"
+do
+	case $opt in
+		"interval_program")
+			echo "Selected interval_progarm"
+			/etc/init.d/sprinklers_pi stop
+			update-rc.d sprinklers_pi remove
+			/etc/init.d/ospi_gc stop
+			update-rc.d ospi_gc remove
+			update-rc.d ospi defaults
+			/etc/init.d/ospi start
+			break
+			;;
+		"sprinklers_pi")
+			echo "Selected sprinklers_pi"
+			/etc/init.d/ospi stop
+			update-rc.d ospi remove
+			/etc/init.d/ospi_gc stop
+			update-rc.d ospi_gc remove
+			update-rc.d sprinklers_pi defaults
+			/etc/init.d/sprinklers_pi start
+			break
+			;;
+		"ospi_gc")
+			echo "Selected ospi_gc"
+			/etc/init.d/sprinklers_pi stop
+			update-rc.d sprinklers_pi remove
+			/etc/init.d/ospi stop
+			update-rc.d ospi remove
+			update-rc.d ospi_gc defaults
+			/etc/init.d/ospi_gc start
+			break
+			;;
+		"none")
+			echo "Selected none"
+			/etc/init.d/ospi stop
+			update-rc.d ospi remove
+			/etc/init.d/ospi_gc stop
+			update-rc.d ospi_gc remove
+			/etc/init.d/sprinklers_pi stop
+			update-rc.d sprinklers_pi remove
+			break
+			;;
+		"quit")
+			break
+			;;
+		*) echo invalid option;;
+	esac
+done

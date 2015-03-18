@@ -5,7 +5,14 @@ import sys
 import string
 import datetime
 import RPi.GPIO as GPIO
+from signal import signal, SIGTERM
+from sys import exit
 import atexit
+import smtplib
+from email.mime.text import MIMEText
+import os
+import httplib2
+from apiclient.discovery import build
 
 try:
   from xml.etree import ElementTree # for Python 2.5 users
@@ -14,41 +21,100 @@ except ImportError:
 import gdata.calendar
 import gdata.calendar.service
 
-# ======================================================
-# !!! MODIFY THE CALENDAR ID AND STATION NAMES BELOW !!!
-# ======================================================
+import logging
+import logging.handlers
+import sys
 
-# PUBLIC GOOGLE CALENDAR ID
-# - the calendar should be set as public
-# - calendar id can be found in calendar settings
-# - !!!!!!!! PLEASE CHANGE THIS TO YOUR OWN CALENDAR ID !!!!!!
-CALENDAR_ID = 'ma2lg95i25jantdiciij85aq0s@group.calendar.google.com'
+LOG_LEVEL = os.getenv('OSPI_LOG_LEVEL');
+if LOG_LEVEL is None:
+   LOG_LEVEL = 'INFO';
 
-# STATION NAMES
-# - specify the name : index for each station
-# - station index starts from 0
-# - station names are case sensitive
-# - you can define multiple names for each station
+# assuming loglevel is bound to the string value obtained from the
+# command line argument. Convert to upper case to allow the user to
+# specify --log=DEBUG or --log=debug
+numeric_level = getattr(logging, LOG_LEVEL.upper(), None)
+if not isinstance(numeric_level, int):
+    numeric_level = getattr(logging, 'INFO');
+ 
+mylogger = logging.getLogger("ospi_gc");
+mylogger.setLevel(numeric_level);
+handler = logging.handlers.TimedRotatingFileHandler(
+   "ospi_gc.log", 
+   when='midnight', 
+   backupCount=14
+);
 
-STATIONS = {
-  "master" 		: 0,
+formatter = logging.Formatter('%(asctime)s:%(levelname)s: %(message)s');
+handler.setFormatter(formatter);
+mylogger.addHandler(handler);
 
-  "front yard"		: 1,  # you can map multiple common names
-  "frontyard"		: 1,  # to the same station index
+mylogger.info("Logging configured: numeric_level=%d LOG_LEVEL=%s", numeric_level, LOG_LEVEL);
 
-  "back yard"		: 2,
-  "backyard"		: 2,
+EMAIL_FROM = os.getenv('OSPI_EMAIL_FROM');
+EMAIL_TO = os.getenv('OSPI_EMAIL_TO');
+mylogger.info("Will send email from %s to %s", EMAIL_FROM, EMAIL_TO);
 
-  "s04"	: 3,
-  "s05" : 4,
-  "s06" : 5,
+def sendemail(subject, msgtext):
+  if EMAIL_FROM is None or EMAIL_TO is None:
+     mylogger.debug("Email not configured. Not Sending Message with Subject: %s", subject);
+     return;
 
-  "s09" : 8,
-  "s10" : 9,
+  msg = MIMEText(msgtext);
+  msg['Subject'] = subject;
 
-  "s16" : 15
-}
+  s = smtplib.SMTP('localhost');
+  s.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string());
+  s.quit();
 
+CALENDAR_ID = os.getenv('OSPI_CALENDAR_ID');
+if (CALENDAR_ID is not None):
+   mylogger.info("Will use calendar %s", CALENDAR_ID);
+else:
+   mylogger.error("OSPI_CALENDAR_ID environment variable not set. ABORTING");
+   sendemail("OSPI GC Startup Aborted", "OSPI_CALENDAR_ID environment variable not set");
+   exit(1);
+
+API_KEY = os.getenv('OSPI_API_KEY');
+if (API_KEY is not None):
+   mylogger.debug("Will use Google API key %s", API_KEY);
+else:
+   mylogger.error("OSPI_API_KEY environment variable not set. ABORTING");
+   sendemail("OSPI GC Startup Aborted", "OSPI_API_KEY environment variable not set");
+   exit(1);
+
+MAX_STATION_ENV = os.getenv('OSPI_MAX_STATION');
+if (MAX_STATION_ENV is not None):
+   MAX_STATION = int(MAX_STATION_ENV);
+   mylogger.debug("Will look for OSPI_STATION_0 to OSPI_STATION_%d", MAX_STATION);
+else:
+   mylogger.error("MAX_STATION environment variable not set. ABORTING");
+   sendemail("OSPI GC Startup Aborted", "MAX_STATION environment variable not set");
+   exit(1);
+
+STATIONS = {};
+
+for i in range(0, MAX_STATION+1):
+   STATION_ENV = "OSPI_STATION_%d" % (i);
+   stations_names = os.getenv(STATION_ENV);
+   if stations_names is None:
+      continue;
+   mylogger.info("Will reference station %d as %s", i, stations_names);
+   for name in stations_names.split(','):
+      STATIONS[name] = i;
+
+if (len(STATIONS) == 0):
+   mylogger.ERROR("No Stations Configured. ABORTING");
+   sendemail("OSPI GC Startup Aborted", "OSPI_STATION_* variables not set or incorrect format");
+   exit(1);
+
+try:
+   calendar_service = build('calendar', 'v3');
+except:
+   mylogger.exception("Error while building calendar service. ABORTING");
+   sendemail("OSPI GC Startup Aborted", "Error while building calendar service");
+   exit(1);
+
+   
 # ======================================================
 
 # MAXIMUM NUMBER OF STATIONS
@@ -57,14 +123,9 @@ MAX_NSTATIONS = 64
 # OSPI PIN DEFINES
 pin_sr_clk =  4
 pin_sr_noe = 17
-pin_sr_dat = 21 # NOTE: if you have RPi rev.2, change this to 27
+pin_sr_dat = 27 # NOTE: if you have RPi rev.1, change this to 21
 pin_sr_lat = 22
 
-calendar_service = gdata.calendar.service.CalendarService()
-query = gdata.calendar.service.CalendarEventQuery(CALENDAR_ID, 'public', 'full')
-query.orderby = 'starttime'
-query.singleevents = 'true'
-query.sortorder = 'a'
 station_bits = [0]*MAX_NSTATIONS
 
 def enableShiftRegisterOutput():
@@ -84,38 +145,59 @@ def shiftOut(station_bits):
 
 
 def runOSPI():
-
-  global station_bits
-  now = datetime.datetime.utcnow();
-  print datetime.datetime.now();
-  nextminute = now + datetime.timedelta(minutes=1)
-
-  query.start_min = now.isoformat()
-  query.start_max = nextminute.isoformat()
-
-  station_bits = [0]*MAX_NSTATIONS;
   try:
-    feed = calendar_service.CalendarQuery(query)
-    print '(',
-    for i, an_event in enumerate(feed.entry):
-      if (i!=0):
-        print ',',
-      try:
-        print an_event.title.text,
-        station_bits[STATIONS[an_event.title.text]] = 1;
-      except:
-        print "-> #name not found#",
-#      print '%s' % (an_event.title.text)
-    print ')'
+     global station_bits
+     now = datetime.datetime.utcnow();
+     removems = datetime.timedelta(microseconds=now.microsecond);
+     now = now - removems
+     nextminute = now + datetime.timedelta(minutes=1)
+
+     TIME_MIN = now.isoformat() + "Z";
+     TIME_MAX = nextminute.isoformat() + "Z";
+
+     station_bits = [0]*MAX_NSTATIONS;
   except:
-    print "#error getting calendar data#"
+     mylogger.exception("ERROR during time setup");
+  try:
+    mylogger.debug("checking calendar...");
+    calendar_events = calendar_service.events().list(
+       calendarId=CALENDAR_ID, 
+       key=API_KEY,
+       timeMin=TIME_MIN,
+       timeMax=TIME_MAX,
+       orderBy='startTime',
+       singleEvents='true'
+    ).execute();
+    stations = "";
+    for event in calendar_events['items']:
+      mylogger.debug("%s from %s to %s", 
+         event['summary'], 
+         event['start']['dateTime'],
+         event['end']['dateTime']
+      );
+      if (stations != ""):
+        stations += ',';
+      try:
+        stations += event['summary'];
+        station_bits[STATIONS[event['summary']]] = 1;
+      except:
+        stations += "-> #name not found#",
+    if (len(stations) > 0):
+      mylogger.info("stations found: %s", stations);
+    else:
+      mylogger.debug("no stations found");
+  except:
+    mylogger.exception("#error getting calendar data#");
   try:
     shiftOut(station_bits)
   except:
-    print "#shiftOut error#"
+    mylogger.error("#shiftOut error#");
+
+
       
 def main():
-  print('OpenSprinkler Pi has started...')
+      
+  mylogger.info('OpenSprinkler Pi has started...')
 
   GPIO.cleanup()
   # setup GPIO pins to interface with shift register
@@ -129,6 +211,8 @@ def main():
   shiftOut(station_bits)
   enableShiftRegisterOutput()
 
+  sendemail('OpenSprinkler GC Startup', 'Initialization complete. Starting main loop')
+
   while True:
     try:
       runOSPI()
@@ -141,7 +225,11 @@ def progexit():
   station_bits = [0]*MAX_NSTATIONS
   shiftOut(station_bits)
   GPIO.cleanup()
+  mylogger.info('OpenSprinkler Pi shutdown... All station bits cleared')
+  sendemail('OpenSprinkler GC Shutdown', 'All station bits cleared');
 
 if __name__ == "__main__":
   atexit.register(progexit)
+  # Normal exit when killed
+  signal(SIGTERM, lambda signum, stack_frame: exit(1))
   main()

@@ -1,0 +1,19 @@
+# put your Google API Key here
+export OSPI_API_KEY='abcdefghijklmnopqrstuvwxyz1234567890123'
+
+# put your public calendar id here
+export OSPI_CALENDAR_ID='abcdefghijklmnopqrstuvwxzy12345678901@group.calendar.google.com'
+
+# Email Config
+# export OSPI_EMAIL_FROM="pi@ospi.yourdomain.ospi"
+# export OSPI_EMAIL_TO="you@wherever.you.get.email.com"
+
+export OSPI_MAX_STATION=5
+export OSPI_STATION_0="frontyard,front yard"
+export OSPI_STATION_1="backyard,back yard"
+export OSPI_STATION_2="northside,north side"
+export OSPI_STATION_3="southside,south side"
+export OSPI_STATION_4="frontflowers,front flowers"
+export OSPI_STATION_5="pool"
+
+export OSPI_LOG_LEVEL=DEBUG
