@@ -1,41 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="7.2.0">
+<eagle version="7.3.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.05" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
-<layer number="1" name="Top" color="4" fill="1" visible="yes" active="no"/>
-<layer number="2" name="Route2" color="1" fill="3" visible="yes" active="no"/>
-<layer number="3" name="Route3" color="4" fill="3" visible="yes" active="no"/>
-<layer number="4" name="Route4" color="1" fill="4" visible="yes" active="no"/>
-<layer number="5" name="Route5" color="4" fill="4" visible="yes" active="no"/>
-<layer number="6" name="Route6" color="1" fill="8" visible="yes" active="no"/>
-<layer number="7" name="Route7" color="4" fill="8" visible="yes" active="no"/>
-<layer number="8" name="Route8" color="1" fill="2" visible="yes" active="no"/>
-<layer number="9" name="Route9" color="4" fill="2" visible="yes" active="no"/>
-<layer number="10" name="Route10" color="1" fill="7" visible="yes" active="no"/>
-<layer number="11" name="Route11" color="4" fill="7" visible="yes" active="no"/>
-<layer number="12" name="Route12" color="1" fill="5" visible="yes" active="no"/>
-<layer number="13" name="Route13" color="4" fill="5" visible="yes" active="no"/>
-<layer number="14" name="Route14" color="1" fill="6" visible="yes" active="no"/>
-<layer number="15" name="Route15" color="4" fill="6" visible="yes" active="no"/>
-<layer number="16" name="Bottom" color="1" fill="1" visible="yes" active="no"/>
-<layer number="17" name="Pads" color="2" fill="1" visible="yes" active="no"/>
-<layer number="18" name="Vias" color="2" fill="1" visible="yes" active="no"/>
-<layer number="19" name="Unrouted" color="6" fill="1" visible="yes" active="no"/>
-<layer number="20" name="Dimension" color="15" fill="1" visible="yes" active="no"/>
-<layer number="21" name="tPlace" color="7" fill="1" visible="yes" active="no"/>
-<layer number="22" name="bPlace" color="7" fill="1" visible="yes" active="no"/>
-<layer number="23" name="tOrigins" color="15" fill="1" visible="yes" active="no"/>
-<layer number="24" name="bOrigins" color="15" fill="1" visible="yes" active="no"/>
-<layer number="25" name="tNames" color="7" fill="1" visible="yes" active="no"/>
-<layer number="26" name="bNames" color="7" fill="1" visible="yes" active="no"/>
-<layer number="27" name="tValues" color="7" fill="1" visible="yes" active="no"/>
-<layer number="28" name="bValues" color="7" fill="1" visible="yes" active="no"/>
+<layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
+<layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
+<layer number="3" name="Route3" color="4" fill="3" visible="no" active="no"/>
+<layer number="4" name="Route4" color="1" fill="4" visible="no" active="no"/>
+<layer number="5" name="Route5" color="4" fill="4" visible="no" active="no"/>
+<layer number="6" name="Route6" color="1" fill="8" visible="no" active="no"/>
+<layer number="7" name="Route7" color="4" fill="8" visible="no" active="no"/>
+<layer number="8" name="Route8" color="1" fill="2" visible="no" active="no"/>
+<layer number="9" name="Route9" color="4" fill="2" visible="no" active="no"/>
+<layer number="10" name="Route10" color="1" fill="7" visible="no" active="no"/>
+<layer number="11" name="Route11" color="4" fill="7" visible="no" active="no"/>
+<layer number="12" name="Route12" color="1" fill="5" visible="no" active="no"/>
+<layer number="13" name="Route13" color="4" fill="5" visible="no" active="no"/>
+<layer number="14" name="Route14" color="1" fill="6" visible="no" active="no"/>
+<layer number="15" name="Route15" color="4" fill="6" visible="no" active="no"/>
+<layer number="16" name="Bottom" color="1" fill="1" visible="no" active="no"/>
+<layer number="17" name="Pads" color="2" fill="1" visible="no" active="no"/>
+<layer number="18" name="Vias" color="2" fill="1" visible="no" active="no"/>
+<layer number="19" name="Unrouted" color="6" fill="1" visible="no" active="no"/>
+<layer number="20" name="Dimension" color="15" fill="1" visible="no" active="no"/>
+<layer number="21" name="tPlace" color="7" fill="1" visible="no" active="no"/>
+<layer number="22" name="bPlace" color="7" fill="1" visible="no" active="no"/>
+<layer number="23" name="tOrigins" color="15" fill="1" visible="no" active="no"/>
+<layer number="24" name="bOrigins" color="15" fill="1" visible="no" active="no"/>
+<layer number="25" name="tNames" color="7" fill="1" visible="no" active="no"/>
+<layer number="26" name="bNames" color="7" fill="1" visible="no" active="no"/>
+<layer number="27" name="tValues" color="7" fill="1" visible="no" active="no"/>
+<layer number="28" name="bValues" color="7" fill="1" visible="no" active="no"/>
 <layer number="29" name="tStop" color="12" fill="3" visible="no" active="no"/>
 <layer number="30" name="bStop" color="7" fill="6" visible="no" active="no"/>
 <layer number="31" name="tCream" color="7" fill="4" visible="no" active="no"/>
@@ -44,8 +44,8 @@
 <layer number="34" name="bFinish" color="6" fill="6" visible="no" active="no"/>
 <layer number="35" name="tGlue" color="7" fill="4" visible="no" active="no"/>
 <layer number="36" name="bGlue" color="7" fill="5" visible="no" active="no"/>
-<layer number="37" name="tTest" color="7" fill="1" visible="yes" active="no"/>
-<layer number="38" name="bTest" color="7" fill="1" visible="yes" active="no"/>
+<layer number="37" name="tTest" color="7" fill="1" visible="no" active="no"/>
+<layer number="38" name="bTest" color="7" fill="1" visible="no" active="no"/>
 <layer number="39" name="tKeepout" color="4" fill="11" visible="no" active="no"/>
 <layer number="40" name="bKeepout" color="1" fill="11" visible="no" active="no"/>
 <layer number="41" name="tRestrict" color="4" fill="10" visible="no" active="no"/>
@@ -53,17 +53,17 @@
 <layer number="43" name="vRestrict" color="2" fill="10" visible="no" active="no"/>
 <layer number="44" name="Drills" color="7" fill="1" visible="no" active="no"/>
 <layer number="45" name="Holes" color="7" fill="1" visible="no" active="no"/>
-<layer number="46" name="Milling" color="3" fill="1" visible="yes" active="no"/>
-<layer number="47" name="Measures" color="7" fill="1" visible="yes" active="no"/>
-<layer number="48" name="Document" color="7" fill="1" visible="yes" active="no"/>
-<layer number="49" name="Reference" color="7" fill="1" visible="yes" active="no"/>
-<layer number="50" name="dxf" color="7" fill="1" visible="yes" active="no"/>
-<layer number="51" name="tDocu" color="7" fill="1" visible="yes" active="no"/>
-<layer number="52" name="bDocu" color="7" fill="1" visible="yes" active="no"/>
-<layer number="53" name="tGND_GNDA" color="7" fill="9" visible="yes" active="no"/>
-<layer number="54" name="bGND_GNDA" color="1" fill="9" visible="yes" active="no"/>
-<layer number="56" name="wert" color="7" fill="1" visible="yes" active="no"/>
-<layer number="57" name="tCAD" color="7" fill="1" visible="yes" active="no"/>
+<layer number="46" name="Milling" color="3" fill="1" visible="no" active="no"/>
+<layer number="47" name="Measures" color="7" fill="1" visible="no" active="no"/>
+<layer number="48" name="Document" color="7" fill="1" visible="no" active="no"/>
+<layer number="49" name="Reference" color="7" fill="1" visible="no" active="no"/>
+<layer number="50" name="dxf" color="7" fill="1" visible="no" active="no"/>
+<layer number="51" name="tDocu" color="7" fill="1" visible="no" active="no"/>
+<layer number="52" name="bDocu" color="7" fill="1" visible="no" active="no"/>
+<layer number="53" name="tGND_GNDA" color="7" fill="9" visible="no" active="no"/>
+<layer number="54" name="bGND_GNDA" color="1" fill="9" visible="no" active="no"/>
+<layer number="56" name="wert" color="7" fill="1" visible="no" active="no"/>
+<layer number="57" name="tCAD" color="7" fill="1" visible="no" active="no"/>
 <layer number="90" name="Modules" color="5" fill="1" visible="yes" active="yes"/>
 <layer number="91" name="Nets" color="2" fill="1" visible="yes" active="yes"/>
 <layer number="92" name="Busses" color="1" fill="1" visible="yes" active="yes"/>
@@ -32761,12 +32761,12 @@ Source: www.epcos.com .. 01430148.pdf</description>
 <part name="L1" library="SparkFunNew" deviceset="INDUCTOR" device="CR54"/>
 <part name="CL" library="adafruit" deviceset="C-US" device="C0603" value="0.1u"/>
 <part name="34063" library="adafruit" deviceset="MC33063/MC34063" device="D" value=""/>
-<part name="RSC" library="adafruitGood" deviceset="R-US_" device="R0603" value="3.3"/>
-<part name="CT" library="adafruit" deviceset="C-US" device="C0603K" value="470"/>
-<part name="RT" library="adafruitGood" deviceset="R-US_" device="R0603" value="25K"/>
-<part name="RB" library="adafruitGood" deviceset="R-US_" device="R0603" value="1.5K"/>
+<part name="RSC" library="adafruitGood" deviceset="R-US_" device="R0603" value="1"/>
+<part name="CT" library="adafruit" deviceset="C-US" device="C0603K" value="330pF"/>
+<part name="RT" library="adafruitGood" deviceset="R-US_" device="R0603" value="27K"/>
+<part name="RB" library="adafruitGood" deviceset="R-US_" device="R0603" value="1.6K"/>
 <part name="GND20" library="SparkFun" deviceset="GND" device=""/>
-<part name="L1'" library="rcl" deviceset="L-US" device="0204/5" value="1000uH"/>
+<part name="L1'" library="rcl" deviceset="L-US" device="0204/5" value="220uH"/>
 <part name="U$1" library="adafruitGood" deviceset="FIDUCIAL" device=""/>
 <part name="U$3" library="adafruitGood" deviceset="FIDUCIAL" device=""/>
 <part name="C12" library="adafruit" deviceset="C-US" device="C0603" value="0.1u"/>
@@ -32777,7 +32777,7 @@ Source: www.epcos.com .. 01430148.pdf</description>
 <part name="+3V2" library="supply1" deviceset="VCC" device=""/>
 <part name="X0" library="crystal" deviceset="CRYSTAL" device="MM20SS" value="32.768kHz"/>
 <part name="J1" library="SparkFunNew" deviceset="POWER_JACK" device="PTH_LOCK" value="POWER"/>
-<part name="Q1" library="transistor-small-signal" deviceset="BSS123" device=""/>
+<part name="Q1" library="transistor-small-signal" deviceset="BSS123" device="" value="AO3400"/>
 <part name="Q2" library="transistor-small-signal" deviceset="BSS123" device=""/>
 <part name="Q3" library="transistor-small-signal" deviceset="BSS123" device=""/>
 <part name="Q4" library="transistor-small-signal" deviceset="BSS123" device=""/>
@@ -32789,13 +32789,13 @@ Source: www.epcos.com .. 01430148.pdf</description>
 <part name="CH" library="adafruit" deviceset="C-US" device="C0603" value="0.1u"/>
 <part name="GND14" library="SparkFun" deviceset="GND" device=""/>
 <part name="RDC" library="adafruitGood" deviceset="R-US_" device="R0603" value="180"/>
-<part name="QP1" library="transistor-small-signal" deviceset="BSS84" device=""/>
-<part name="QB1" library="SparkFunNew" deviceset="TRANSISTOR_NPN" device="SOT23-3"/>
+<part name="QP1" library="transistor-small-signal" deviceset="BSS84" device="" value="AP3401"/>
+<part name="QB1" library="SparkFunNew" deviceset="TRANSISTOR_NPN" device="SOT23-3" value="2N3904"/>
 <part name="RP1" library="adafruitGood" deviceset="R-US_" device="R0603" value="100K"/>
 <part name="GND21" library="SparkFun" deviceset="GND" device=""/>
 <part name="RB1" library="adafruitGood" deviceset="R-US_" device="R0603" value="1K"/>
 <part name="D0" library="diode" deviceset="DIODE-" device="MINIMELF" value="24V"/>
-<part name="R0" library="adafruitGood" deviceset="R-US_" device="R2010" value="3.3ohm"/>
+<part name="R0" library="adafruitGood" deviceset="R-US_" device="R2010" value="1ohm"/>
 <part name="CB" library="rcl" deviceset="CPOL-EU" device="E7.5-16" value="2200uF"/>
 <part name="ZB" library="diode" deviceset="DIODE-" device="MINIMELF" value="24V"/>
 <part name="GND22" library="SparkFun" deviceset="GND" device=""/>
@@ -32820,7 +32820,7 @@ Source: www.epcos.com .. 01430148.pdf</description>
 <part name="RS" library="adafruit2013" deviceset="R-US_" device="R2512"/>
 <part name="GND12" library="SparkFun" deviceset="GND" device=""/>
 <part name="ZS" library="diode" deviceset="DIODE-" device="MINIMELF" value="3.3V"/>
-<part name="RZ" library="adafruitGood" deviceset="R-US_" device="R0402" value="180"/>
+<part name="RZ" library="adafruitGood" deviceset="R-US_" device="R0402" value="100"/>
 <part name="GND24" library="SparkFun" deviceset="GND" device=""/>
 </parts>
 <sheets>
@@ -32830,7 +32830,6 @@ Source: www.epcos.com .. 01430148.pdf</description>
 <text x="212.09" y="54.61" size="1.778" layer="94">Data</text>
 <text x="212.09" y="49.53" size="1.778" layer="94">Clock</text>
 <text x="212.09" y="41.91" size="1.778" layer="94">Latch</text>
-<text x="262.89" y="34.29" size="2.1844" layer="94" rot="R90">330x4 Isolated ResNet</text>
 <text x="60.96" y="55.88" size="1.778" layer="94">Latch</text>
 <text x="60.96" y="38.1" size="1.778" layer="94">Data</text>
 <text x="60.96" y="40.64" size="1.778" layer="94">Clock</text>
@@ -33157,9 +33156,7 @@ Source: www.epcos.com .. 01430148.pdf</description>
 <attribute name="NAME" x="83.82" y="124.46" size="1.778" layer="95" rot="MR0"/>
 </instance>
 <instance part="J1" gate="G$1" x="-12.7" y="170.18"/>
-<instance part="Q1" gate="G$1" x="283.21" y="101.6" smashed="yes">
-<attribute name="NAME" x="285.75" y="101.6" size="1.778" layer="95"/>
-</instance>
+<instance part="Q1" gate="G$1" x="283.21" y="101.6"/>
 <instance part="Q2" gate="G$1" x="283.21" y="90.17" smashed="yes">
 <attribute name="NAME" x="285.75" y="90.17" size="1.778" layer="95"/>
 </instance>
@@ -33192,11 +33189,12 @@ Source: www.epcos.com .. 01430148.pdf</description>
 <instance part="GND14" gate="1" x="185.42" y="36.83"/>
 <instance part="RDC" gate="G$1" x="158.75" y="67.31" rot="MR270"/>
 <instance part="QP1" gate="G$1" x="149.86" y="46.99" smashed="yes" rot="R90">
-<attribute name="NAME" x="147.32" y="49.53" size="1.778" layer="95"/>
+<attribute name="NAME" x="147.32" y="49.53" size="1.778" layer="95" rot="R90"/>
+<attribute name="VALUE" x="149.86" y="49.53" size="1.778" layer="96" rot="R90"/>
 </instance>
 <instance part="QB1" gate="G$1" x="152.4" y="39.37" smashed="yes" rot="R90">
 <attribute name="NAME" x="149.86" y="41.91" size="1.778" layer="95"/>
-<attribute name="VALUE" x="154.94" y="44.45" size="1.778" layer="96" rot="R90"/>
+<attribute name="VALUE" x="148.59" y="35.56" size="1.778" layer="96"/>
 </instance>
 <instance part="RP1" gate="G$1" x="142.24" y="41.91" rot="MR180"/>
 <instance part="GND21" gate="1" x="157.48" y="36.83"/>

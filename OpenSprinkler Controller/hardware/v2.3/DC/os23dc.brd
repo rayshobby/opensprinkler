@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="7.2.0">
+<eagle version="7.3.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="yes"/>
@@ -3224,23 +3224,23 @@ design rules under a new name.</description>
 <attribute name="VALUE" x="36.632" y="29.437" size="1.27" layer="27" ratio="10" rot="R180"/>
 <attribute name="NAME" x="34.979" y="23.795" size="0.8128" layer="25" ratio="20" rot="R90"/>
 </element>
-<element name="RSC" library="adafruitGood" package="R0603" value="3.3" x="29.1" y="25" smashed="yes" rot="R90">
+<element name="RSC" library="adafruitGood" package="R0603" value="1" x="29.1" y="25" smashed="yes" rot="R90">
 <attribute name="NAME" x="29.484" y="26.638" size="0.8128" layer="25" ratio="20" rot="R90"/>
 <attribute name="VALUE" x="31.386" y="24.238" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="CT" library="adafruit" package="C0603K" value="470" x="40.2" y="27.6" smashed="yes" rot="R90">
+<element name="CT" library="adafruit" package="C0603K" value="330pF" x="40.2" y="27.6" smashed="yes" rot="R90">
 <attribute name="NAME" x="41.925" y="27" size="0.8128" layer="25" ratio="20" rot="R90"/>
 <attribute name="VALUE" x="42.1" y="26.6" size="1.016" layer="27" rot="R90"/>
 </element>
-<element name="RT" library="adafruitGood" package="R0603" value="25K" x="47.8" y="23.4" smashed="yes" rot="R90">
+<element name="RT" library="adafruitGood" package="R0603" value="27K" x="47.8" y="23.4" smashed="yes" rot="R90">
 <attribute name="NAME" x="46.984" y="22.138" size="0.8128" layer="25" ratio="20" rot="R90"/>
 <attribute name="VALUE" x="50.086" y="22.638" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="RB" library="adafruitGood" package="R0603" value="1.5K" x="47.8" y="26.65" smashed="yes" rot="R90">
+<element name="RB" library="adafruitGood" package="R0603" value="1.6K" x="47.8" y="26.65" smashed="yes" rot="R90">
 <attribute name="NAME" x="46.884" y="26.038" size="0.8128" layer="25" ratio="20" rot="R90"/>
 <attribute name="VALUE" x="50.086" y="25.888" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="L1'" library="rcl" package="0204/5" value="1000uH" x="38.2" y="32.4" smashed="yes" rot="R270">
+<element name="L1'" library="rcl" package="0204/5" value="220uH" x="38.2" y="32.4" smashed="yes" rot="R270">
 <attribute name="VALUE" x="35.8886" y="34.533590625" size="0.9906" layer="27" ratio="10" rot="R270"/>
 </element>
 <element name="U$1" library="adafruitGood" package="FIDUCIAL_1MM" value="FIDUCIAL" x="3.5" y="76.5" rot="R90"/>
@@ -3266,7 +3266,7 @@ design rules under a new name.</description>
 <element name="J1" library="SparkFunNew" package="POWER_JACK_PTH_LOCK" value="POWER" x="-1.5" y="16.1" smashed="yes" rot="R270">
 <attribute name="VALUE" x="2.31" y="19.91" size="0.4064" layer="27" rot="R270"/>
 </element>
-<element name="Q1" library="transistor-small-signal" package="SOT23" value="BSS123" x="33.7" y="10.6" smashed="yes" rot="R180">
+<element name="Q1" library="transistor-small-signal" package="SOT23" value="AO3400" x="33.7" y="10.6" smashed="yes" rot="R180">
 <attribute name="VALUE" x="35.605" y="13.775" size="1.27" layer="27" rot="R180"/>
 </element>
 <element name="Q2" library="transistor-small-signal" package="SOT23" value="BSS123" x="38.7" y="10.6" smashed="yes" rot="R180">
@@ -3300,11 +3300,11 @@ design rules under a new name.</description>
 <attribute name="NAME" x="29" y="22.1" size="0.8128" layer="25" ratio="15"/>
 <attribute name="VALUE" x="29.238" y="19.014" size="1.27" layer="27"/>
 </element>
-<element name="QP1" library="transistor-small-signal" package="SOT23" value="BSS84" x="25.9" y="24.2" smashed="yes">
+<element name="QP1" library="transistor-small-signal" package="SOT23" value="AP3401" x="25.9" y="24.2" smashed="yes">
 <attribute name="NAME" x="24.895" y="26.405" size="0.8128" layer="25" ratio="15"/>
 <attribute name="VALUE" x="23.995" y="21.025" size="1.27" layer="27"/>
 </element>
-<element name="QB1" library="SparkFunNew" package="SOT23-3" value="" x="25.3" y="17.6" smashed="yes">
+<element name="QB1" library="SparkFunNew" package="SOT23-3" value="2N3904" x="25.3" y="17.6" smashed="yes">
 <attribute name="NAME" x="23.422" y="16.1745" size="0.8128" layer="25" ratio="15" rot="R90"/>
 <attribute name="VALUE" x="24.284" y="17.4095" size="0.4064" layer="27"/>
 </element>
@@ -3320,7 +3320,7 @@ design rules under a new name.</description>
 <attribute name="NAME" x="9.7" y="27.7" size="0.8128" layer="25" ratio="15"/>
 <attribute name="VALUE" x="7.406" y="27.263" size="1.27" layer="27" rot="R270"/>
 </element>
-<element name="R0" library="adafruitGood" package="R2010" value="3.3ohm" x="5.6" y="24.6" smashed="yes">
+<element name="R0" library="adafruitGood" package="R2010" value="1ohm" x="5.6" y="24.6" smashed="yes">
 <attribute name="NAME" x="4.95" y="22.1" size="0.8128" layer="25" ratio="15"/>
 <attribute name="VALUE" x="4.076" y="22.949" size="0.4064" layer="27"/>
 </element>
@@ -3395,7 +3395,7 @@ design rules under a new name.</description>
 <attribute name="NAME" x="83.35" y="12.75" size="0.8128" layer="25" ratio="15" rot="R270"/>
 <attribute name="VALUE" x="79.787" y="13.751" size="1.27" layer="27" rot="R270"/>
 </element>
-<element name="RZ" library="adafruitGood" package="R0402" value="180" x="87.2" y="13.8" smashed="yes" rot="R180">
+<element name="RZ" library="adafruitGood" package="R0402" value="100" x="87.2" y="13.8" smashed="yes" rot="R180">
 <attribute name="NAME" x="87.83" y="13.03" size="0.8128" layer="25" ratio="15" rot="R180"/>
 <attribute name="VALUE" x="87.835" y="15.832" size="1.27" layer="27" rot="R180"/>
 </element>
