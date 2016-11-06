@@ -7,6 +7,12 @@ http://goo.gl/4Nrvb
 
 Release Notes
 =============
+New in v1.43+
+* Removed on-board relay. Replaced by a header for RF transmitter.
+* Added PCB spark gaps.
+* Added laser cut acrylic enclosure design (in EagleCAD file, this is
+  at layer 113. A .ai file is also provided).
+
 New in v1.4 / v1.4 B+
 * New layout to fit the OpenSprinkler injection-molded enclosure
 * Changed on-board relay to 250V / 3A type
